@@ -1,0 +1,198 @@
+require("dotenv").config();
+
+// Fuerza este script a trabajar sobre Hoja 11
+process.env.WORKSHEET_NAME = "Hoja 11";
+
+const {
+  getSheetsClient,
+  buildHeaderMap,
+  requireHeaders,
+  getCellValue,
+  readRows,
+  updateCellsBatch
+} = require("../../core/sheets");
+
+const { nowIsoLocal } = require("../../utils/common");
+
+const PLANS = [
+
+  {
+    carousel_id: "car_aa71c9d0",
+    ids: [6, 10, 27, 166, 255, 275, 52],
+    caption: `Uno no es pobre…
+uno está en proceso.
+Pero qué proceso tan largo, gonorrea.`,
+    hashtags: "#plata #trabajo #colombia #vidaadulta #frases #parati #real #humor"
+  },
+
+  {
+    carousel_id: "car_2f8c7b91",
+    ids: [18, 89, 97, 176, 162, 172, 220],
+    caption: `No soy tóxico…
+solo tengo estándares raros.
+Y orgullo.`,
+    hashtags: "#amor #relaciones #toxico #colombia #frases #parati #real #actitud"
+  },
+
+  {
+    carousel_id: "car_81f0de44",
+    ids: [24, 20, 48, 50, 51, 53, 130],
+    caption: `No todo merece respuesta…
+y no toda gente merece explicación.`,
+    hashtags: "#actitud #gente #realidad #colombia #frases #parati #real #caracter"
+  },
+
+  {
+    carousel_id: "car_c93a1e66",
+    ids: [33, 37, 227, 193, 208, 197, 199],
+    caption: `Uno cambia…
+porque la vida lo obliga.
+Y porque ya no es el mismo de antes.`,
+    hashtags: "#vida #cambio #reflexion #colombia #frases #parati #real #crecimiento"
+  }
+
+];
+
+async function main() {
+  const sheets = await getSheetsClient();
+  const rows = await readRows(sheets);
+
+  if (rows.length < 2) {
+    console.log("No hay datos en Hoja 11.");
+    return;
+  }
+
+  const headers = rows[0];
+  const headerMap = buildHeaderMap(headers);
+
+  requireHeaders(headerMap, [
+    "row_id",
+    "updated_at",
+    "post_tipo",
+    "carousel_id",
+    "carousel_order",
+    "carousel_caption",
+    "hashtags",
+    "estado_general",
+    "estado_render",
+    "estado_upload",
+    "estado_publish",
+    "lock_status",
+    "error_step",
+    "error_message"
+  ]);
+
+  const rowById = new Map();
+
+  for (let i = 1; i < rows.length; i++) {
+    const rowId = getCellValue(rows[i], headerMap, "row_id");
+
+    if (rowId) {
+      rowById.set(String(rowId).trim(), {
+        rowNumber: i + 1,
+        values: rows[i]
+      });
+    }
+  }
+
+  const updates = [];
+  const now = nowIsoLocal();
+
+  for (const plan of PLANS) {
+    console.log(`Aplicando ${plan.carousel_id}...`);
+
+    plan.ids.forEach((id, index) => {
+      const item = rowById.get(String(id));
+
+      if (!item) {
+        console.warn(`No encontré row_id ${id} en Hoja 11 para ${plan.carousel_id}`);
+        return;
+      }
+
+      updates.push(
+        {
+          row: item.rowNumber,
+          col: headerMap["post_tipo"] + 1,
+          value: "carousel"
+        },
+        {
+          row: item.rowNumber,
+          col: headerMap["carousel_id"] + 1,
+          value: plan.carousel_id
+        },
+        {
+          row: item.rowNumber,
+          col: headerMap["carousel_order"] + 1,
+          value: index + 1
+        },
+        {
+          row: item.rowNumber,
+          col: headerMap["carousel_caption"] + 1,
+          value: plan.caption
+        },
+        {
+          row: item.rowNumber,
+          col: headerMap["hashtags"] + 1,
+          value: plan.hashtags
+        },
+        {
+          row: item.rowNumber,
+          col: headerMap["estado_general"] + 1,
+          value: "pending"
+        },
+        {
+          row: item.rowNumber,
+          col: headerMap["estado_render"] + 1,
+          value: "pending"
+        },
+        {
+          row: item.rowNumber,
+          col: headerMap["estado_upload"] + 1,
+          value: "pending"
+        },
+        {
+          row: item.rowNumber,
+          col: headerMap["estado_publish"] + 1,
+          value: "pending"
+        },
+        {
+          row: item.rowNumber,
+          col: headerMap["lock_status"] + 1,
+          value: "free"
+        },
+        {
+          row: item.rowNumber,
+          col: headerMap["error_step"] + 1,
+          value: ""
+        },
+        {
+          row: item.rowNumber,
+          col: headerMap["error_message"] + 1,
+          value: ""
+        },
+        {
+          row: item.rowNumber,
+          col: headerMap["updated_at"] + 1,
+          value: now
+        }
+      );
+    });
+  }
+
+  if (!updates.length) {
+    console.log("No hay nada para actualizar.");
+    return;
+  }
+
+  await updateCellsBatch(sheets, updates);
+
+  console.log("Listo.");
+  console.log(`Celdas actualizadas: ${updates.length}`);
+  console.log(`Carruseles procesados: ${PLANS.length}`);
+}
+
+main().catch((error) => {
+  console.error("Error aplicando plan de carruseles:");
+  console.error(error);
+  process.exit(1);
+});

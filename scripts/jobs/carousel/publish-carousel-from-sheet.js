@@ -107,6 +107,7 @@ function buildCarouselPayload(groupRows, headerMap) {
   const imageUrls = [];
   const publicIds = [];
   let carouselCaption = "";
+  let carouselHashtags = "";
 
   for (const item of groupRows) {
     const row = item.values;
@@ -115,6 +116,11 @@ function buildCarouselPayload(groupRows, headerMap) {
     const rowCaption = getCellValue(row, headerMap, "carousel_caption");
     const fallbackCaption = getCellValue(row, headerMap, "caption");
     const cloudinaryPublicId = getCellValue(row, headerMap, "cloudinary_public_id");
+    const rowHashtags = getCellValue(row, headerMap, "hashtags");
+
+    if (!carouselHashtags && rowHashtags) {
+      carouselHashtags = rowHashtags;
+    }
 
     if (!mediaUrl) {
       throw new Error(`La fila ${item.rowNumber} no tiene media_url.`);
@@ -135,7 +141,11 @@ function buildCarouselPayload(groupRows, headerMap) {
     });
   }
 
-  return { imageUrls, carouselCaption, publicIds };
+    const finalCaption = [carouselCaption, carouselHashtags]
+      .filter(Boolean)
+      .join("\n\n");
+
+  return { imageUrls, carouselCaption: finalCaption, publicIds };
 }
 
 async function deleteCarouselAssets(publicIds, groupLogger) {
@@ -253,7 +263,8 @@ async function main() {
     "instagram_creation_id",
     "instagram_media_id",
     "facebook_photo_id",
-    "facebook_post_id"
+    "facebook_post_id",
+    "hashtags"
   ];
 
   requireHeaders(headerMap, requiredHeaders);
