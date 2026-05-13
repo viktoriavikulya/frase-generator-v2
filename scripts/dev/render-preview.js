@@ -1,7 +1,7 @@
 const { renderPhrase } = require("../libs/render-lib");
 
 async function main() {
-  const text = process.argv[2] || "Te respondo como me tratas, para que entiendas sin explicarte";
+  const text = process.argv[2] || "En Bogotá el sol es un rumor";
   const mode = process.argv[3] || "retro3d";
   const bg = process.argv[4] || "#ffffff";
 
