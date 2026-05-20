@@ -75,6 +75,10 @@ async function main() {
 
   const bgColor = getNextColor(rows, headerMap);
   const carouselId = generateCarouselId(frases);
+  if (process.env.GITHUB_ENV) {
+    const fs = require("fs");
+    fs.appendFileSync(process.env.GITHUB_ENV, `TARGET_CAROUSEL_ID=${carouselId}\n`);
+  }
   const hashtags = "#monacastrosa #frasesreales #humorcotidiano #vidareal";
   const now = nowIsoLocal();
   const nextRow = rows.length + 1;

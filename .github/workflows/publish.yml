@@ -58,6 +58,7 @@ jobs:
         if: ${{ github.event_name == 'workflow_dispatch' && inputs.frases != '' }}
         env:
           FORM_MODE: "true"
+          TARGET_CAROUSEL_ID: ${{ env.TARGET_CAROUSEL_ID }}
 
           SHEET_ID: ${{ secrets.SHEET_ID }}
           WORKSHEET_NAME: ${{ secrets.WORKSHEET_NAME }}
