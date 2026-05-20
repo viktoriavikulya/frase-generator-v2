@@ -37,5 +37,4 @@ jobs:
           GENERATOR_PORT: ${{ secrets.GENERATOR_PORT }}
           FB_PAGE_ID: ${{ secrets.FB_PAGE_ID }}
           FB_PAGE_ACCESS_TOKEN: ${{ secrets.FB_PAGE_ACCESS_TOKEN }}
-        run: node scripts/orchestration/pipeline.js
-        
+        run: node scripts/pipeline/run-once.js
