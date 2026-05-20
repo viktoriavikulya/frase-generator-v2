@@ -15,40 +15,10 @@ const { nowIsoLocal } = require("../../utils/common");
 
 const PLANS = [
   {
-    carousel_id: "car_bog_transmi",
-    ids: [297, 298, 299, 300, 301, 302, 303],
-    caption: `Sobrevivientes del sistema`,
-    hashtags: "#transmilenio #bogota #humor #colombia #frases #parati #real #viral"
-  },
-  {
-    carousel_id: "car_bog_universidad",
-    ids: [304, 305, 306, 307, 308, 309, 310, 311],
-    caption: `Semestre tras semestre, ahí vamos`,
-    hashtags: "#universidad #bogota #estudiantes #humor #colombia #frases #parati #real"
-  },
-  {
-    carousel_id: "car_bog_clima",
-    ids: [312, 313, 314, 315, 316, 317, 318],
-    caption: `Abrigarse o no abrigarse, esa es la pregunta`,
-    hashtags: "#bogota #frio #humor #colombia #frases #parati #real #viral"
-  },
-  {
-    carousel_id: "car_bog_trancon",
-    ids: [319, 320, 321, 322, 323, 324, 325],
-    caption: `Moverse en Bogotá es un trabajo de tiempo completo`,
-    hashtags: "#bogota #trancon #transmilenio #humor #colombia #frases #parati #real"
-  },
-  {
-    carousel_id: "car_bog_rumba",
-    ids: [326, 327, 328, 329, 330, 331, 332],
-    caption: `Bogotá de noche es otro país`,
-    hashtags: "#bogota #rumba #chapinero #humor #colombia #frases #parati #real"
-  },
-  {
-    carousel_id: "car_bog_gomelos",
-    ids: [333, 334, 335, 336],
-    caption: `Bogotá tiene más capas que una cebolla`,
-    hashtags: "#bogota #gomelos #humor #colombia #frases #parati #real #estrato"
+    carousel_id: "car_reparacion_2026",
+    ids: [337, 338, 339, 340, 341, 342, 343, 344, 345, 346],
+    caption: `En reparación… sin fecha de entrega.`,
+    hashtags: "#sanacion #vidaadulta #humor #colombia #frases #parati #real #viral"
   }
 ];
 
