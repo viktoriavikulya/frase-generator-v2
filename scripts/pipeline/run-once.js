@@ -5,11 +5,16 @@ const { runCarouselPipeline } = require("./run-carousel");
 
 async function main() {
   const cycleId = `${Date.now()}`;
-  logger.info("Ejecutando pipeline una sola vez", { cycleId });
+  const isFormMode = process.env.FORM_MODE === "true";
+
+  logger.info("Ejecutando pipeline una sola vez", { 
+    cycleId,
+    mode: isFormMode ? "form" : "scheduled"
+  });
 
   const result = await runCarouselPipeline({
     cycleId,
-    branch: "scheduled"
+    branch: isFormMode ? "form" : "scheduled"
   });
 
   if (!result.ok) {

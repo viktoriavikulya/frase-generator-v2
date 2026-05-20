@@ -22,11 +22,10 @@ async function runPipelineSteps({
   });
 
   const startMs = Date.now();
+  const isFormMode = context.branch === "form";
 
   pipelineLogger.info("Pipeline iniciado");
 
-  // 1. Primero intenta publicar algo que ya quedó renderizado/subido pendiente.
-  // Esto evita crear un nuevo render/upload antes de resolver una publicación incompleta.
   if (publishFirst) {
     const pendingPublishResult = runStep(
       publishFirstStepName || publishStepName,
@@ -72,10 +71,27 @@ async function runPipelineSteps({
       };
     }
 
+    if (isFormMode) {
+      pipelineLogger.error("FORM_MODE activo: no había publicaciones pendientes. No se renderiza contenido del Sheet.", {
+        processed: false,
+        durationMs: Date.now() - startMs
+      });
+
+      pipelineLogger.info("Pipeline terminado", {
+        processed: false
+      });
+
+      return {
+        ok: false,
+        processed: false,
+        failedStep: `${failedStepPrefix}-form-no-pending`,
+        reason: "FORM_MODE_NO_PENDING"
+      };
+    }
+
     pipelineLogger.info("No había publicaciones pendientes; se continúa con render normal.");
   }
 
-  // 2. Si no había pendientes, se crea una publicación nueva.
   const renderResult = runStep(renderStepName, renderScript, {
     pipeline: label,
     ...context
