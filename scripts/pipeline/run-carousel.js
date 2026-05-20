@@ -1,10 +1,13 @@
 const { runPipelineSteps } = require("../utils/pipeline-runner");
 
 function runCarouselPipeline(context = {}) {
+  const isFormMode = context.branch === "form";
+
   return runPipelineSteps({
     label: "CAROUSEL",
 
-    publishFirst: true,
+    // En formulario NO intentamos publish pending
+    publishFirst: !isFormMode,
     publishFirstStepName: "PUBLISH PENDING CAROUSEL",
 
     renderStepName: "RENDER CAROUSEL",
