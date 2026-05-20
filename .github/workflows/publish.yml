@@ -1,0 +1,41 @@
+name: Publish Posts
+
+on:
+  schedule:
+    - cron: '0 15 * * *'   # 10am Bogotá (UTC-5)
+    - cron: '0 23 * * *'   # 6pm Bogotá (UTC-5)
+  workflow_dispatch:        # permite correrlo manualmente
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+
+      - name: Run pipeline
+        env:
+          SHEET_ID: ${{ secrets.SHEET_ID }}
+          WORKSHEET_NAME: ${{ secrets.WORKSHEET_NAME }}
+          CLOUDINARY_CLOUD_NAME: ${{ secrets.CLOUDINARY_CLOUD_NAME }}
+          CLOUDINARY_API_KEY: ${{ secrets.CLOUDINARY_API_KEY }}
+          CLOUDINARY_API_SECRET: ${{ secrets.CLOUDINARY_API_SECRET }}
+          IG_USER_ID: ${{ secrets.IG_USER_ID }}
+          IG_ACCESS_TOKEN: ${{ secrets.IG_ACCESS_TOKEN }}
+          GRAPH_API_VERSION: ${{ secrets.GRAPH_API_VERSION }}
+          GENERATOR_URL: ${{ secrets.GENERATOR_URL }}
+          GENERATOR_PORT: ${{ secrets.GENERATOR_PORT }}
+          FB_PAGE_ID: ${{ secrets.FB_PAGE_ID }}
+          FB_PAGE_ACCESS_TOKEN: ${{ secrets.FB_PAGE_ACCESS_TOKEN }}
+        run: node scripts/orchestration/pipeline.js
+        
