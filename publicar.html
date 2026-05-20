@@ -112,7 +112,7 @@
 
     if (!token) { status.textContent = "Falta el token."; status.className = "error"; return; }
     if (!caption) { status.textContent = "Falta el caption."; status.className = "error"; return; }
-    if (frases.length < 3) { status.textContent = "Mínimo 3 frases."; status.className = "error"; return; }
+    if (frases.length < 2) { status.textContent = "Mínimo 3 frases."; status.className = "error"; return; }
     if (frases.length > 10) { status.textContent = "Máximo 10 frases."; status.className = "error"; return; }
 
     btn.disabled = true;
