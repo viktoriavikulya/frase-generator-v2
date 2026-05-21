@@ -49,35 +49,19 @@
       resize: vertical;
     }
 
-    .tipo-toggle {
-      display: flex;
-      gap: 8px;
-      margin-bottom: 16px;
-    }
-
-    .tipo-toggle button {
-      flex: 1;
-      background: #1a1c22;
-      color: #aaa;
-      border: 1px solid #333;
-      border-radius: 8px;
-      font-size: 14px;
-      font-weight: 600;
-      padding: 10px;
-      cursor: pointer;
-    }
-
-    .tipo-toggle button.active {
-      background: #f4c400;
-      color: #0d0f14;
-      border-color: #f4c400;
-    }
-
     #hint-frases {
       font-size: 12px;
       color: #666;
       margin-top: -12px;
       margin-bottom: 16px;
+    }
+
+    #tipo-detectado {
+      font-size: 12px;
+      color: #f4c400;
+      margin-top: -12px;
+      margin-bottom: 16px;
+      min-height: 18px;
     }
 
     .acciones {
@@ -125,27 +109,71 @@
 
     .ok { color: #4caf50; }
     .error { color: #e53935; }
+
+    #pantalla-lock {
+      position: fixed;
+      inset: 0;
+      background: #0d0f14;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+      padding: 24px;
+      z-index: 999;
+    }
+
+    #pantalla-lock h2 {
+      font-size: 20px;
+      color: #f4c400;
+    }
+
+    #pantalla-lock input {
+      width: 100%;
+      max-width: 300px;
+      text-align: center;
+      font-size: 18px;
+      letter-spacing: 4px;
+    }
+
+    #btn-entrar {
+      width: 100%;
+      max-width: 300px;
+      background: #f4c400;
+      color: #0d0f14;
+      border: none;
+      border-radius: 8px;
+      font-size: 16px;
+      font-weight: 700;
+      padding: 14px;
+      cursor: pointer;
+    }
+
+    #lock-error {
+      font-size: 13px;
+      color: #e53935;
+      min-height: 18px;
+    }
   </style>
 </head>
 <body>
 
-  <h1>🔥 Publicar Post</h1>
-
-  <label>Token</label>
-  <input type="password" id="token" placeholder="Tu token secreto">
-
-  <label>Tipo de post</label>
-  <div class="tipo-toggle">
-    <button id="btn-carousel" class="active" onclick="setTipo('carousel')">🎠 Carrusel</button>
-    <button id="btn-single" onclick="setTipo('single')">🖼️ Single</button>
+  <div id="pantalla-lock">
+    <h2>🔒 Acceso</h2>
+    <input type="password" id="clave-input" placeholder="Clave" onkeydown="if(event.key==='Enter') entrar()">
+    <button id="btn-entrar" onclick="entrar()">Entrar</button>
+    <div id="lock-error"></div>
   </div>
+
+  <h1>🔥 Publicar Post</h1>
 
   <label>Caption</label>
   <input type="text" id="caption" placeholder="Ej: y ya, sin drama.">
 
-  <label id="label-frases">Frases (una por línea, mínimo 2)</label>
-  <textarea id="frases" placeholder="Frase 1&#10;Frase 2"></textarea>
-  <div id="hint-frases">Carrusel: mínimo 2, máximo 10 frases</div>
+  <label>Frases (una por línea)</label>
+  <textarea id="frases" placeholder="Frase 1&#10;Frase 2" oninput="detectarTipo()"></textarea>
+  <div id="hint-frases">1 frase → single · 2 a 10 frases → carrusel</div>
+  <div id="tipo-detectado"></div>
 
   <div class="acciones">
     <button id="btn-publicar" onclick="publicar(false)">🔥 Publicar ahora</button>
@@ -158,27 +186,36 @@
   const OWNER = "imgifra";
   const REPO = "frase-generator-v2";
   const WORKFLOW = "publish.yml";
+  const CLAVE = "Mona";
+  const GH_TOKEN = "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";
 
-  let tipoActual = "carousel";
-
-  function setTipo(tipo) {
-    tipoActual = tipo;
-    document.getElementById("btn-carousel").classList.toggle("active", tipo === "carousel");
-    document.getElementById("btn-single").classList.toggle("active", tipo === "single");
-
-    if (tipo === "single") {
-      document.getElementById("label-frases").textContent = "Frase (solo una)";
-      document.getElementById("hint-frases").textContent = "Single: exactamente 1 frase";
-      document.getElementById("frases").placeholder = "Frase 1";
+  function entrar() {
+    const input = document.getElementById("clave-input").value;
+    if (input === CLAVE) {
+      document.getElementById("pantalla-lock").style.display = "none";
     } else {
-      document.getElementById("label-frases").textContent = "Frases (una por línea, mínimo 2)";
-      document.getElementById("hint-frases").textContent = "Carrusel: mínimo 2, máximo 10 frases";
-      document.getElementById("frases").placeholder = "Frase 1\nFrase 2";
+      document.getElementById("lock-error").textContent = "Clave incorrecta.";
+      document.getElementById("clave-input").value = "";
+    }
+  }
+
+  function detectarTipo() {
+    const frasesRaw = document.getElementById("frases").value;
+    const frases = frasesRaw.split("\n").map(f => f.trim()).filter(Boolean);
+    const el = document.getElementById("tipo-detectado");
+
+    if (frases.length === 0) {
+      el.textContent = "";
+    } else if (frases.length === 1) {
+      el.textContent = "🖼️ Single detectado";
+    } else if (frases.length <= 10) {
+      el.textContent = `🎠 Carrusel detectado (${frases.length} frases)`;
+    } else {
+      el.textContent = `⚠️ Máximo 10 frases (tienes ${frases.length})`;
     }
   }
 
   async function publicar(soloSheet) {
-    const token = document.getElementById("token").value.trim();
     const caption = document.getElementById("caption").value.trim();
     const frasesRaw = document.getElementById("frases").value;
     const frases = frasesRaw.split("\n").map(f => f.trim()).filter(Boolean);
@@ -189,16 +226,11 @@
     status.textContent = "";
     status.className = "";
 
-    if (!token) { status.textContent = "Falta el token."; status.className = "error"; return; }
     if (!caption) { status.textContent = "Falta el caption."; status.className = "error"; return; }
+    if (frases.length < 1) { status.textContent = "Escribe al menos una frase."; status.className = "error"; return; }
+    if (frases.length > 10) { status.textContent = "Máximo 10 frases."; status.className = "error"; return; }
 
-    if (tipoActual === "carousel") {
-      if (frases.length < 2) { status.textContent = "El carrusel necesita mínimo 2 frases."; status.className = "error"; return; }
-      if (frases.length > 10) { status.textContent = "Máximo 10 frases."; status.className = "error"; return; }
-    } else {
-      if (frases.length < 1) { status.textContent = "Escribe la frase."; status.className = "error"; return; }
-      if (frases.length > 1) { status.textContent = "Single solo acepta 1 frase."; status.className = "error"; return; }
-    }
+    const tipo = frases.length === 1 ? "single" : "carousel";
 
     btnPublicar.disabled = true;
     btnGuardar.disabled = true;
@@ -208,7 +240,7 @@
       const res = await fetch(`https://api.github.com/repos/${OWNER}/${REPO}/actions/workflows/${WORKFLOW}/dispatches`, {
         method: "POST",
         headers: {
-          "Authorization": `Bearer ${token}`,
+          "Authorization": `Bearer ${GH_TOKEN}`,
           "Accept": "application/vnd.github+json",
           "Content-Type": "application/json"
         },
@@ -217,7 +249,7 @@
           inputs: {
             frases: frases.join("||"),
             caption,
-            tipo: tipoActual,
+            tipo,
             solo_registrar: soloSheet ? "true" : "false"
           }
         })
@@ -227,11 +259,12 @@
         if (soloSheet) {
           status.textContent = "📋 Guardado en sheet. Se publicará en el próximo horario programado.";
         } else {
-          status.textContent = `✅ Enviado como ${tipoActual}. En 2-3 minutos estará publicado.`;
+          status.textContent = `✅ Enviado como ${tipo}. En 2-3 minutos estará publicado.`;
         }
         status.className = "ok";
         document.getElementById("frases").value = "";
         document.getElementById("caption").value = "";
+        document.getElementById("tipo-detectado").textContent = "";
       } else {
         const data = await res.json();
         status.textContent = `❌ Error: ${data.message}`;
