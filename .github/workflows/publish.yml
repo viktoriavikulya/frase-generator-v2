@@ -23,6 +23,10 @@ on:
         description: 'Solo guardar en sheet sin publicar: true | false'
         required: false
         default: 'false'
+      reintentar:
+        description: 'Reintentar posts en error: true | false'
+        required: false
+        default: 'false'
 
 jobs:
   publish:
@@ -66,6 +70,28 @@ jobs:
           TARGET_ROW_NUMBER: ${{ env.TARGET_ROW_NUMBER }}
           TIPO_INPUT: ${{ inputs.tipo }}
 
+          SHEET_ID: ${{ secrets.SHEET_ID }}
+          WORKSHEET_NAME: ${{ secrets.WORKSHEET_NAME }}
+
+          CLOUDINARY_CLOUD_NAME: ${{ secrets.CLOUDINARY_CLOUD_NAME }}
+          CLOUDINARY_API_KEY: ${{ secrets.CLOUDINARY_API_KEY }}
+          CLOUDINARY_API_SECRET: ${{ secrets.CLOUDINARY_API_SECRET }}
+
+          IG_USER_ID: ${{ secrets.IG_USER_ID }}
+          IG_ACCESS_TOKEN: ${{ secrets.IG_ACCESS_TOKEN }}
+          GRAPH_API_VERSION: ${{ secrets.GRAPH_API_VERSION }}
+
+          GENERATOR_URL: ${{ secrets.GENERATOR_URL }}
+          GENERATOR_PORT: ${{ secrets.GENERATOR_PORT }}
+
+          FB_PAGE_ID: ${{ secrets.FB_PAGE_ID }}
+          FB_PAGE_ACCESS_TOKEN: ${{ secrets.FB_PAGE_ACCESS_TOKEN }}
+
+        run: node scripts/pipeline/run-once.js
+
+      - name: Run pipeline reintentar
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.reintentar == 'true' }}
+        env:
           SHEET_ID: ${{ secrets.SHEET_ID }}
           WORKSHEET_NAME: ${{ secrets.WORKSHEET_NAME }}
 

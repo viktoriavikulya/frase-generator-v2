@@ -29,25 +29,11 @@ function buildGraphErrorMessage(res, data, rawText) {
     error.message || `Graph API error ${res.status}`
   ];
 
-  if (error.code !== undefined) {
-    parts.push(`code=${error.code}`);
-  }
-
-  if (error.error_subcode !== undefined) {
-    parts.push(`subcode=${error.error_subcode}`);
-  }
-
-  if (error.error_user_title) {
-    parts.push(`title=${error.error_user_title}`);
-  }
-
-  if (error.error_user_msg) {
-    parts.push(`user_msg=${error.error_user_msg}`);
-  }
-
-  if (error.fbtrace_id) {
-    parts.push(`fbtrace_id=${error.fbtrace_id}`);
-  }
+  if (error.code !== undefined) parts.push(`code=${error.code}`);
+  if (error.error_subcode !== undefined) parts.push(`subcode=${error.error_subcode}`);
+  if (error.error_user_title) parts.push(`title=${error.error_user_title}`);
+  if (error.error_user_msg) parts.push(`user_msg=${error.error_user_msg}`);
+  if (error.fbtrace_id) parts.push(`fbtrace_id=${error.fbtrace_id}`);
 
   return parts.join(" | ");
 }
@@ -58,9 +44,7 @@ async function graphPost(path, body) {
   const form = new URLSearchParams();
 
   for (const [key, value] of Object.entries(body)) {
-    if (value === undefined || value === null) {
-      continue;
-    }
+    if (value === undefined || value === null) continue;
 
     if (Array.isArray(value)) {
       value.forEach((item) => form.append(key, String(item)));
@@ -101,6 +85,24 @@ async function graphPost(path, body) {
   return data;
 }
 
+async function graphPostWithRetry(path, body, retries = 3, delayMs = 5000) {
+  for (let attempt = 1; attempt <= retries; attempt++) {
+    try {
+      return await graphPost(path, body);
+    } catch (error) {
+      const isTransient = error.graphError?.code === 1 || error.status >= 500;
+
+      if (isTransient && attempt < retries) {
+        console.log(`Facebook error transitorio (intento ${attempt}/${retries}), reintentando en ${delayMs / 1000}s...`);
+        await new Promise(resolve => setTimeout(resolve, delayMs));
+        continue;
+      }
+
+      throw error;
+    }
+  }
+}
+
 async function publishFacebookImagePost({ imageUrl, caption }) {
   ensureEnv();
 
@@ -114,7 +116,7 @@ async function publishFacebookImagePost({ imageUrl, caption }) {
   console.log("imageUrl:", imageUrl);
   console.log("caption:", safeCaption || "[sin caption]");
 
-  const published = await graphPost(`${FB_PAGE_ID}/photos`, {
+  const published = await graphPostWithRetry(`${FB_PAGE_ID}/photos`, {
     url: imageUrl,
     caption: safeCaption,
     access_token: FB_PAGE_ACCESS_TOKEN
@@ -137,7 +139,7 @@ async function uploadUnpublishedFacebookPhoto({ imageUrl }) {
     throw new Error("imageUrl es requerido para un slide de Facebook.");
   }
 
-  const uploaded = await graphPost(`${FB_PAGE_ID}/photos`, {
+  const uploaded = await graphPostWithRetry(`${FB_PAGE_ID}/photos`, {
     url: imageUrl,
     published: false,
     access_token: FB_PAGE_ACCESS_TOKEN
@@ -149,7 +151,7 @@ async function uploadUnpublishedFacebookPhoto({ imageUrl }) {
     );
   }
 
-  return uploaded.id; // media_fbid
+  return uploaded.id;
 }
 
 async function publishFacebookCarouselPost({ imageUrls, caption }) {
@@ -180,7 +182,7 @@ async function publishFacebookCarouselPost({ imageUrls, caption }) {
     body[`attached_media[${index}]`] = JSON.stringify({ media_fbid: mediaFbid });
   });
 
-  const published = await graphPost(`${FB_PAGE_ID}/feed`, body);
+  const published = await graphPostWithRetry(`${FB_PAGE_ID}/feed`, body);
 
   if (!published.id) {
     throw new Error("No se recibió id del post del carrusel en Facebook.");
