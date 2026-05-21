@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Publicar Carrusel</title>
+  <title>Publicar Post</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -49,7 +49,38 @@
       resize: vertical;
     }
 
-    button {
+    .tipo-toggle {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 16px;
+    }
+
+    .tipo-toggle button {
+      flex: 1;
+      background: #1a1c22;
+      color: #aaa;
+      border: 1px solid #333;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      padding: 10px;
+      cursor: pointer;
+    }
+
+    .tipo-toggle button.active {
+      background: #f4c400;
+      color: #0d0f14;
+      border-color: #f4c400;
+    }
+
+    #hint-frases {
+      font-size: 12px;
+      color: #666;
+      margin-top: -12px;
+      margin-bottom: 16px;
+    }
+
+    #btn-publicar {
       width: 100%;
       background: #f4c400;
       color: #0d0f14;
@@ -61,7 +92,7 @@
       cursor: pointer;
     }
 
-    button:disabled {
+    #btn-publicar:disabled {
       opacity: 0.5;
       cursor: not-allowed;
     }
@@ -79,18 +110,25 @@
 </head>
 <body>
 
-  <h1>🔥 Publicar Carrusel</h1>
+  <h1>🔥 Publicar Post</h1>
 
   <label>Token</label>
   <input type="password" id="token" placeholder="Tu token secreto">
 
+  <label>Tipo de post</label>
+  <div class="tipo-toggle">
+    <button id="btn-carousel" class="active" onclick="setTipo('carousel')">🎠 Carrusel</button>
+    <button id="btn-single" onclick="setTipo('single')">🖼️ Single</button>
+  </div>
+
   <label>Caption</label>
   <input type="text" id="caption" placeholder="Ej: y ya, sin drama.">
 
-  <label>Frases (una por línea, mínimo 1)</label>
-  <textarea id="frases" placeholder="Frase 1"></textarea>
+  <label id="label-frases">Frases (una por línea, mínimo 2)</label>
+  <textarea id="frases" placeholder="Frase 1&#10;Frase 2"></textarea>
+  <div id="hint-frases">Carrusel: mínimo 2, máximo 10 frases</div>
 
-  <button id="btn" onclick="publicar()">Publicar</button>
+  <button id="btn-publicar" onclick="publicar()">Publicar</button>
 
   <div id="status"></div>
 
@@ -99,21 +137,45 @@
   const REPO = "frase-generator-v2";
   const WORKFLOW = "publish.yml";
 
+  let tipoActual = "carousel";
+
+  function setTipo(tipo) {
+    tipoActual = tipo;
+    document.getElementById("btn-carousel").classList.toggle("active", tipo === "carousel");
+    document.getElementById("btn-single").classList.toggle("active", tipo === "single");
+
+    if (tipo === "single") {
+      document.getElementById("label-frases").textContent = "Frase (solo una)";
+      document.getElementById("hint-frases").textContent = "Single: exactamente 1 frase";
+      document.getElementById("frases").placeholder = "Frase 1";
+    } else {
+      document.getElementById("label-frases").textContent = "Frases (una por línea, mínimo 2)";
+      document.getElementById("hint-frases").textContent = "Carrusel: mínimo 2, máximo 10 frases";
+      document.getElementById("frases").placeholder = "Frase 1\nFrase 2";
+    }
+  }
+
   async function publicar() {
     const token = document.getElementById("token").value.trim();
     const caption = document.getElementById("caption").value.trim();
     const frasesRaw = document.getElementById("frases").value;
     const frases = frasesRaw.split("\n").map(f => f.trim()).filter(Boolean);
     const status = document.getElementById("status");
-    const btn = document.getElementById("btn");
+    const btn = document.getElementById("btn-publicar");
 
     status.textContent = "";
     status.className = "";
 
     if (!token) { status.textContent = "Falta el token."; status.className = "error"; return; }
     if (!caption) { status.textContent = "Falta el caption."; status.className = "error"; return; }
-    if (frases.length < 1) { status.textContent = "Escribe al menos una frase."; status.className = "error"; return; }
-    if (frases.length > 10) { status.textContent = "Máximo 10 frases."; status.className = "error"; return; }
+
+    if (tipoActual === "carousel") {
+      if (frases.length < 2) { status.textContent = "El carrusel necesita mínimo 2 frases."; status.className = "error"; return; }
+      if (frases.length > 10) { status.textContent = "Máximo 10 frases."; status.className = "error"; return; }
+    } else {
+      if (frases.length < 1) { status.textContent = "Escribe la frase."; status.className = "error"; return; }
+      if (frases.length > 1) { status.textContent = "Single solo acepta 1 frase."; status.className = "error"; return; }
+    }
 
     btn.disabled = true;
     status.textContent = "Publicando...";
@@ -128,12 +190,16 @@
         },
         body: JSON.stringify({
           ref: "main",
-          inputs: { frases: frases.join("||"), caption }
+          inputs: {
+            frases: frases.join("||"),
+            caption,
+            tipo: tipoActual
+          }
         })
       });
 
       if (res.status === 204) {
-        status.textContent = "✅ Enviado. En 2-3 minutos estará publicado.";
+        status.textContent = `✅ Enviado como ${tipoActual}. En 2-3 minutos estará publicado.`;
         status.className = "ok";
         document.getElementById("frases").value = "";
         document.getElementById("caption").value = "";
