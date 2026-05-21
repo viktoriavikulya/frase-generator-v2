@@ -51,6 +51,7 @@ function generateCarouselId(frases) {
 async function main() {
   const frasesRaw = process.env.FRASES_INPUT || "";
   const caption = process.env.CAPTION_INPUT || "";
+  const tipo = process.env.TIPO_INPUT === "single" ? "single" : "carousel";
 
   const frases = frasesRaw.split("||").map(f => f.trim()).filter(Boolean);
 
@@ -59,26 +60,33 @@ async function main() {
     process.exit(0);
   }
 
-  console.log(`Registrando ${frases.length} frases con caption: "${caption}"`);
+  console.log(`Registrando ${frases.length} frases como ${tipo} con caption: "${caption}"`);
 
   const sheets = await getSheetsClient();
   const rows = await readRows(sheets);
   const headers = rows[0];
   const headerMap = buildHeaderMap(headers);
 
-  requireHeaders(headerMap, [
-    "frase_original", "frase_corregida", "post_tipo", "carousel_id",
-    "carousel_order", "carousel_caption", "hashtags", "estado_general",
-    "estado_render", "estado_upload", "estado_publish", "lock_status",
-    "background_color", "modo", "updated_at"
-  ]);
+  const requiredHeaders = [
+    "frase_original", "frase_corregida", "post_tipo", "hashtags",
+    "estado_general", "estado_render", "estado_upload", "estado_publish",
+    "lock_status", "background_color", "modo", "updated_at"
+  ];
+
+  if (tipo === "carousel") {
+    requiredHeaders.push("carousel_id", "carousel_order", "carousel_caption");
+  }
+
+  requireHeaders(headerMap, requiredHeaders);
 
   const bgColor = getNextColor(rows, headerMap);
-  const carouselId = generateCarouselId(frases);
-  if (process.env.GITHUB_ENV) {
+  const carouselId = tipo === "carousel" ? generateCarouselId(frases) : "";
+
+  if (tipo === "carousel" && process.env.GITHUB_ENV) {
     const fs = require("fs");
     fs.appendFileSync(process.env.GITHUB_ENV, `TARGET_CAROUSEL_ID=${carouselId}\n`);
   }
+
   const hashtags = "#monacastrosa #frasesreales #humorcotidiano #vidareal";
   const now = nowIsoLocal();
   const nextRow = rows.length + 1;
@@ -94,10 +102,7 @@ async function main() {
 
     add("frase_original", frase);
     add("frase_corregida", frase);
-    add("post_tipo", "carousel");
-    add("carousel_id", carouselId);
-    add("carousel_order", i + 1);
-    add("carousel_caption", caption);
+    add("post_tipo", tipo);
     add("hashtags", hashtags);
     add("estado_general", "pending");
     add("estado_render", "pending");
@@ -107,10 +112,21 @@ async function main() {
     add("background_color", bgColor);
     add("modo", "retro3d");
     add("updated_at", now);
+
+    if (tipo === "carousel") {
+      add("carousel_id", carouselId);
+      add("carousel_order", i + 1);
+      add("carousel_caption", caption);
+    }
   });
 
   await updateCellsBatch(sheets, updates);
-  console.log(`✅ ${frases.length} frases registradas como pending — carousel_id: ${carouselId}`);
+
+  if (tipo === "carousel") {
+    console.log(`✅ ${frases.length} frases registradas como pending — carousel_id: ${carouselId}`);
+  } else {
+    console.log(`✅ ${frases.length} frases registradas como pending — tipo: single`);
+  }
 }
 
 main().catch(err => {

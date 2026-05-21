@@ -2,8 +2,8 @@ name: Publish Posts
 
 on:
   schedule:
-    - cron: '0 15 * * *'   # 10am Bogotá (UTC-5)
-    - cron: '0 23 * * *'   # 6pm Bogotá (UTC-5)
+    - cron: '0 15 * * *'
+    - cron: '0 23 * * *'
 
   workflow_dispatch:
     inputs:
@@ -11,11 +11,14 @@ on:
         description: 'Frases separadas por ||'
         required: false
         default: ''
-
       caption:
         description: 'Caption del carrusel'
         required: false
         default: ''
+      tipo:
+        description: 'Tipo de post: carousel | single'
+        required: false
+        default: 'carousel'
 
 jobs:
   publish:
@@ -41,10 +44,6 @@ jobs:
       - name: Install Playwright browsers
         run: npx playwright install --with-deps chromium
 
-      #################################################################
-      # MODO FORMULARIO (publicar.html)
-      #################################################################
-
       - name: Registrar frases si vienen del formulario
         if: ${{ github.event_name == 'workflow_dispatch' && inputs.frases != '' }}
         env:
@@ -52,6 +51,7 @@ jobs:
           WORKSHEET_NAME: ${{ secrets.WORKSHEET_NAME }}
           FRASES_INPUT: ${{ inputs.frases }}
           CAPTION_INPUT: ${{ inputs.caption }}
+          TIPO_INPUT: ${{ inputs.tipo }}
         run: node scripts/pipeline/register-from-form.js
 
       - name: Run pipeline formulario
@@ -59,6 +59,7 @@ jobs:
         env:
           FORM_MODE: "true"
           TARGET_CAROUSEL_ID: ${{ env.TARGET_CAROUSEL_ID }}
+          TIPO_INPUT: ${{ inputs.tipo }}
 
           SHEET_ID: ${{ secrets.SHEET_ID }}
           WORKSHEET_NAME: ${{ secrets.WORKSHEET_NAME }}
@@ -78,10 +79,6 @@ jobs:
           FB_PAGE_ACCESS_TOKEN: ${{ secrets.FB_PAGE_ACCESS_TOKEN }}
 
         run: node scripts/pipeline/run-once.js
-
-      #################################################################
-      # MODO PROGRAMADO (Sheet)
-      #################################################################
 
       - name: Run pipeline programado
         if: ${{ github.event_name == 'schedule' }}
