@@ -80,38 +80,10 @@
       margin-bottom: 16px;
     }
 
-    .solo-sheet-row {
+    .acciones {
       display: flex;
-      align-items: center;
-      gap: 10px;
-      margin-bottom: 16px;
-      padding: 12px;
-      background: #1a1c22;
-      border: 1px solid #333;
-      border-radius: 8px;
-      cursor: pointer;
-    }
-
-    .solo-sheet-row.active {
-      border-color: #3d5afe;
-    }
-
-    .solo-sheet-row input[type="checkbox"] {
-      width: 18px;
-      height: 18px;
-      accent-color: #3d5afe;
-      cursor: pointer;
-      margin: 0;
-    }
-
-    .solo-sheet-row span {
-      font-size: 14px;
-      color: #aaa;
-      user-select: none;
-    }
-
-    .solo-sheet-row.active span {
-      color: #f6f1e8;
+      flex-direction: column;
+      gap: 8px;
     }
 
     #btn-publicar {
@@ -124,15 +96,22 @@
       font-weight: 700;
       padding: 16px;
       cursor: pointer;
-      transition: background 0.2s, color 0.2s;
     }
 
-    #btn-publicar.solo-sheet {
-      background: #3d5afe;
+    #btn-guardar {
+      width: 100%;
+      background: #1a1c22;
       color: #f6f1e8;
+      border: 1px solid #3d5afe;
+      border-radius: 8px;
+      font-size: 16px;
+      font-weight: 700;
+      padding: 16px;
+      cursor: pointer;
     }
 
-    #btn-publicar:disabled {
+    #btn-publicar:disabled,
+    #btn-guardar:disabled {
       opacity: 0.5;
       cursor: not-allowed;
     }
@@ -168,12 +147,10 @@
   <textarea id="frases" placeholder="Frase 1&#10;Frase 2"></textarea>
   <div id="hint-frases">Carrusel: mínimo 2, máximo 10 frases</div>
 
-  <div class="solo-sheet-row" id="solo-sheet-row" onclick="toggleSoloSheet()">
-    <input type="checkbox" id="solo-sheet" onclick="event.stopPropagation(); toggleSoloSheet()">
-    <span>📋 Solo guardar en sheet (publicar en horario programado)</span>
+  <div class="acciones">
+    <button id="btn-publicar" onclick="publicar(false)">🔥 Publicar ahora</button>
+    <button id="btn-guardar" onclick="publicar(true)">📋 Guardar en sheet</button>
   </div>
-
-  <button id="btn-publicar" onclick="publicar()">Publicar ahora</button>
 
   <div id="status"></div>
 
@@ -183,7 +160,6 @@
   const WORKFLOW = "publish.yml";
 
   let tipoActual = "carousel";
-  let soloSheet = false;
 
   function setTipo(tipo) {
     tipoActual = tipo;
@@ -201,21 +177,14 @@
     }
   }
 
-  function toggleSoloSheet() {
-    soloSheet = !soloSheet;
-    document.getElementById("solo-sheet").checked = soloSheet;
-    document.getElementById("solo-sheet-row").classList.toggle("active", soloSheet);
-    document.getElementById("btn-publicar").textContent = soloSheet ? "Guardar en sheet" : "Publicar ahora";
-    document.getElementById("btn-publicar").classList.toggle("solo-sheet", soloSheet);
-  }
-
-  async function publicar() {
+  async function publicar(soloSheet) {
     const token = document.getElementById("token").value.trim();
     const caption = document.getElementById("caption").value.trim();
     const frasesRaw = document.getElementById("frases").value;
     const frases = frasesRaw.split("\n").map(f => f.trim()).filter(Boolean);
     const status = document.getElementById("status");
-    const btn = document.getElementById("btn-publicar");
+    const btnPublicar = document.getElementById("btn-publicar");
+    const btnGuardar = document.getElementById("btn-guardar");
 
     status.textContent = "";
     status.className = "";
@@ -231,7 +200,8 @@
       if (frases.length > 1) { status.textContent = "Single solo acepta 1 frase."; status.className = "error"; return; }
     }
 
-    btn.disabled = true;
+    btnPublicar.disabled = true;
+    btnGuardar.disabled = true;
     status.textContent = soloSheet ? "Guardando en sheet..." : "Publicando...";
 
     try {
@@ -271,7 +241,8 @@
       status.textContent = `❌ Error: ${err.message}`;
       status.className = "error";
     } finally {
-      btn.disabled = false;
+      btnPublicar.disabled = false;
+      btnGuardar.disabled = false;
     }
   }
 </script>
