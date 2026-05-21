@@ -22,20 +22,12 @@ const {
 
 const OUTPUT_DIR = path.resolve(__dirname, "..", "..", "..", "output");
 
-/**
- * Este job SOLO debe escoger filas que necesiten upload.
- *
- * No depende de estado_general.
- * La elegibilidad real es:
- * - render ya terminado
- * - upload pendiente o en error
- *
- * Permitimos free o locked para rescatar filas huérfanas
- * por reinicios o inconsistencias del lock.
- */
-function findNextUploadRow(rows, headerMap) {
+function findNextUploadRow(rows, headerMap, targetRowNumber) {
   for (let i = 1; i < rows.length; i++) {
     const row = rows[i];
+    const currentRowNumber = i + 1;
+
+    if (targetRowNumber && currentRowNumber !== targetRowNumber) continue;
 
     const postTipo = getCellValue(row, headerMap, "post_tipo").toLowerCase();
     const estadoRender = getCellValue(row, headerMap, "estado_render").toLowerCase();
@@ -50,7 +42,7 @@ function findNextUploadRow(rows, headerMap) {
 
     if (isEligible) {
       return {
-        rowNumber: i + 1,
+        rowNumber: currentRowNumber,
         values: row
       };
     }
@@ -61,6 +53,10 @@ function findNextUploadRow(rows, headerMap) {
 
 async function main() {
   const cycleId = process.env.PIPELINE_CYCLE_ID || "";
+  const targetRowNumber = process.env.TARGET_ROW_NUMBER
+    ? Number(process.env.TARGET_ROW_NUMBER)
+    : null;
+
   const log = logger.child({
     job: "upload-single",
     cycleId
@@ -97,7 +93,7 @@ async function main() {
 
   requireHeaders(headerMap, requiredHeaders);
 
-  const targetRow = findNextUploadRow(rows, headerMap);
+  const targetRow = findNextUploadRow(rows, headerMap, targetRowNumber);
 
   if (!targetRow) {
     log.info("No hay singles pendientes para upload");
@@ -127,46 +123,16 @@ async function main() {
     throw new Error(`No existe el archivo local: ${localPath}`);
   }
 
-  rowLogger.info("Fila seleccionada para upload", {
-    localPath
-  });
+  rowLogger.info("Fila seleccionada para upload", { localPath });
 
   await updateCellsBatch(sheets, [
-    {
-      row: rowNumber,
-      col: headerMap["estado_general"] + 1,
-      value: GENERAL_STATUS.PROCESSING
-    },
-    {
-      row: rowNumber,
-      col: headerMap["estado_upload"] + 1,
-      value: STATUS.PROCESSING
-    },
-    {
-      row: rowNumber,
-      col: headerMap["lock_status"] + 1,
-      value: LOCK_STATUS.LOCKED
-    },
-    {
-      row: rowNumber,
-      col: headerMap["last_cycle_id"] + 1,
-      value: cycleId
-    },
-    {
-      row: rowNumber,
-      col: headerMap["updated_at"] + 1,
-      value: nowIsoLocal()
-    },
-    {
-      row: rowNumber,
-      col: headerMap["error_step"] + 1,
-      value: ""
-    },
-    {
-      row: rowNumber,
-      col: headerMap["error_message"] + 1,
-      value: ""
-    }
+    { row: rowNumber, col: headerMap["estado_general"] + 1, value: GENERAL_STATUS.PROCESSING },
+    { row: rowNumber, col: headerMap["estado_upload"] + 1, value: STATUS.PROCESSING },
+    { row: rowNumber, col: headerMap["lock_status"] + 1, value: LOCK_STATUS.LOCKED },
+    { row: rowNumber, col: headerMap["last_cycle_id"] + 1, value: cycleId },
+    { row: rowNumber, col: headerMap["updated_at"] + 1, value: nowIsoLocal() },
+    { row: rowNumber, col: headerMap["error_step"] + 1, value: "" },
+    { row: rowNumber, col: headerMap["error_message"] + 1, value: "" }
   ]);
 
   try {
@@ -175,54 +141,20 @@ async function main() {
     if (fs.existsSync(localPath)) {
       try {
         fs.unlinkSync(localPath);
-        rowLogger.info("Archivo local eliminado", {
-          localPath
-        });
+        rowLogger.info("Archivo local eliminado", { localPath });
       } catch (deleteErr) {
-        rowLogger.warn(
-          "No se pudo eliminar el archivo local",
-          { localPath },
-          deleteErr
-        );
+        rowLogger.warn("No se pudo eliminar el archivo local", { localPath }, deleteErr);
       }
     }
 
     await updateCellsBatch(sheets, [
-      {
-        row: rowNumber,
-        col: headerMap["media_url"] + 1,
-        value: uploadResult.secureUrl
-      },
-      {
-        row: rowNumber,
-        col: headerMap["cloudinary_public_id"] + 1,
-        value: uploadResult.publicId
-      },
-      {
-        row: rowNumber,
-        col: headerMap["fecha_upload"] + 1,
-        value: nowIsoLocal()
-      },
-      {
-        row: rowNumber,
-        col: headerMap["estado_upload"] + 1,
-        value: STATUS.DONE
-      },
-      {
-        row: rowNumber,
-        col: headerMap["updated_at"] + 1,
-        value: nowIsoLocal()
-      },
-      {
-        row: rowNumber,
-        col: headerMap["error_step"] + 1,
-        value: ""
-      },
-      {
-        row: rowNumber,
-        col: headerMap["error_message"] + 1,
-        value: ""
-      }
+      { row: rowNumber, col: headerMap["media_url"] + 1, value: uploadResult.secureUrl },
+      { row: rowNumber, col: headerMap["cloudinary_public_id"] + 1, value: uploadResult.publicId },
+      { row: rowNumber, col: headerMap["fecha_upload"] + 1, value: nowIsoLocal() },
+      { row: rowNumber, col: headerMap["estado_upload"] + 1, value: STATUS.DONE },
+      { row: rowNumber, col: headerMap["updated_at"] + 1, value: nowIsoLocal() },
+      { row: rowNumber, col: headerMap["error_step"] + 1, value: "" },
+      { row: rowNumber, col: headerMap["error_message"] + 1, value: "" }
     ]);
 
     rowLogger.info("Fila subida correctamente", {
@@ -231,41 +163,13 @@ async function main() {
     });
   } catch (error) {
     await updateCellsBatch(sheets, [
-      {
-        row: rowNumber,
-        col: headerMap["estado_general"] + 1,
-        value: GENERAL_STATUS.ERROR
-      },
-      {
-        row: rowNumber,
-        col: headerMap["estado_upload"] + 1,
-        value: STATUS.ERROR
-      },
-      {
-        row: rowNumber,
-        col: headerMap["lock_status"] + 1,
-        value: LOCK_STATUS.FREE
-      },
-      {
-        row: rowNumber,
-        col: headerMap["intentos"] + 1,
-        value: currentAttempts + 1
-      },
-      {
-        row: rowNumber,
-        col: headerMap["error_step"] + 1,
-        value: "upload"
-      },
-      {
-        row: rowNumber,
-        col: headerMap["error_message"] + 1,
-        value: error.message || String(error)
-      },
-      {
-        row: rowNumber,
-        col: headerMap["updated_at"] + 1,
-        value: nowIsoLocal()
-      }
+      { row: rowNumber, col: headerMap["estado_general"] + 1, value: GENERAL_STATUS.ERROR },
+      { row: rowNumber, col: headerMap["estado_upload"] + 1, value: STATUS.ERROR },
+      { row: rowNumber, col: headerMap["lock_status"] + 1, value: LOCK_STATUS.FREE },
+      { row: rowNumber, col: headerMap["intentos"] + 1, value: currentAttempts + 1 },
+      { row: rowNumber, col: headerMap["error_step"] + 1, value: "upload" },
+      { row: rowNumber, col: headerMap["error_message"] + 1, value: error.message || String(error) },
+      { row: rowNumber, col: headerMap["updated_at"] + 1, value: nowIsoLocal() }
     ]);
 
     rowLogger.error("Error subiendo fila", {}, error);

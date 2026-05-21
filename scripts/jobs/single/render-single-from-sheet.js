@@ -26,12 +26,7 @@ const BG_SEQUENCE = [
   "#0d0f14"  // retroBlack
 ];
 
-/**
- * Devuelve el último background_color de un post single que sí quedó publicado.
- */
 function getLastAssignedBg(rows, headerMap) {
-  // Considera tanto publicados como en vuelo (render done, publish pending/error/processing)
-  // para no romper la secuencia de colores aunque haya un post sin publicar aun.
   let latestBg = "";
   let latestTime = 0;
 
@@ -84,16 +79,12 @@ function getNextColor(color) {
   return BG_SEQUENCE[(index + 1) % BG_SEQUENCE.length];
 }
 
-/**
- * Este job SOLO debe escoger filas que necesiten render.
- *
- * No depende de estado_general.
- * Si una fila ya tiene render done, no se vuelve a renderizar
- * aunque haya fallado upload o publish.
- */
-function findNextSingleRowForRender(rows, headerMap) {
+function findNextSingleRowForRender(rows, headerMap, targetRowNumber) {
   for (let i = 1; i < rows.length; i++) {
     const row = rows[i];
+    const currentRowNumber = i + 1;
+
+    if (targetRowNumber && currentRowNumber !== targetRowNumber) continue;
 
     const postTipo = getCellValue(row, headerMap, "post_tipo").toLowerCase();
     const estadoRender = getCellValue(row, headerMap, "estado_render").toLowerCase();
@@ -106,7 +97,7 @@ function findNextSingleRowForRender(rows, headerMap) {
 
     if (isEligible) {
       return {
-        rowNumber: i + 1,
+        rowNumber: currentRowNumber,
         values: row
       };
     }
@@ -128,6 +119,10 @@ function getBgForRow(row, rows, headerMap) {
 
 async function main() {
   const cycleId = process.env.PIPELINE_CYCLE_ID || "";
+  const targetRowNumber = process.env.TARGET_ROW_NUMBER
+    ? Number(process.env.TARGET_ROW_NUMBER)
+    : null;
+
   const log = logger.child({
     job: "render-single",
     cycleId
@@ -168,7 +163,7 @@ async function main() {
 
   requireHeaders(headerMap, requiredHeaders);
 
-  const selectedRow = findNextSingleRowForRender(rows, headerMap);
+  const selectedRow = findNextSingleRowForRender(rows, headerMap, targetRowNumber);
 
   if (!selectedRow) {
     log.info("No hay singles pendientes para render");
@@ -204,129 +199,38 @@ async function main() {
   });
 
   await updateCellsBatch(sheets, [
-    {
-      row: rowNumber,
-      col: headerMap["estado_general"] + 1,
-      value: GENERAL_STATUS.PROCESSING
-    },
-    {
-      row: rowNumber,
-      col: headerMap["estado_render"] + 1,
-      value: STATUS.PROCESSING
-    },
-    {
-      row: rowNumber,
-      col: headerMap["lock_status"] + 1,
-      value: LOCK_STATUS.LOCKED
-    },
-    {
-      row: rowNumber,
-      col: headerMap["last_cycle_id"] + 1,
-      value: cycleId
-    },
-    {
-      row: rowNumber,
-      col: headerMap["updated_at"] + 1,
-      value: now
-    },
-    {
-      row: rowNumber,
-      col: headerMap["error_step"] + 1,
-      value: ""
-    },
-    {
-      row: rowNumber,
-      col: headerMap["error_message"] + 1,
-      value: ""
-    }
+    { row: rowNumber, col: headerMap["estado_general"] + 1, value: GENERAL_STATUS.PROCESSING },
+    { row: rowNumber, col: headerMap["estado_render"] + 1, value: STATUS.PROCESSING },
+    { row: rowNumber, col: headerMap["lock_status"] + 1, value: LOCK_STATUS.LOCKED },
+    { row: rowNumber, col: headerMap["last_cycle_id"] + 1, value: cycleId },
+    { row: rowNumber, col: headerMap["updated_at"] + 1, value: now },
+    { row: rowNumber, col: headerMap["error_step"] + 1, value: "" },
+    { row: rowNumber, col: headerMap["error_message"] + 1, value: "" }
   ]);
 
   try {
-    const result = await renderPhrase({
-      text: textToRender,
-      mode,
-      bg
-    });
+    const result = await renderPhrase({ text: textToRender, mode, bg });
 
     await updateCellsBatch(sheets, [
-      {
-        row: rowNumber,
-        col: headerMap["background_color"] + 1,
-        value: bg
-      },
-      {
-        row: rowNumber,
-        col: headerMap["output_file"] + 1,
-        value: result.fileName
-      },
-      {
-        row: rowNumber,
-        col: headerMap["fecha_generado"] + 1,
-        value: nowIsoLocal()
-      },
-      {
-        row: rowNumber,
-        col: headerMap["estado_render"] + 1,
-        value: STATUS.DONE
-      },
-      {
-        row: rowNumber,
-        col: headerMap["updated_at"] + 1,
-        value: nowIsoLocal()
-      },
-      {
-        row: rowNumber,
-        col: headerMap["error_step"] + 1,
-        value: ""
-      },
-      {
-        row: rowNumber,
-        col: headerMap["error_message"] + 1,
-        value: ""
-      }
+      { row: rowNumber, col: headerMap["background_color"] + 1, value: bg },
+      { row: rowNumber, col: headerMap["output_file"] + 1, value: result.fileName },
+      { row: rowNumber, col: headerMap["fecha_generado"] + 1, value: nowIsoLocal() },
+      { row: rowNumber, col: headerMap["estado_render"] + 1, value: STATUS.DONE },
+      { row: rowNumber, col: headerMap["updated_at"] + 1, value: nowIsoLocal() },
+      { row: rowNumber, col: headerMap["error_step"] + 1, value: "" },
+      { row: rowNumber, col: headerMap["error_message"] + 1, value: "" }
     ]);
 
-    rowLogger.info("Fila renderizada correctamente", {
-      outputFile: result.fileName,
-      bg
-    });
+    rowLogger.info("Fila renderizada correctamente", { outputFile: result.fileName, bg });
   } catch (error) {
     await updateCellsBatch(sheets, [
-      {
-        row: rowNumber,
-        col: headerMap["estado_general"] + 1,
-        value: GENERAL_STATUS.ERROR
-      },
-      {
-        row: rowNumber,
-        col: headerMap["estado_render"] + 1,
-        value: STATUS.ERROR
-      },
-      {
-        row: rowNumber,
-        col: headerMap["lock_status"] + 1,
-        value: LOCK_STATUS.FREE
-      },
-      {
-        row: rowNumber,
-        col: headerMap["intentos"] + 1,
-        value: currentAttempts + 1
-      },
-      {
-        row: rowNumber,
-        col: headerMap["error_step"] + 1,
-        value: "render"
-      },
-      {
-        row: rowNumber,
-        col: headerMap["error_message"] + 1,
-        value: error.message || String(error)
-      },
-      {
-        row: rowNumber,
-        col: headerMap["updated_at"] + 1,
-        value: nowIsoLocal()
-      }
+      { row: rowNumber, col: headerMap["estado_general"] + 1, value: GENERAL_STATUS.ERROR },
+      { row: rowNumber, col: headerMap["estado_render"] + 1, value: STATUS.ERROR },
+      { row: rowNumber, col: headerMap["lock_status"] + 1, value: LOCK_STATUS.FREE },
+      { row: rowNumber, col: headerMap["intentos"] + 1, value: currentAttempts + 1 },
+      { row: rowNumber, col: headerMap["error_step"] + 1, value: "render" },
+      { row: rowNumber, col: headerMap["error_message"] + 1, value: error.message || String(error) },
+      { row: rowNumber, col: headerMap["updated_at"] + 1, value: nowIsoLocal() }
     ]);
 
     rowLogger.error("Error renderizando fila", {}, error);

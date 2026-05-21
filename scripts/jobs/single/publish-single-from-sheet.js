@@ -20,20 +20,12 @@ const {
   LOCK_STATUS
 } = require("../../core/status");
 
-/**
- * Este job SOLO debe escoger filas listas para publicar.
- *
- * No depende de estado_general.
- * La elegibilidad real es:
- * - render done
- * - upload done
- * - publish pending/error
- *
- * Permitimos free o locked para no dejar filas huérfanas.
- */
-function getPendingSingleRow(rows, headerMap) {
+function getPendingSingleRow(rows, headerMap, targetRowNumber) {
   for (let i = 1; i < rows.length; i++) {
     const row = rows[i];
+    const currentRowNumber = i + 1;
+
+    if (targetRowNumber && currentRowNumber !== targetRowNumber) continue;
 
     const postTipo = getCellValue(row, headerMap, "post_tipo").toLowerCase();
     const estadoRender = getCellValue(row, headerMap, "estado_render").toLowerCase();
@@ -50,7 +42,7 @@ function getPendingSingleRow(rows, headerMap) {
 
     if (isEligible) {
       return {
-        rowNumber: i + 1,
+        rowNumber: currentRowNumber,
         values: row
       };
     }
@@ -59,9 +51,12 @@ function getPendingSingleRow(rows, headerMap) {
   return null;
 }
 
-
 async function main() {
   const cycleId = process.env.PIPELINE_CYCLE_ID || "";
+  const targetRowNumber = process.env.TARGET_ROW_NUMBER
+    ? Number(process.env.TARGET_ROW_NUMBER)
+    : null;
+
   const log = logger.child({
     job: "publish-single",
     cycleId
@@ -103,7 +98,7 @@ async function main() {
 
   requireHeaders(headerMap, requiredHeaders);
 
-  const selectedRow = getPendingSingleRow(rows, headerMap);
+  const selectedRow = getPendingSingleRow(rows, headerMap, targetRowNumber);
 
   if (!selectedRow) {
     log.info("No hay singles pendientes para publish");
@@ -119,31 +114,12 @@ async function main() {
   const cloudinaryPublicId = getCellValue(row, headerMap, "cloudinary_public_id");
   const currentAttempts = Number(getCellValue(row, headerMap, "intentos") || 0);
 
-  const existingInstagramCreationId = getCellValue(
-    row,
-    headerMap,
-    "instagram_creation_id"
-  );
-  const existingInstagramMediaId = getCellValue(
-    row,
-    headerMap,
-    "instagram_media_id"
-  );
-  const existingFacebookPhotoId = getCellValue(
-    row,
-    headerMap,
-    "facebook_photo_id"
-  );
-  const existingFacebookPostId = getCellValue(
-    row,
-    headerMap,
-    "facebook_post_id"
-  );
+  const existingInstagramCreationId = getCellValue(row, headerMap, "instagram_creation_id");
+  const existingInstagramMediaId = getCellValue(row, headerMap, "instagram_media_id");
+  const existingFacebookPhotoId = getCellValue(row, headerMap, "facebook_photo_id");
+  const existingFacebookPostId = getCellValue(row, headerMap, "facebook_post_id");
 
-  const rowLogger = log.child({
-    rowNumber,
-    rowId
-  });
+  const rowLogger = log.child({ rowNumber, rowId });
 
   if (!imageUrl) {
     throw new Error(`La fila ${rowNumber} no tiene media_url.`);
@@ -157,41 +133,13 @@ async function main() {
   });
 
   await updateCellsBatch(sheets, [
-    {
-      row: rowNumber,
-      col: headerMap["estado_general"] + 1,
-      value: GENERAL_STATUS.PROCESSING
-    },
-    {
-      row: rowNumber,
-      col: headerMap["estado_publish"] + 1,
-      value: STATUS.PROCESSING
-    },
-    {
-      row: rowNumber,
-      col: headerMap["lock_status"] + 1,
-      value: LOCK_STATUS.LOCKED
-    },
-    {
-      row: rowNumber,
-      col: headerMap["last_cycle_id"] + 1,
-      value: cycleId
-    },
-    {
-      row: rowNumber,
-      col: headerMap["updated_at"] + 1,
-      value: nowIsoLocal()
-    },
-    {
-      row: rowNumber,
-      col: headerMap["error_step"] + 1,
-      value: ""
-    },
-    {
-      row: rowNumber,
-      col: headerMap["error_message"] + 1,
-      value: ""
-    }
+    { row: rowNumber, col: headerMap["estado_general"] + 1, value: GENERAL_STATUS.PROCESSING },
+    { row: rowNumber, col: headerMap["estado_publish"] + 1, value: STATUS.PROCESSING },
+    { row: rowNumber, col: headerMap["lock_status"] + 1, value: LOCK_STATUS.LOCKED },
+    { row: rowNumber, col: headerMap["last_cycle_id"] + 1, value: cycleId },
+    { row: rowNumber, col: headerMap["updated_at"] + 1, value: nowIsoLocal() },
+    { row: rowNumber, col: headerMap["error_step"] + 1, value: "" },
+    { row: rowNumber, col: headerMap["error_message"] + 1, value: "" }
   ]);
 
   let instagramResult = {
@@ -205,96 +153,34 @@ async function main() {
   };
 
   try {
-    // Idempotencia básica:
-    // si ya existe resultado de Instagram, no se vuelve a publicar allí.
     if (!instagramResult.mediaId) {
-      instagramResult = await publishImagePost({
-        imageUrl,
-        caption
-      });
+      instagramResult = await publishImagePost({ imageUrl, caption });
 
       await updateCellsBatch(sheets, [
-        {
-          row: rowNumber,
-          col: headerMap["instagram_creation_id"] + 1,
-          value: instagramResult.creationId || ""
-        },
-        {
-          row: rowNumber,
-          col: headerMap["instagram_media_id"] + 1,
-          value: instagramResult.mediaId || ""
-        },
-        {
-          row: rowNumber,
-          col: headerMap["updated_at"] + 1,
-          value: nowIsoLocal()
-        }
+        { row: rowNumber, col: headerMap["instagram_creation_id"] + 1, value: instagramResult.creationId || "" },
+        { row: rowNumber, col: headerMap["instagram_media_id"] + 1, value: instagramResult.mediaId || "" },
+        { row: rowNumber, col: headerMap["updated_at"] + 1, value: nowIsoLocal() }
       ]);
     }
 
-    // Idempotencia básica:
-    // si ya existe resultado de Facebook, no se vuelve a publicar allí.
     if (!facebookResult.postId) {
-      facebookResult = await publishFacebookImagePost({
-        imageUrl,
-        caption
-      });
+      facebookResult = await publishFacebookImagePost({ imageUrl, caption });
 
       await updateCellsBatch(sheets, [
-        {
-          row: rowNumber,
-          col: headerMap["facebook_photo_id"] + 1,
-          value: facebookResult.photoId || ""
-        },
-        {
-          row: rowNumber,
-          col: headerMap["facebook_post_id"] + 1,
-          value: facebookResult.postId || ""
-        },
-        {
-          row: rowNumber,
-          col: headerMap["updated_at"] + 1,
-          value: nowIsoLocal()
-        }
+        { row: rowNumber, col: headerMap["facebook_photo_id"] + 1, value: facebookResult.photoId || "" },
+        { row: rowNumber, col: headerMap["facebook_post_id"] + 1, value: facebookResult.postId || "" },
+        { row: rowNumber, col: headerMap["updated_at"] + 1, value: nowIsoLocal() }
       ]);
     }
 
     await updateCellsBatch(sheets, [
-      {
-        row: rowNumber,
-        col: headerMap["fecha_publicado"] + 1,
-        value: nowIsoLocal()
-      },
-      {
-        row: rowNumber,
-        col: headerMap["estado_publish"] + 1,
-        value: STATUS.DONE
-      },
-      {
-        row: rowNumber,
-        col: headerMap["estado_general"] + 1,
-        value: GENERAL_STATUS.PUBLISHED
-      },
-      {
-        row: rowNumber,
-        col: headerMap["lock_status"] + 1,
-        value: LOCK_STATUS.FREE
-      },
-      {
-        row: rowNumber,
-        col: headerMap["updated_at"] + 1,
-        value: nowIsoLocal()
-      },
-      {
-        row: rowNumber,
-        col: headerMap["error_step"] + 1,
-        value: ""
-      },
-      {
-        row: rowNumber,
-        col: headerMap["error_message"] + 1,
-        value: ""
-      }
+      { row: rowNumber, col: headerMap["fecha_publicado"] + 1, value: nowIsoLocal() },
+      { row: rowNumber, col: headerMap["estado_publish"] + 1, value: STATUS.DONE },
+      { row: rowNumber, col: headerMap["estado_general"] + 1, value: GENERAL_STATUS.PUBLISHED },
+      { row: rowNumber, col: headerMap["lock_status"] + 1, value: LOCK_STATUS.FREE },
+      { row: rowNumber, col: headerMap["updated_at"] + 1, value: nowIsoLocal() },
+      { row: rowNumber, col: headerMap["error_step"] + 1, value: "" },
+      { row: rowNumber, col: headerMap["error_message"] + 1, value: "" }
     ]);
 
     rowLogger.info("Fila publicada correctamente", {
@@ -307,77 +193,24 @@ async function main() {
     if (cloudinaryPublicId) {
       try {
         await deleteImage(cloudinaryPublicId);
-        rowLogger.info("Asset de Cloudinary eliminado", {
-          cloudinaryPublicId
-        });
+        rowLogger.info("Asset de Cloudinary eliminado", { cloudinaryPublicId });
       } catch (deleteError) {
-        rowLogger.warn(
-          "No se pudo eliminar el asset de Cloudinary",
-          {
-            cloudinaryPublicId
-          },
-          deleteError
-        );
+        rowLogger.warn("No se pudo eliminar el asset de Cloudinary", { cloudinaryPublicId }, deleteError);
       }
     }
   } catch (error) {
-
     await updateCellsBatch(sheets, [
-      {
-        row: rowNumber,
-        col: headerMap["instagram_creation_id"] + 1,
-        value: instagramResult.creationId || ""
-      },
-      {
-        row: rowNumber,
-        col: headerMap["instagram_media_id"] + 1,
-        value: instagramResult.mediaId || ""
-      },
-      {
-        row: rowNumber,
-        col: headerMap["facebook_photo_id"] + 1,
-        value: facebookResult.photoId || ""
-      },
-      {
-        row: rowNumber,
-        col: headerMap["facebook_post_id"] + 1,
-        value: facebookResult.postId || ""
-      },
-      {
-        row: rowNumber,
-        col: headerMap["estado_general"] + 1,
-        value: GENERAL_STATUS.ERROR
-      },
-      {
-        row: rowNumber,
-        col: headerMap["estado_publish"] + 1,
-        value: STATUS.ERROR
-      },
-      {
-        row: rowNumber,
-        col: headerMap["lock_status"] + 1,
-        value: LOCK_STATUS.FREE
-      },
-      {
-        row: rowNumber,
-        col: headerMap["intentos"] + 1,
-        value: currentAttempts + 1
-      },
-      {
-        row: rowNumber,
-        col: headerMap["error_step"] + 1,
-        value: "publish"
-      },
-      {
-        row: rowNumber,
-        col: headerMap["error_message"] + 1,
-        value: error.message || String(error)
-      },
-      {
-        row: rowNumber,
-        col: headerMap["updated_at"] + 1,
-        value: nowIsoLocal()
-      }
+      { row: rowNumber, col: headerMap["instagram_creation_id"] + 1, value: instagramResult.creationId || "" },
+      { row: rowNumber, col: headerMap["instagram_media_id"] + 1, value: instagramResult.mediaId || "" },
+      { row: rowNumber, col: headerMap["facebook_photo_id"] + 1, value: facebookResult.photoId || "" },
+      { row: rowNumber, col: headerMap["facebook_post_id"] + 1, value: facebookResult.postId || "" },
+      { row: rowNumber, col: headerMap["estado_general"] + 1, value: GENERAL_STATUS.ERROR },
+      { row: rowNumber, col: headerMap["estado_publish"] + 1, value: STATUS.ERROR },
+      { row: rowNumber, col: headerMap["lock_status"] + 1, value: LOCK_STATUS.FREE },
+      { row: rowNumber, col: headerMap["intentos"] + 1, value: currentAttempts + 1 },
+      { row: rowNumber, col: headerMap["error_step"] + 1, value: "publish" },
+      { row: rowNumber, col: headerMap["error_message"] + 1, value: error.message || String(error) },
+      { row: rowNumber, col: headerMap["updated_at"] + 1, value: nowIsoLocal() }
     ]);
 
     rowLogger.error("Error publicando fila", {}, error);

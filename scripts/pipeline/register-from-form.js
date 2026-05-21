@@ -55,15 +55,20 @@ async function main() {
   requireHeaders(headerMap, requiredHeaders);
 
   const carouselId = tipo === "carousel" ? generateCarouselId(frases) : "";
+  const nextRow = rows.length + 1;
 
   if (tipo === "carousel" && process.env.GITHUB_ENV) {
     const fs = require("fs");
     fs.appendFileSync(process.env.GITHUB_ENV, `TARGET_CAROUSEL_ID=${carouselId}\n`);
   }
 
+  if (tipo === "single" && process.env.GITHUB_ENV) {
+    const fs = require("fs");
+    fs.appendFileSync(process.env.GITHUB_ENV, `TARGET_ROW_NUMBER=${nextRow}\n`);
+  }
+
   const hashtags = "#monacastrosa #frasesreales #humorcotidiano #vidareal";
   const now = nowIsoLocal();
-  const nextRow = rows.length + 1;
   const updates = [];
 
   frases.forEach((frase, i) => {
@@ -100,7 +105,7 @@ async function main() {
   if (tipo === "carousel") {
     console.log(`✅ ${frases.length} frases registradas como pending — carousel_id: ${carouselId}`);
   } else {
-    console.log(`✅ ${frases.length} frases registradas como pending — tipo: single`);
+    console.log(`✅ ${frases.length} frases registradas como pending — tipo: single, row: ${nextRow}`);
   }
 }
 

@@ -63,6 +63,7 @@ jobs:
         env:
           FORM_MODE: "true"
           TARGET_CAROUSEL_ID: ${{ env.TARGET_CAROUSEL_ID }}
+          TARGET_ROW_NUMBER: ${{ env.TARGET_ROW_NUMBER }}
           TIPO_INPUT: ${{ inputs.tipo }}
 
           SHEET_ID: ${{ secrets.SHEET_ID }}
