@@ -167,6 +167,9 @@
 
   <h1>🔥 Publicar Post</h1>
 
+  <label>Token</label>
+  <input type="password" id="token" placeholder="Tu token de GitHub" autocomplete="current-password">
+
   <label>Caption</label>
   <input type="text" id="caption" placeholder="Ej: y ya, sin drama.">
 
@@ -187,7 +190,6 @@
   const REPO = "frase-generator-v2";
   const WORKFLOW = "publish.yml";
   const CLAVE = "Mona";
-  const GH_TOKEN = "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";
 
   function entrar() {
     const input = document.getElementById("clave-input").value;
@@ -216,6 +218,7 @@
   }
 
   async function publicar(soloSheet) {
+    const token = document.getElementById("token").value.trim();
     const caption = document.getElementById("caption").value.trim();
     const frasesRaw = document.getElementById("frases").value;
     const frases = frasesRaw.split("\n").map(f => f.trim()).filter(Boolean);
@@ -226,6 +229,7 @@
     status.textContent = "";
     status.className = "";
 
+    if (!token) { status.textContent = "Falta el token."; status.className = "error"; return; }
     if (!caption) { status.textContent = "Falta el caption."; status.className = "error"; return; }
     if (frases.length < 1) { status.textContent = "Escribe al menos una frase."; status.className = "error"; return; }
     if (frases.length > 10) { status.textContent = "Máximo 10 frases."; status.className = "error"; return; }
@@ -240,7 +244,7 @@
       const res = await fetch(`https://api.github.com/repos/${OWNER}/${REPO}/actions/workflows/${WORKFLOW}/dispatches`, {
         method: "POST",
         headers: {
-          "Authorization": `Bearer ${GH_TOKEN}`,
+          "Authorization": `Bearer ${token}`,
           "Accept": "application/vnd.github+json",
           "Content-Type": "application/json"
         },
