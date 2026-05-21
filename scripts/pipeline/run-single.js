@@ -1,10 +1,12 @@
 const { runPipelineSteps } = require("../utils/pipeline-runner");
 
 function runSinglePipeline(context = {}) {
+  const isFormMode = context.branch === "form";
+
   return runPipelineSteps({
     label: "SINGLE",
 
-    publishFirst: true,
+    publishFirst: !isFormMode,  // en form mode va directo a render → upload → publish
     publishFirstStepName: "PUBLISH PENDING SINGLE",
 
     renderStepName: "RENDER SINGLE",
