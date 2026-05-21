@@ -116,7 +116,9 @@ async function main() {
     if (tipo === "carousel") {
       add("carousel_id", carouselId);
       add("carousel_order", i + 1);
-      add("carousel_caption", caption);
+      add("carousel_caption", caption);  // carousel usa carousel_caption
+    } else {
+      add("caption", caption);           // single usa caption
     }
   });
 
