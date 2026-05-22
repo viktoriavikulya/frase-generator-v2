@@ -49,17 +49,43 @@ function findNextEmptyRow(rows, headerMap) {
   return 2;
 }
 
+function validateFrasesByTipo(tipo, frases) {
+  if (tipo === "single" && frases.length !== 1) {
+    throw new Error(
+      `Para tipo "single" debes enviar exactamente 1 frase. Recibidas: ${frases.length}.`
+    );
+  }
+
+  if (tipo === "carousel" && (frases.length < 2 || frases.length > 10)) {
+    throw new Error(
+      `Para tipo "carousel" debes enviar entre 2 y 10 frases. Recibidas: ${frases.length}.`
+    );
+  }
+}
+
 async function main() {
   const frasesRaw = process.env.FRASES_INPUT || "";
   const caption = process.env.CAPTION_INPUT || "";
-  const tipo = process.env.TIPO_INPUT === "single" ? "single" : "carousel";
 
-  const frases = frasesRaw.split("||").map(f => f.trim()).filter(Boolean);
+  const tipoRaw = process.env.TIPO_INPUT || "carousel";
+
+  if (!["single", "carousel"].includes(tipoRaw)) {
+    throw new Error(`TIPO_INPUT inválido: ${tipoRaw}. Usa "single" o "carousel".`);
+  }
+
+  const tipo = tipoRaw;
+
+  const frases = frasesRaw
+    .split("||")
+    .map((f) => f.trim())
+    .filter(Boolean);
 
   if (frases.length < 1) {
     console.log("No hay frases suficientes, nada que registrar.");
     process.exit(0);
   }
+
+  validateFrasesByTipo(tipo, frases);
 
   console.log(`Registrando ${frases.length} frases como ${tipo} con caption: "${caption}"`);
 

@@ -92,7 +92,9 @@ jobs:
         run: node scripts/pipeline/run-once.js
 
       - name: Run pipeline reintentar
-        if: ${{ github.event_name == 'workflow_dispatch' && inputs.reintentar == 'true' }}
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.reintentar == 'true' && inputs.frases == '' }}
+        env:
+          TIPO_INPUT: ${{ inputs.tipo }}
         run: node scripts/pipeline/run-once.js
 
       - name: Run pipeline programado

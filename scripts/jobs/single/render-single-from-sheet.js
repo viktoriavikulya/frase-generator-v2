@@ -1,6 +1,6 @@
 require("dotenv").config();
 
-const { renderPhrase } = require("../../libs/render-lib");
+const { renderPhrase, stopServer } = require("../../libs/render-lib");
 const {
   getSheetsClient,
   buildHeaderMap,
@@ -418,12 +418,17 @@ async function main() {
 }
 
 main()
-  .then(() => {
-    // En GitHub Actions evita que el proceso quede vivo si Playwright o el servidor local
-    // dejan handles abiertos después de haber renderizado y actualizado el Sheet.
+  .then(async () => {
+    await stopServer();
     process.exit(0);
   })
-  .catch((err) => {
+  .catch(async (err) => {
+    try {
+      await stopServer();
+    } catch (stopError) {
+      logger.warn("No se pudo cerrar el servidor de render", {}, stopError);
+    }
+
     logger.error("Error en render-single-from-sheet", {}, err);
     process.exit(1);
   });

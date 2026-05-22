@@ -159,6 +159,7 @@ async function main() {
       { row: rowNumber, col: headerMap["cloudinary_public_id"] + 1, value: uploadResult.publicId },
       { row: rowNumber, col: headerMap["fecha_upload"] + 1, value: doneTs },
       { row: rowNumber, col: headerMap["estado_upload"] + 1, value: STATUS.DONE },
+      { row: rowNumber, col: headerMap["lock_status"] + 1, value: LOCK_STATUS.FREE },
       { row: rowNumber, col: headerMap["updated_at"] + 1, value: doneTs },
       { row: rowNumber, col: headerMap["error_step"] + 1, value: "" },
       { row: rowNumber, col: headerMap["error_message"] + 1, value: "" }
