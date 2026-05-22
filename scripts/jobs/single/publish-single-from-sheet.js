@@ -20,6 +20,8 @@ const {
   LOCK_STATUS
 } = require("../../core/status");
 
+const MAX_INTENTOS = 3;
+
 function getPendingSingleRow(rows, headerMap, targetRowNumber) {
   for (let i = 1; i < rows.length; i++) {
     const row = rows[i];
@@ -32,13 +34,15 @@ function getPendingSingleRow(rows, headerMap, targetRowNumber) {
     const estadoUpload = getCellValue(row, headerMap, "estado_upload").toLowerCase();
     const estadoPublish = getCellValue(row, headerMap, "estado_publish").toLowerCase();
     const lockStatus = getCellValue(row, headerMap, "lock_status").toLowerCase();
+    const intentos = Number(getCellValue(row, headerMap, "intentos") || 0);
 
     const isEligible =
       postTipo === POST_TIPOS.SINGLE &&
       estadoRender === STATUS.DONE &&
       estadoUpload === STATUS.DONE &&
       (estadoPublish === STATUS.PENDING || estadoPublish === STATUS.ERROR) &&
-      (lockStatus === LOCK_STATUS.FREE || lockStatus === LOCK_STATUS.LOCKED);
+      (lockStatus === LOCK_STATUS.FREE || lockStatus === LOCK_STATUS.LOCKED) &&
+      intentos < MAX_INTENTOS;
 
     if (isEligible) {
       return {
@@ -132,12 +136,15 @@ async function main() {
     hasExistingFacebook: Boolean(existingFacebookPostId)
   });
 
+  // Capturamos el timestamp una sola vez para el batch de lock
+  const lockTs = nowIsoLocal();
+
   await updateCellsBatch(sheets, [
     { row: rowNumber, col: headerMap["estado_general"] + 1, value: GENERAL_STATUS.PROCESSING },
     { row: rowNumber, col: headerMap["estado_publish"] + 1, value: STATUS.PROCESSING },
     { row: rowNumber, col: headerMap["lock_status"] + 1, value: LOCK_STATUS.LOCKED },
     { row: rowNumber, col: headerMap["last_cycle_id"] + 1, value: cycleId },
-    { row: rowNumber, col: headerMap["updated_at"] + 1, value: nowIsoLocal() },
+    { row: rowNumber, col: headerMap["updated_at"] + 1, value: lockTs },
     { row: rowNumber, col: headerMap["error_step"] + 1, value: "" },
     { row: rowNumber, col: headerMap["error_message"] + 1, value: "" }
   ]);
@@ -173,12 +180,15 @@ async function main() {
       ]);
     }
 
+    // Capturamos el timestamp una sola vez para el batch de éxito final
+    const doneTs = nowIsoLocal();
+
     await updateCellsBatch(sheets, [
-      { row: rowNumber, col: headerMap["fecha_publicado"] + 1, value: nowIsoLocal() },
+      { row: rowNumber, col: headerMap["fecha_publicado"] + 1, value: doneTs },
       { row: rowNumber, col: headerMap["estado_publish"] + 1, value: STATUS.DONE },
       { row: rowNumber, col: headerMap["estado_general"] + 1, value: GENERAL_STATUS.PUBLISHED },
       { row: rowNumber, col: headerMap["lock_status"] + 1, value: LOCK_STATUS.FREE },
-      { row: rowNumber, col: headerMap["updated_at"] + 1, value: nowIsoLocal() },
+      { row: rowNumber, col: headerMap["updated_at"] + 1, value: doneTs },
       { row: rowNumber, col: headerMap["error_step"] + 1, value: "" },
       { row: rowNumber, col: headerMap["error_message"] + 1, value: "" }
     ]);
@@ -199,6 +209,9 @@ async function main() {
       }
     }
   } catch (error) {
+    // Capturamos el timestamp una sola vez para el batch de error
+    const errorTs = nowIsoLocal();
+
     await updateCellsBatch(sheets, [
       { row: rowNumber, col: headerMap["instagram_creation_id"] + 1, value: instagramResult.creationId || "" },
       { row: rowNumber, col: headerMap["instagram_media_id"] + 1, value: instagramResult.mediaId || "" },
@@ -210,7 +223,7 @@ async function main() {
       { row: rowNumber, col: headerMap["intentos"] + 1, value: currentAttempts + 1 },
       { row: rowNumber, col: headerMap["error_step"] + 1, value: "publish" },
       { row: rowNumber, col: headerMap["error_message"] + 1, value: error.message || String(error) },
-      { row: rowNumber, col: headerMap["updated_at"] + 1, value: nowIsoLocal() }
+      { row: rowNumber, col: headerMap["updated_at"] + 1, value: errorTs }
     ]);
 
     rowLogger.error("Error publicando fila", {}, error);

@@ -20,6 +20,7 @@ const {
   LOCK_STATUS
 } = require("../../core/status");
 
+const MAX_INTENTOS = 3;
 const OUTPUT_DIR = path.resolve(__dirname, "..", "..", "..", "output");
 
 function findNextUploadRow(rows, headerMap, targetRowNumber) {
@@ -33,12 +34,14 @@ function findNextUploadRow(rows, headerMap, targetRowNumber) {
     const estadoRender = getCellValue(row, headerMap, "estado_render").toLowerCase();
     const estadoUpload = getCellValue(row, headerMap, "estado_upload").toLowerCase();
     const lockStatus = getCellValue(row, headerMap, "lock_status").toLowerCase();
+    const intentos = Number(getCellValue(row, headerMap, "intentos") || 0);
 
     const isEligible =
       postTipo === POST_TIPOS.SINGLE &&
       estadoRender === STATUS.DONE &&
       (estadoUpload === STATUS.PENDING || estadoUpload === STATUS.ERROR) &&
-      (lockStatus === LOCK_STATUS.FREE || lockStatus === LOCK_STATUS.LOCKED);
+      (lockStatus === LOCK_STATUS.FREE || lockStatus === LOCK_STATUS.LOCKED) &&
+      intentos < MAX_INTENTOS;
 
     if (isEligible) {
       return {
@@ -125,12 +128,15 @@ async function main() {
 
   rowLogger.info("Fila seleccionada para upload", { localPath });
 
+  // Capturamos el timestamp una sola vez para el batch de lock
+  const lockTs = nowIsoLocal();
+
   await updateCellsBatch(sheets, [
     { row: rowNumber, col: headerMap["estado_general"] + 1, value: GENERAL_STATUS.PROCESSING },
     { row: rowNumber, col: headerMap["estado_upload"] + 1, value: STATUS.PROCESSING },
     { row: rowNumber, col: headerMap["lock_status"] + 1, value: LOCK_STATUS.LOCKED },
     { row: rowNumber, col: headerMap["last_cycle_id"] + 1, value: cycleId },
-    { row: rowNumber, col: headerMap["updated_at"] + 1, value: nowIsoLocal() },
+    { row: rowNumber, col: headerMap["updated_at"] + 1, value: lockTs },
     { row: rowNumber, col: headerMap["error_step"] + 1, value: "" },
     { row: rowNumber, col: headerMap["error_message"] + 1, value: "" }
   ]);
@@ -147,12 +153,15 @@ async function main() {
       }
     }
 
+    // Capturamos el timestamp una sola vez para el batch de éxito
+    const doneTs = nowIsoLocal();
+
     await updateCellsBatch(sheets, [
       { row: rowNumber, col: headerMap["media_url"] + 1, value: uploadResult.secureUrl },
       { row: rowNumber, col: headerMap["cloudinary_public_id"] + 1, value: uploadResult.publicId },
-      { row: rowNumber, col: headerMap["fecha_upload"] + 1, value: nowIsoLocal() },
+      { row: rowNumber, col: headerMap["fecha_upload"] + 1, value: doneTs },
       { row: rowNumber, col: headerMap["estado_upload"] + 1, value: STATUS.DONE },
-      { row: rowNumber, col: headerMap["updated_at"] + 1, value: nowIsoLocal() },
+      { row: rowNumber, col: headerMap["updated_at"] + 1, value: doneTs },
       { row: rowNumber, col: headerMap["error_step"] + 1, value: "" },
       { row: rowNumber, col: headerMap["error_message"] + 1, value: "" }
     ]);
@@ -162,6 +171,9 @@ async function main() {
       publicId: uploadResult.publicId
     });
   } catch (error) {
+    // Capturamos el timestamp una sola vez para el batch de error
+    const errorTs = nowIsoLocal();
+
     await updateCellsBatch(sheets, [
       { row: rowNumber, col: headerMap["estado_general"] + 1, value: GENERAL_STATUS.ERROR },
       { row: rowNumber, col: headerMap["estado_upload"] + 1, value: STATUS.ERROR },
@@ -169,7 +181,7 @@ async function main() {
       { row: rowNumber, col: headerMap["intentos"] + 1, value: currentAttempts + 1 },
       { row: rowNumber, col: headerMap["error_step"] + 1, value: "upload" },
       { row: rowNumber, col: headerMap["error_message"] + 1, value: error.message || String(error) },
-      { row: rowNumber, col: headerMap["updated_at"] + 1, value: nowIsoLocal() }
+      { row: rowNumber, col: headerMap["updated_at"] + 1, value: errorTs }
     ]);
 
     rowLogger.error("Error subiendo fila", {}, error);

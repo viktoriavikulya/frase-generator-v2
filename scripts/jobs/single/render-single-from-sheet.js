@@ -18,6 +18,8 @@ const {
   LOCK_STATUS
 } = require("../../core/status");
 
+const MAX_INTENTOS = 3;
+
 const BG_SEQUENCE = [
   "#f4c400", // retroYellow
   "#3d5afe", // retroBlue
@@ -89,11 +91,13 @@ function findNextSingleRowForRender(rows, headerMap, targetRowNumber) {
     const postTipo = getCellValue(row, headerMap, "post_tipo").toLowerCase();
     const estadoRender = getCellValue(row, headerMap, "estado_render").toLowerCase();
     const lockStatus = getCellValue(row, headerMap, "lock_status").toLowerCase();
+    const intentos = Number(getCellValue(row, headerMap, "intentos") || 0);
 
     const isEligible =
       postTipo === POST_TIPOS.SINGLE &&
       (estadoRender === STATUS.PENDING || estadoRender === STATUS.ERROR) &&
-      lockStatus === LOCK_STATUS.FREE;
+      lockStatus === LOCK_STATUS.FREE &&
+      intentos < MAX_INTENTOS;
 
     if (isEligible) {
       return {
@@ -191,19 +195,21 @@ async function main() {
   }
 
   const bg = getBgForRow(row, rows, headerMap);
-  const now = nowIsoLocal();
 
   rowLogger.info("Fila seleccionada para render", {
     textLength: textToRender.length,
     selectedBg: bg
   });
 
+  // Capturamos el timestamp una sola vez para todo el batch de lock
+  const lockTs = nowIsoLocal();
+
   await updateCellsBatch(sheets, [
     { row: rowNumber, col: headerMap["estado_general"] + 1, value: GENERAL_STATUS.PROCESSING },
     { row: rowNumber, col: headerMap["estado_render"] + 1, value: STATUS.PROCESSING },
     { row: rowNumber, col: headerMap["lock_status"] + 1, value: LOCK_STATUS.LOCKED },
     { row: rowNumber, col: headerMap["last_cycle_id"] + 1, value: cycleId },
-    { row: rowNumber, col: headerMap["updated_at"] + 1, value: now },
+    { row: rowNumber, col: headerMap["updated_at"] + 1, value: lockTs },
     { row: rowNumber, col: headerMap["error_step"] + 1, value: "" },
     { row: rowNumber, col: headerMap["error_message"] + 1, value: "" }
   ]);
@@ -211,18 +217,24 @@ async function main() {
   try {
     const result = await renderPhrase({ text: textToRender, mode, bg });
 
+    // Capturamos el timestamp una sola vez para el batch de éxito
+    const doneTs = nowIsoLocal();
+
     await updateCellsBatch(sheets, [
       { row: rowNumber, col: headerMap["background_color"] + 1, value: bg },
       { row: rowNumber, col: headerMap["output_file"] + 1, value: result.fileName },
-      { row: rowNumber, col: headerMap["fecha_generado"] + 1, value: nowIsoLocal() },
+      { row: rowNumber, col: headerMap["fecha_generado"] + 1, value: doneTs },
       { row: rowNumber, col: headerMap["estado_render"] + 1, value: STATUS.DONE },
-      { row: rowNumber, col: headerMap["updated_at"] + 1, value: nowIsoLocal() },
+      { row: rowNumber, col: headerMap["updated_at"] + 1, value: doneTs },
       { row: rowNumber, col: headerMap["error_step"] + 1, value: "" },
       { row: rowNumber, col: headerMap["error_message"] + 1, value: "" }
     ]);
 
     rowLogger.info("Fila renderizada correctamente", { outputFile: result.fileName, bg });
   } catch (error) {
+    // Capturamos el timestamp una sola vez para el batch de error
+    const errorTs = nowIsoLocal();
+
     await updateCellsBatch(sheets, [
       { row: rowNumber, col: headerMap["estado_general"] + 1, value: GENERAL_STATUS.ERROR },
       { row: rowNumber, col: headerMap["estado_render"] + 1, value: STATUS.ERROR },
@@ -230,7 +242,7 @@ async function main() {
       { row: rowNumber, col: headerMap["intentos"] + 1, value: currentAttempts + 1 },
       { row: rowNumber, col: headerMap["error_step"] + 1, value: "render" },
       { row: rowNumber, col: headerMap["error_message"] + 1, value: error.message || String(error) },
-      { row: rowNumber, col: headerMap["updated_at"] + 1, value: nowIsoLocal() }
+      { row: rowNumber, col: headerMap["updated_at"] + 1, value: errorTs }
     ]);
 
     rowLogger.error("Error renderizando fila", {}, error);

@@ -1,6 +1,8 @@
+const fs = require("fs");
 require("dotenv").config();
 
-const { renderPhrase } = require("../../libs/render-lib");
+const path = require("path");
+const { uploadImage } = require("../../libs/upload-lib");
 const {
   getSheetsClient,
   buildHeaderMap,
@@ -9,7 +11,7 @@ const {
   readRows,
   updateCellsBatch
 } = require("../../core/sheets");
-const { normalizeValue, nowIsoLocal } = require("../../utils/common");
+const { nowIsoLocal } = require("../../utils/common");
 const { logger } = require("../../utils/logger");
 const {
   STATUS,
@@ -18,90 +20,8 @@ const {
   LOCK_STATUS
 } = require("../../core/status");
 
-const BG_SEQUENCE = [
-  "#f4c400", // retroYellow
-  "#3d5afe", // retroBlue
-  "#e53935", // retroRed
-  "#f6f1e8", // retroWhite
-  "#0d0f14"  // retroBlack
-];
-
-function getLastPublishedBg(rows, headerMap) {
-  let latestBg = "";
-  let latestTime = 0;
-
-  for (let i = 1; i < rows.length; i++) {
-    const row = rows[i];
-    const estadoGeneral = getCellValue(row, headerMap, "estado_general").toLowerCase();
-    const bg = getCellValue(row, headerMap, "background_color");
-    const fechaPublicado = getCellValue(row, headerMap, "fecha_publicado");
-    const postTipo = getCellValue(row, headerMap, "post_tipo").toLowerCase();
-
-    if (
-      estadoGeneral !== GENERAL_STATUS.PUBLISHED ||
-      !["single", "carousel"].includes(postTipo) ||
-      !bg ||
-      !fechaPublicado
-    ) {
-      continue;
-    }
-
-    const timestamp = Date.parse(fechaPublicado);
-
-    if (Number.isNaN(timestamp)) {
-      continue;
-    }
-
-    if (timestamp > latestTime) {
-      latestTime = timestamp;
-      latestBg = bg.toLowerCase();
-    }
-  }
-
-  return latestBg;
-}
-
-function getNextColor(color) {
-  if (!color) return BG_SEQUENCE[0];
-
-  const index = BG_SEQUENCE.findIndex(
-    (item) => item.toLowerCase() === color.toLowerCase()
-  );
-
-  if (index === -1) return BG_SEQUENCE[0];
-
-  return BG_SEQUENCE[(index + 1) % BG_SEQUENCE.length];
-}
-
-function hasCarouselAwaitingPublish(rows, headerMap) {
-  const seenCarousels = new Map(); // carouselId -> { hasUploadDone, hasPublishPending }
-
-  for (let i = 1; i < rows.length; i++) {
-    const row = rows[i];
-    const postTipo = getCellValue(row, headerMap, "post_tipo").toLowerCase();
-    if (postTipo !== POST_TIPOS.CAROUSEL) continue;
-
-    const carouselId = getCellValue(row, headerMap, "carousel_id");
-    if (!carouselId) continue;
-
-    const estadoUpload = getCellValue(row, headerMap, "estado_upload").toLowerCase();
-    const estadoPublish = getCellValue(row, headerMap, "estado_publish").toLowerCase();
-
-    if (!seenCarousels.has(carouselId)) {
-      seenCarousels.set(carouselId, { hasUploadDone: false, hasPublishPending: false });
-    }
-
-    const entry = seenCarousels.get(carouselId);
-    if (estadoUpload === STATUS.DONE) entry.hasUploadDone = true;
-    if (estadoPublish === STATUS.PENDING || estadoPublish === STATUS.ERROR) entry.hasPublishPending = true;
-  }
-
-  for (const [, entry] of seenCarousels) {
-    if (entry.hasUploadDone && entry.hasPublishPending) return true;
-  }
-
-  return false;
-}
+const MAX_INTENTOS = 3;
+const OUTPUT_DIR = path.resolve(__dirname, "..", "..", "..", "output");
 
 function getPendingCarouselRows(rows, headerMap) {
   let selectedCarouselId = "";
@@ -111,14 +31,18 @@ function getPendingCarouselRows(rows, headerMap) {
 
     const postTipo = getCellValue(row, headerMap, "post_tipo").toLowerCase();
     const estadoRender = getCellValue(row, headerMap, "estado_render").toLowerCase();
+    const estadoUpload = getCellValue(row, headerMap, "estado_upload").toLowerCase();
     const lockStatus = getCellValue(row, headerMap, "lock_status").toLowerCase();
     const carouselId = getCellValue(row, headerMap, "carousel_id");
+    const intentos = Number(getCellValue(row, headerMap, "intentos") || 0);
 
     const isEligible =
       postTipo === POST_TIPOS.CAROUSEL &&
-      (estadoRender === STATUS.PENDING || estadoRender === STATUS.ERROR) &&
-      lockStatus === LOCK_STATUS.FREE &&
-      carouselId;
+      estadoRender === STATUS.DONE &&
+      (estadoUpload === STATUS.PENDING || estadoUpload === STATUS.ERROR) &&
+      (lockStatus === LOCK_STATUS.FREE || lockStatus === LOCK_STATUS.LOCKED) &&
+      carouselId &&
+      intentos < MAX_INTENTOS;
 
     if (isEligible) {
       const targetId = process.env.TARGET_CAROUSEL_ID || "";
@@ -140,11 +64,7 @@ function getPendingCarouselRows(rows, headerMap) {
     const postTipo = getCellValue(row, headerMap, "post_tipo").toLowerCase();
     const carouselId = getCellValue(row, headerMap, "carousel_id");
 
-    const belongsToSelected =
-      postTipo === POST_TIPOS.CAROUSEL &&
-      carouselId === selectedCarouselId;
-
-    if (belongsToSelected) {
+    if (postTipo === POST_TIPOS.CAROUSEL && carouselId === selectedCarouselId) {
       groupRows.push({
         rowNumber: i + 1,
         values: row,
@@ -169,7 +89,7 @@ function validateCarouselRows(groupRows, selectedCarouselId) {
 
   if (orders.some((order) => !Number.isInteger(order) || order < 1)) {
     throw new Error(
-      `El carrusel ${selectedCarouselId} tiene carousel_order inválidos. Deben ser enteros mayores o iguales a 1.`
+      `El carrusel ${selectedCarouselId} tiene carousel_order inválidos.`
     );
   }
 
@@ -182,54 +102,21 @@ function validateCarouselRows(groupRows, selectedCarouselId) {
   }
 }
 
-async function markGroupAsError(sheets, headerMap, groupRows, cycleId, errorMessage, attemptsDelta = 1) {
-  const now = nowIsoLocal();
+async function markGroupAsError(sheets, headerMap, groupRows, errorMessage, attemptsDelta = 1) {
+  const errorTs = nowIsoLocal();
   const updates = [];
 
   for (const item of groupRows) {
     const currentAttempts = Number(getCellValue(item.values, headerMap, "intentos") || "0");
 
     updates.push(
-      {
-        row: item.rowNumber,
-        col: headerMap["estado_general"] + 1,
-        value: GENERAL_STATUS.ERROR
-      },
-      {
-        row: item.rowNumber,
-        col: headerMap["estado_render"] + 1,
-        value: STATUS.ERROR
-      },
-      {
-        row: item.rowNumber,
-        col: headerMap["lock_status"] + 1,
-        value: LOCK_STATUS.FREE
-      },
-      {
-        row: item.rowNumber,
-        col: headerMap["intentos"] + 1,
-        value: String(currentAttempts + attemptsDelta)
-      },
-      {
-        row: item.rowNumber,
-        col: headerMap["last_cycle_id"] + 1,
-        value: cycleId
-      },
-      {
-        row: item.rowNumber,
-        col: headerMap["updated_at"] + 1,
-        value: now
-      },
-      {
-        row: item.rowNumber,
-        col: headerMap["error_step"] + 1,
-        value: "carousel-render"
-      },
-      {
-        row: item.rowNumber,
-        col: headerMap["error_message"] + 1,
-        value: errorMessage
-      }
+      { row: item.rowNumber, col: headerMap["estado_general"] + 1, value: GENERAL_STATUS.ERROR },
+      { row: item.rowNumber, col: headerMap["estado_upload"] + 1, value: STATUS.ERROR },
+      { row: item.rowNumber, col: headerMap["lock_status"] + 1, value: LOCK_STATUS.FREE },
+      { row: item.rowNumber, col: headerMap["intentos"] + 1, value: currentAttempts + attemptsDelta },
+      { row: item.rowNumber, col: headerMap["error_step"] + 1, value: "upload" },
+      { row: item.rowNumber, col: headerMap["error_message"] + 1, value: errorMessage },
+      { row: item.rowNumber, col: headerMap["updated_at"] + 1, value: errorTs }
     );
   }
 
@@ -239,7 +126,7 @@ async function markGroupAsError(sheets, headerMap, groupRows, cycleId, errorMess
 async function main() {
   const cycleId = process.env.PIPELINE_CYCLE_ID || "";
   const log = logger.child({
-    job: "render-carousel",
+    job: "upload-carousel",
     cycleId
   });
 
@@ -247,7 +134,7 @@ async function main() {
   const rows = await readRows(sheets);
 
   if (rows.length < 2) {
-    log.info("No hay datos en la hoja");
+    log.info("No hay datos");
     return;
   }
 
@@ -257,40 +144,29 @@ async function main() {
   const requiredHeaders = [
     "row_id",
     "updated_at",
-    "frase_original",
-    "frase_corregida",
-    "modo",
-    "background_color",
+    "post_tipo",
+    "carousel_id",
+    "carousel_order",
     "estado_general",
     "estado_render",
     "estado_upload",
-    "estado_publish",
     "lock_status",
     "intentos",
     "last_cycle_id",
     "error_step",
     "error_message",
     "output_file",
-    "fecha_generado",
-    "fecha_publicado",
-    "post_tipo",
-    "carousel_id",
-    "carousel_order"
+    "media_url",
+    "cloudinary_public_id",
+    "fecha_upload"
   ];
 
   requireHeaders(headerMap, requiredHeaders);
 
-  if (hasCarouselAwaitingPublish(rows, headerMap)) {
-    log.info("Hay un carrusel con upload completo pendiente de publicar. No se inicia nuevo render.", {
-      blocked: true
-    });
-    process.exit(10);
-  }
-
   const { selectedCarouselId, groupRows } = getPendingCarouselRows(rows, headerMap);
 
   if (!selectedCarouselId) {
-    log.info("No hay carruseles pendientes para render");
+    log.info("No hay carruseles pendientes para upload");
     process.exit(10);
   }
 
@@ -301,55 +177,34 @@ async function main() {
     slides: groupRows.length
   });
 
-  groupLogger.info("Carrusel seleccionado para render");
+  groupLogger.info("Carrusel seleccionado para upload");
 
-  const lastPublishedBg = getLastPublishedBg(rows, headerMap);
-  const carouselBg = getNextColor(lastPublishedBg);
-  const lockTime = nowIsoLocal();
-
-  const lockUpdates = [];
+  // Capturamos el timestamp una sola vez para el batch de lock
+  const lockTs = nowIsoLocal();
+  const prepUpdates = [];
 
   for (const item of groupRows) {
-    lockUpdates.push(
-      {
-        row: item.rowNumber,
-        col: headerMap["estado_general"] + 1,
-        value: GENERAL_STATUS.PROCESSING
-      },
-      {
-        row: item.rowNumber,
-        col: headerMap["estado_render"] + 1,
-        value: STATUS.PROCESSING
-      },
-      {
-        row: item.rowNumber,
-        col: headerMap["lock_status"] + 1,
-        value: LOCK_STATUS.LOCKED
-      },
-      {
-        row: item.rowNumber,
-        col: headerMap["last_cycle_id"] + 1,
-        value: cycleId
-      },
-      {
-        row: item.rowNumber,
-        col: headerMap["updated_at"] + 1,
-        value: lockTime
-      },
-      {
-        row: item.rowNumber,
-        col: headerMap["error_step"] + 1,
-        value: ""
-      },
-      {
-        row: item.rowNumber,
-        col: headerMap["error_message"] + 1,
-        value: ""
-      }
+    const estadoUploadOriginal = getCellValue(item.values, headerMap, "estado_upload").toLowerCase();
+
+    prepUpdates.push(
+      { row: item.rowNumber, col: headerMap["estado_general"] + 1, value: GENERAL_STATUS.PROCESSING },
+      { row: item.rowNumber, col: headerMap["lock_status"] + 1, value: LOCK_STATUS.LOCKED },
+      { row: item.rowNumber, col: headerMap["last_cycle_id"] + 1, value: cycleId },
+      { row: item.rowNumber, col: headerMap["updated_at"] + 1, value: lockTs },
+      { row: item.rowNumber, col: headerMap["error_step"] + 1, value: "" },
+      { row: item.rowNumber, col: headerMap["error_message"] + 1, value: "" }
     );
+
+    if (estadoUploadOriginal === STATUS.PENDING || estadoUploadOriginal === STATUS.ERROR) {
+      prepUpdates.push({
+        row: item.rowNumber,
+        col: headerMap["estado_upload"] + 1,
+        value: STATUS.PROCESSING
+      });
+    }
   }
 
-  await updateCellsBatch(sheets, lockUpdates);
+  await updateCellsBatch(sheets, prepUpdates);
 
   try {
     for (const item of groupRows) {
@@ -357,106 +212,82 @@ async function main() {
       const row = item.values;
 
       const rowId = getCellValue(row, headerMap, "row_id");
-      const fraseOriginal = getCellValue(row, headerMap, "frase_original");
-      const fraseCorregida = getCellValue(row, headerMap, "frase_corregida");
-      const mode = getCellValue(row, headerMap, "modo") || "retro3d";
-      const textToRender = fraseCorregida || fraseOriginal;
+      const fileName = getCellValue(row, headerMap, "output_file");
+      const estadoUploadOriginal = getCellValue(row, headerMap, "estado_upload").toLowerCase();
 
-      // Usamos el estado original en memoria (antes del lock) para saber
-      // si este slide necesitaba render o ya estaba done (rescate de huérfanas).
-      const estadoRenderOriginal = getCellValue(row, headerMap, "estado_render").toLowerCase();
-
-      if (estadoRenderOriginal !== STATUS.PENDING && estadoRenderOriginal !== STATUS.ERROR) {
-        groupLogger.info("Slide ya renderizado, saltando", {
+      if (estadoUploadOriginal !== STATUS.PENDING && estadoUploadOriginal !== STATUS.ERROR) {
+        groupLogger.info("Slide ya subido, saltando", {
           rowNumber,
-          estadoRender: estadoRenderOriginal
+          estadoUpload: estadoUploadOriginal
         });
         continue;
-      }
-
-      if (!textToRender) {
-        throw new Error(`La fila ${rowNumber} no tiene frase para renderizar.`);
       }
 
       const rowLogger = groupLogger.child({
         rowNumber,
         rowId,
-        order: item.order,
-        mode
+        order: item.order
       });
 
-      rowLogger.info("Renderizando slide", {
-        textLength: textToRender.length,
-        backgroundColor: carouselBg
-      });
+      if (!fileName) {
+        throw new Error(`Fila ${rowNumber} no tiene archivo renderizado.`);
+      }
 
-      const result = await renderPhrase({
-        text: textToRender,
-        mode,
-        bg: carouselBg
-      });
+      const localPath = path.join(OUTPUT_DIR, fileName);
+
+      if (!fs.existsSync(localPath)) {
+        throw new Error(
+          `No existe el archivo local para la fila ${rowNumber}: ${localPath}`
+        );
+      }
+
+      rowLogger.info("Subiendo slide", { outputFile: fileName, localPath });
+
+      const result = await uploadImage(localPath, fileName);
+
+      if (fs.existsSync(localPath)) {
+        try {
+          fs.unlinkSync(localPath);
+          rowLogger.info("Archivo local eliminado", { localPath });
+        } catch (deleteErr) {
+          rowLogger.warn("No se pudo eliminar el archivo local", { localPath }, deleteErr);
+        }
+      }
+
+      // Capturamos el timestamp una sola vez para el batch de éxito de este slide
+      const doneTs = nowIsoLocal();
 
       await updateCellsBatch(sheets, [
-        {
-          row: rowNumber,
-          col: headerMap["background_color"] + 1,
-          value: carouselBg
-        },
-        {
-          row: rowNumber,
-          col: headerMap["output_file"] + 1,
-          value: result.fileName
-        },
-        {
-          row: rowNumber,
-          col: headerMap["fecha_generado"] + 1,
-          value: nowIsoLocal()
-        },
-        {
-          row: rowNumber,
-          col: headerMap["estado_render"] + 1,
-          value: STATUS.DONE
-        },
-        {
-          row: rowNumber,
-          col: headerMap["updated_at"] + 1,
-          value: nowIsoLocal()
-        },
-        {
-          row: rowNumber,
-          col: headerMap["error_step"] + 1,
-          value: ""
-        },
-        {
-          row: rowNumber,
-          col: headerMap["error_message"] + 1,
-          value: ""
-        }
+        { row: rowNumber, col: headerMap["media_url"] + 1, value: result.secureUrl },
+        { row: rowNumber, col: headerMap["cloudinary_public_id"] + 1, value: result.publicId },
+        { row: rowNumber, col: headerMap["fecha_upload"] + 1, value: doneTs },
+        { row: rowNumber, col: headerMap["estado_upload"] + 1, value: STATUS.DONE },
+        { row: rowNumber, col: headerMap["updated_at"] + 1, value: doneTs },
+        { row: rowNumber, col: headerMap["error_step"] + 1, value: "" },
+        { row: rowNumber, col: headerMap["error_message"] + 1, value: "" }
       ]);
 
-      rowLogger.info("Slide renderizado correctamente", {
-        outputFile: result.fileName
+      rowLogger.info("Slide subido correctamente", {
+        mediaUrl: result.secureUrl,
+        publicId: result.publicId
       });
     }
 
-    groupLogger.info("Carrusel renderizado completo", {
-      backgroundColor: carouselBg
-    });
-  } catch (error) {
+    groupLogger.info("Carrusel subido completo");
+  } catch (err) {
     await markGroupAsError(
       sheets,
       headerMap,
       groupRows,
-      cycleId,
-      error.message || String(error)
+      err.message || String(err)
     );
 
-    groupLogger.error("Error renderizando carrusel", {}, error);
-    throw error;
+    groupLogger.error("Error subiendo carrusel", {}, err);
+    throw err;
   }
 }
 
 main().catch((err) => {
-  logger.error("Error en render-carousel-from-sheet", {}, err);
+  logger.error("Error en upload-carousel-from-sheet", {}, err);
   process.exit(1);
 });
