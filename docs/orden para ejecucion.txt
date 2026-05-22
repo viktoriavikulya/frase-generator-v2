@@ -12,3 +12,9 @@ node scripts/upload-single-from-sheet.js
 
 por ultimo publicar
 node scripts/publish-single-from-sheet.js
+
+
+node scripts/dev/render-all-retro-colors.js
+
+node scripts/dev/render-preview.js
+

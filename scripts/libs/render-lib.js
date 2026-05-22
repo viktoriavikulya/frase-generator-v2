@@ -18,6 +18,10 @@ const GENERATOR_URL = (
 // La raíz real del proyecto queda dos niveles arriba.
 const ROOT_DIR = path.resolve(__dirname, "..", "..");
 
+// Tiempo máximo esperando que window.renderReady sea true.
+// Cubre descarga de fuentes externas (Google Fonts, CDN de Brat) en GitHub Actions.
+const RENDER_READY_TIMEOUT_MS = 30_000;
+
 let serverReadyPromise = null;
 let serverInstance = null;
 let serverOwnedByThisProcess = false;
@@ -171,8 +175,11 @@ async function renderPhrase({ text, mode = "normal", bg = "#ffffff" }) {
       deviceScaleFactor: 1
     });
 
+    // Navegamos con domcontentloaded — es suficiente para que el JS empiece a correr.
+    // No usamos networkidle porque las fuentes externas (Google Fonts, CDN de Brat)
+    // pueden tardar o fallar en GitHub Actions sin que eso indique un error real.
     await page.goto(url, {
-      waitUntil: "networkidle",
+      waitUntil: "domcontentloaded",
       timeout: 60_000
     }).catch((err) => {
       throw new Error(
@@ -182,7 +189,19 @@ async function renderPhrase({ text, mode = "normal", bg = "#ffffff" }) {
       );
     });
 
-    await page.waitForTimeout(1200);
+    // Esperamos a que app.js setee window.renderReady = true, lo cual ocurre
+    // dentro de document.fonts.ready.then(() => { draw(); window.renderReady = true; })
+    // Esto garantiza que el canvas ya dibujó con todas las fuentes cargadas.
+    await page.waitForFunction(
+      () => window.renderReady === true,
+      { timeout: RENDER_READY_TIMEOUT_MS }
+    ).catch((err) => {
+      throw new Error(
+        `El generador no completó el render en ${RENDER_READY_TIMEOUT_MS / 1000}s. ` +
+        `Puede que una fuente externa no cargó o que window.renderReady no se seteó. ` +
+        `Detalle: ${err.message}`
+      );
+    });
 
     const dataUrl = await page.evaluate(() => window.getCanvasBase64());
 

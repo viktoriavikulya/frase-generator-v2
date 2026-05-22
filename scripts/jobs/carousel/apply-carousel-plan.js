@@ -1,17 +1,58 @@
 require("dotenv").config();
 
-process.env.WORKSHEET_NAME = "Hoja 2";
+// La hoja objetivo se puede pasar como argumento: node apply-carousel-plan.js "Hoja 2"
+// Si no se pasa, usa este valor por defecto.
+const PLAN_WORKSHEET = process.argv[2] || "Hoja 2";
 
+const { getSheetsAuth } = require("../../auth/google-auth");
+const { google } = require("googleapis");
 const {
-  getSheetsClient,
   buildHeaderMap,
   requireHeaders,
   getCellValue,
-  readRows,
   updateCellsBatch
 } = require("../../core/sheets");
 
-const { nowIsoLocal } = require("../../utils/common");
+const { colToLetter, nowIsoLocal } = require("../../utils/common");
+
+const SHEET_ID = process.env.SHEET_ID;
+const SHEET_RANGE = process.env.SHEET_RANGE || "A:AZ";
+
+if (!SHEET_ID) {
+  throw new Error("Falta SHEET_ID en el .env");
+}
+
+// Cliente de Sheets propio para esta hoja, sin depender de WORKSHEET_NAME del entorno.
+async function getSheetsClientForPlan() {
+  const auth = getSheetsAuth();
+  const authClient = await auth.getClient();
+  return google.sheets({ version: "v4", auth: authClient });
+}
+
+async function readPlanRows(sheets) {
+  const res = await sheets.spreadsheets.values.get({
+    spreadsheetId: SHEET_ID,
+    range: `${PLAN_WORKSHEET}!${SHEET_RANGE}`
+  });
+  return res.data.values || [];
+}
+
+async function updatePlanCells(sheets, updates) {
+  if (!updates.length) return;
+
+  const data = updates.map((item) => ({
+    range: `${PLAN_WORKSHEET}!${colToLetter(item.col)}${item.row}`,
+    values: [[item.value ?? ""]]
+  }));
+
+  await sheets.spreadsheets.values.batchUpdate({
+    spreadsheetId: SHEET_ID,
+    requestBody: {
+      valueInputOption: "USER_ENTERED",
+      data
+    }
+  });
+}
 
 const PLANS = [
   {
@@ -29,11 +70,13 @@ const PLANS = [
 ];
 
 async function main() {
-  const sheets = await getSheetsClient();
-  const rows = await readRows(sheets);
+  console.log(`Aplicando plan sobre hoja: "${PLAN_WORKSHEET}"`);
+
+  const sheets = await getSheetsClientForPlan();
+  const rows = await readPlanRows(sheets);
 
   if (rows.length < 2) {
-    console.log("No hay datos en Hoja 2.");
+    console.log(`No hay datos en "${PLAN_WORKSHEET}".`);
     return;
   }
 
@@ -106,7 +149,7 @@ async function main() {
     return;
   }
 
-  await updateCellsBatch(sheets, updates);
+  await updatePlanCells(sheets, updates);
 
   console.log("Listo.");
   console.log(`Celdas actualizadas: ${updates.length}`);

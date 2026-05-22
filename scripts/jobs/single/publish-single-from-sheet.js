@@ -131,16 +131,21 @@ async function main() {
   rowLogger.info("Fila seleccionada para publish", {
     hasCaption: Boolean(caption),
     imageUrl,
+    attempt: currentAttempts + 1,
     hasExistingInstagram: Boolean(existingInstagramMediaId),
     hasExistingFacebook: Boolean(existingFacebookPostId)
   });
 
   const lockTs = nowIsoLocal();
 
+  // Incrementamos intentos al bloquear la fila — no al final.
+  // Así si el proceso muere a mitad (crash, timeout, SIGKILL), el intento
+  // queda contado y no se puede llegar a MAX_INTENTOS silenciosamente.
   await updateCellsBatch(sheets, [
     { row: rowNumber, col: headerMap["estado_general"] + 1, value: GENERAL_STATUS.PROCESSING },
     { row: rowNumber, col: headerMap["estado_publish"] + 1, value: STATUS.PROCESSING },
     { row: rowNumber, col: headerMap["lock_status"] + 1, value: LOCK_STATUS.LOCKED },
+    { row: rowNumber, col: headerMap["intentos"] + 1, value: currentAttempts + 1 },
     { row: rowNumber, col: headerMap["last_cycle_id"] + 1, value: cycleId },
     { row: rowNumber, col: headerMap["updated_at"] + 1, value: lockTs },
     { row: rowNumber, col: headerMap["error_step"] + 1, value: "" },
@@ -194,7 +199,8 @@ async function main() {
       instagramMediaId: instagramResult.mediaId || "",
       instagramCreationId: instagramResult.creationId || "",
       facebookPostId: facebookResult.postId || "",
-      facebookPhotoId: facebookResult.photoId || ""
+      facebookPhotoId: facebookResult.photoId || "",
+      totalAttempts: currentAttempts + 1
     });
 
     if (cloudinaryPublicId) {
@@ -208,6 +214,7 @@ async function main() {
   } catch (error) {
     const errorTs = nowIsoLocal();
 
+    // intentos ya fue incrementado al bloquear la fila — no lo tocamos aquí.
     await updateCellsBatch(sheets, [
       { row: rowNumber, col: headerMap["instagram_creation_id"] + 1, value: instagramResult.creationId || "" },
       { row: rowNumber, col: headerMap["instagram_media_id"] + 1, value: instagramResult.mediaId || "" },
@@ -216,7 +223,6 @@ async function main() {
       { row: rowNumber, col: headerMap["estado_general"] + 1, value: GENERAL_STATUS.ERROR },
       { row: rowNumber, col: headerMap["estado_publish"] + 1, value: STATUS.ERROR },
       { row: rowNumber, col: headerMap["lock_status"] + 1, value: LOCK_STATUS.FREE },
-      { row: rowNumber, col: headerMap["intentos"] + 1, value: currentAttempts + 1 },
       { row: rowNumber, col: headerMap["error_step"] + 1, value: "publish" },
       { row: rowNumber, col: headerMap["error_message"] + 1, value: error.message || String(error) },
       { row: rowNumber, col: headerMap["updated_at"] + 1, value: errorTs }

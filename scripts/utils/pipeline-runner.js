@@ -26,6 +26,9 @@ async function runPipelineSteps({
 
   pipelineLogger.info("Pipeline iniciado");
 
+  // En scheduled mode: intentar primero publicar cualquier post que quedó
+  // render+upload done pero sin publicar (recuperación de ciclos anteriores).
+  // En form mode este bloque se salta — va directo a render → upload → publish.
   if (publishFirst) {
     const pendingPublishResult = runStep(
       publishFirstStepName || publishStepName,
@@ -43,9 +46,7 @@ async function runPipelineSteps({
         durationMs: Date.now() - startMs
       });
 
-      pipelineLogger.info("Pipeline terminado", {
-        processed: false
-      });
+      pipelineLogger.info("Pipeline terminado", { processed: false });
 
       return {
         ok: false,
@@ -60,32 +61,12 @@ async function runPipelineSteps({
         durationMs: Date.now() - startMs
       });
 
-      pipelineLogger.info("Pipeline terminado", {
-        processed: true
-      });
+      pipelineLogger.info("Pipeline terminado", { processed: true });
 
       return {
         ok: true,
         processed: true,
         recoveredPending: true
-      };
-    }
-
-    if (isFormMode) {
-      pipelineLogger.error("FORM_MODE activo: no había publicaciones pendientes. No se renderiza contenido del Sheet.", {
-        processed: false,
-        durationMs: Date.now() - startMs
-      });
-
-      pipelineLogger.info("Pipeline terminado", {
-        processed: false
-      });
-
-      return {
-        ok: false,
-        processed: false,
-        failedStep: `${failedStepPrefix}-form-no-pending`,
-        reason: "FORM_MODE_NO_PENDING"
       };
     }
 
@@ -97,15 +78,32 @@ async function runPipelineSteps({
     ...context
   });
 
+  // En form mode el render debe encontrar exactamente la fila/carrusel que
+  // acaba de registrarse. Si no hay nada pendiente algo salió mal (race condition,
+  // fila ya procesada, etc.) — fallamos explícitamente en lugar de continuar.
+  if (renderResult.noPending && isFormMode) {
+    pipelineLogger.error("FORM_MODE activo: no se encontró contenido pendiente para renderizar.", {
+      processed: false,
+      durationMs: Date.now() - startMs
+    });
+
+    pipelineLogger.info("Pipeline terminado", { processed: false });
+
+    return {
+      ok: false,
+      processed: false,
+      failedStep: `${failedStepPrefix}-form-no-pending`,
+      reason: "FORM_MODE_NO_PENDING"
+    };
+  }
+
   if (renderResult.noPending) {
     pipelineLogger.info(noPendingMessage, {
       result: "no_pending",
       durationMs: Date.now() - startMs
     });
 
-    pipelineLogger.info("Pipeline terminado", {
-      processed: false
-    });
+    pipelineLogger.info("Pipeline terminado", { processed: false });
 
     return {
       ok: true,
@@ -122,9 +120,7 @@ async function runPipelineSteps({
       durationMs: Date.now() - startMs
     });
 
-    pipelineLogger.info("Pipeline terminado", {
-      processed: false
-    });
+    pipelineLogger.info("Pipeline terminado", { processed: false });
 
     return {
       ok: false,
@@ -145,9 +141,7 @@ async function runPipelineSteps({
       durationMs: Date.now() - startMs
     });
 
-    pipelineLogger.info("Pipeline terminado", {
-      processed: false
-    });
+    pipelineLogger.info("Pipeline terminado", { processed: false });
 
     return {
       ok: false,
@@ -168,9 +162,7 @@ async function runPipelineSteps({
       durationMs: Date.now() - startMs
     });
 
-    pipelineLogger.info("Pipeline terminado", {
-      processed: false
-    });
+    pipelineLogger.info("Pipeline terminado", { processed: false });
 
     return {
       ok: false,
@@ -184,9 +176,7 @@ async function runPipelineSteps({
     durationMs: Date.now() - startMs
   });
 
-  pipelineLogger.info("Pipeline terminado", {
-    processed: true
-  });
+  pipelineLogger.info("Pipeline terminado", { processed: true });
 
   return {
     ok: true,

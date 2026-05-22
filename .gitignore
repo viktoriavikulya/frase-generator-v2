@@ -3,5 +3,4 @@ node_modules/
 output/
 config/service_account.json
 service_account.json
-config.js
 repomix-output.xml
