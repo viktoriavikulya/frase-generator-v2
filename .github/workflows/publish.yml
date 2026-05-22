@@ -27,12 +27,33 @@ on:
         description: 'Reintentar posts en error: true | false'
         required: false
         default: 'false'
+      pin:
+        description: 'PIN de autorización (requerido desde el formulario)'
+        required: false
+        default: ''
+
+# Evita que dos pipelines corran al mismo tiempo y procesen la misma fila.
+concurrency:
+  group: publish-posts
+  cancel-in-progress: false
 
 jobs:
   publish:
     runs-on: ubuntu-latest
 
     steps:
+      - name: Verificar PIN (solo workflow_dispatch con frases)
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.frases != '' }}
+        env:
+          INPUT_PIN: ${{ inputs.pin }}
+          PUBLISHER_PIN: ${{ secrets.PUBLISHER_PIN }}
+        run: |
+          if [ "$INPUT_PIN" != "$PUBLISHER_PIN" ]; then
+            echo "❌ PIN incorrecto. Acceso denegado."
+            exit 1
+          fi
+          echo "✅ PIN verificado."
+
       - name: Checkout repo
         uses: actions/checkout@v4
 

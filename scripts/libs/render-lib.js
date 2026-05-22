@@ -15,7 +15,9 @@ const GENERATOR_URL = (
 
 const ROOT_DIR = path.join(__dirname, "..", "..");
 
-let serverInstance = null;
+// El servidor vive durante todo el proceso. Esta promesa se resuelve
+// cuando está listo, y se reutiliza en llamadas concurrentes.
+let serverReadyPromise = null;
 
 function isPortInUse(port) {
   return new Promise((resolve) => {
@@ -27,27 +29,38 @@ function isPortInUse(port) {
   });
 }
 
-async function ensureServer() {
-  const running = await isPortInUse(GENERATOR_PORT);
-  if (running) return;
+function ensureServer() {
+  // Si ya hay una promesa en curso (o resuelta), la reutilizamos.
+  // Esto evita que dos renders simultáneos levanten el servidor dos veces.
+  if (serverReadyPromise) return serverReadyPromise;
 
-  const serve = serveStatic(ROOT_DIR, { index: ["index.html"] });
-  serverInstance = http.createServer((req, res) => {
-    serve(req, res, finalhandler(req, res));
-  });
+  serverReadyPromise = (async () => {
+    const running = await isPortInUse(GENERATOR_PORT);
+    if (running) {
+      // Puerto ocupado por un proceso externo: lo usamos tal cual,
+      // pero no lo gestionamos nosotros (no lo detenemos al salir).
+      return;
+    }
 
-  await new Promise((resolve, reject) => {
-    serverInstance.once("error", reject);
-    serverInstance.listen(GENERATOR_PORT, "127.0.0.1", resolve);
-  });
-}
+    const serve = serveStatic(ROOT_DIR, { index: ["index.html"] });
+    const server = http.createServer((req, res) => {
+      serve(req, res, finalhandler(req, res));
+    });
 
-async function stopServer() {
-  if (!serverInstance) return;
-  await new Promise((resolve, reject) => {
-    serverInstance.close((err) => err ? reject(err) : resolve());
-  });
-  serverInstance = null;
+    await new Promise((resolve, reject) => {
+      server.once("error", reject);
+      server.listen(GENERATOR_PORT, "127.0.0.1", resolve);
+    });
+
+    // Cerramos el servidor limpiamente cuando el proceso termina.
+    // Esto cubre tanto exit normal como SIGINT / SIGTERM en GitHub Actions.
+    const shutdown = () => server.close();
+    process.once("exit", shutdown);
+    process.once("SIGINT", () => { shutdown(); process.exit(0); });
+    process.once("SIGTERM", () => { shutdown(); process.exit(0); });
+  })();
+
+  return serverReadyPromise;
 }
 
 function stripAccents(text) {
@@ -124,8 +137,9 @@ async function renderPhrase({ text, mode = "normal", bg = "#ffffff" }) {
 
     return { fileName, outputPath };
   } finally {
+    // Solo cerramos el browser. El servidor HTTP sigue vivo
+    // para el próximo render dentro del mismo proceso.
     await browser.close();
-    await stopServer();
   }
 }
 

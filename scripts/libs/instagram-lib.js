@@ -7,6 +7,10 @@ const IG_ACCESS_TOKEN = process.env.IG_ACCESS_TOKEN;
 const POLL_INTERVAL_MS = 3000;
 const MAX_POLL_ATTEMPTS = 20;
 
+// Subcódigos de Meta que indican token vencido o revocado.
+// https://developers.facebook.com/docs/graph-api/using-graph-api/error-handling/
+const TOKEN_EXPIRED_SUBCODES = new Set([460, 463, 467]);
+
 function ensureEnv() {
   if (!IG_USER_ID) {
     throw new Error("Falta IG_USER_ID en .env");
@@ -23,6 +27,38 @@ function buildGraphUrl(path) {
 
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/**
+ * Clasifica errores de la Graph API relacionados con el token de acceso.
+ * Meta siempre usa code=190 para problemas de token; el subcode afina el motivo.
+ * Lanza un error con mensaje accionable en lugar del mensaje técnico de Meta.
+ */
+function throwIfTokenError(graphError) {
+  if (!graphError || graphError.code !== 190) return;
+
+  const sub = graphError.error_subcode;
+
+  if (TOKEN_EXPIRED_SUBCODES.has(sub)) {
+    throw new Error(
+      `[TOKEN VENCIDO] El IG_ACCESS_TOKEN expiró (code=190, subcode=${sub}). ` +
+      "Renovalo en Meta for Developers → Herramientas → Explorador de la API Graph " +
+      "y actualiza el secret IG_ACCESS_TOKEN en GitHub."
+    );
+  }
+
+  if (sub === 458) {
+    throw new Error(
+      "[TOKEN REVOCADO] El usuario desautorizó la app (code=190, subcode=458). " +
+      "Es necesario volver a autorizar la app y generar un token nuevo."
+    );
+  }
+
+  // code=190 sin subcode conocido: token inválido en general.
+  throw new Error(
+    `[TOKEN INVÁLIDO] El IG_ACCESS_TOKEN es inválido o fue revocado (code=190, subcode=${sub ?? "none"}). ` +
+    "Verificá el valor del secret IG_ACCESS_TOKEN en GitHub."
+  );
 }
 
 function buildGraphErrorMessage(res, data, rawText) {
@@ -87,6 +123,9 @@ async function graphPost(path, body) {
   }
 
   if (!res.ok || data?.error) {
+    // Primero revisamos si es un error de token — tiene prioridad sobre el mensaje genérico.
+    throwIfTokenError(data?.error);
+
     const message = buildGraphErrorMessage(res, data, rawText);
     const error = new Error(message);
 
@@ -123,6 +162,9 @@ async function graphGet(path, query = {}) {
   }
 
   if (!res.ok || data?.error) {
+    // Primero revisamos si es un error de token — tiene prioridad sobre el mensaje genérico.
+    throwIfTokenError(data?.error);
+
     const message = buildGraphErrorMessage(res, data, rawText);
     const error = new Error(message);
 

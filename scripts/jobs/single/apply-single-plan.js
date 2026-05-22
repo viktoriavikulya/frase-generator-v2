@@ -1,18 +1,59 @@
 require("dotenv").config();
 
-// Fuerza este script a trabajar sobre Hoja 11
-process.env.WORKSHEET_NAME = "Hoja 11";
+// La hoja objetivo se puede pasar como argumento: node apply-single-plan.js "Hoja 11"
+// Si no se pasa, usa este valor por defecto.
+const PLAN_WORKSHEET = process.argv[2] || "Hoja 11";
 
+const { getSheetsAuth } = require("../../auth/google-auth");
+const { google } = require("googleapis");
 const {
-  getSheetsClient,
   buildHeaderMap,
   requireHeaders,
   getCellValue,
-  readRows,
   updateCellsBatch
 } = require("../../core/sheets");
 
+const { normalizeValue, colToLetter } = require("../../utils/common");
 const { nowIsoLocal } = require("../../utils/common");
+
+const SHEET_ID = process.env.SHEET_ID;
+const SHEET_RANGE = process.env.SHEET_RANGE || "A:AZ";
+
+if (!SHEET_ID) {
+  throw new Error("Falta SHEET_ID en el .env");
+}
+
+// Cliente de Sheets propio para esta hoja, sin depender de WORKSHEET_NAME del entorno.
+async function getSheetsClientForPlan() {
+  const auth = getSheetsAuth();
+  const authClient = await auth.getClient();
+  return google.sheets({ version: "v4", auth: authClient });
+}
+
+async function readPlanRows(sheets) {
+  const res = await sheets.spreadsheets.values.get({
+    spreadsheetId: SHEET_ID,
+    range: `${PLAN_WORKSHEET}!${SHEET_RANGE}`
+  });
+  return res.data.values || [];
+}
+
+async function updatePlanCells(sheets, updates) {
+  if (!updates.length) return;
+
+  const data = updates.map((item) => ({
+    range: `${PLAN_WORKSHEET}!${colToLetter(item.col)}${item.row}`,
+    values: [[item.value ?? ""]]
+  }));
+
+  await sheets.spreadsheets.values.batchUpdate({
+    spreadsheetId: SHEET_ID,
+    requestBody: {
+      valueInputOption: "USER_ENTERED",
+      data
+    }
+  });
+}
 
 const SINGLES = [
 
@@ -125,11 +166,13 @@ const SINGLES = [
 ];
 
 async function main() {
-  const sheets = await getSheetsClient();
-  const rows = await readRows(sheets);
+  console.log(`Aplicando plan sobre hoja: "${PLAN_WORKSHEET}"`);
+
+  const sheets = await getSheetsClientForPlan();
+  const rows = await readPlanRows(sheets);
 
   if (rows.length < 2) {
-    console.log("No hay datos en Hoja 11.");
+    console.log(`No hay datos en "${PLAN_WORKSHEET}".`);
     return;
   }
 
@@ -171,66 +214,22 @@ async function main() {
     const item = rowById.get(String(single.id));
 
     if (!item) {
-      console.warn(`No encontré row_id ${single.id} en Hoja 11`);
+      console.warn(`No encontré row_id ${single.id} en "${PLAN_WORKSHEET}"`);
       continue;
     }
 
     updates.push(
-      {
-        row: item.rowNumber,
-        col: headerMap["post_tipo"] + 1,
-        value: "single"
-      },
-      {
-        row: item.rowNumber,
-        col: headerMap["caption"] + 1,
-        value: single.caption
-      },
-      {
-        row: item.rowNumber,
-        col: headerMap["hashtags"] + 1,
-        value: single.hashtags
-      },
-      {
-        row: item.rowNumber,
-        col: headerMap["estado_general"] + 1,
-        value: "pending"
-      },
-      {
-        row: item.rowNumber,
-        col: headerMap["estado_render"] + 1,
-        value: "pending"
-      },
-      {
-        row: item.rowNumber,
-        col: headerMap["estado_upload"] + 1,
-        value: "pending"
-      },
-      {
-        row: item.rowNumber,
-        col: headerMap["estado_publish"] + 1,
-        value: "pending"
-      },
-      {
-        row: item.rowNumber,
-        col: headerMap["lock_status"] + 1,
-        value: "free"
-      },
-      {
-        row: item.rowNumber,
-        col: headerMap["error_step"] + 1,
-        value: ""
-      },
-      {
-        row: item.rowNumber,
-        col: headerMap["error_message"] + 1,
-        value: ""
-      },
-      {
-        row: item.rowNumber,
-        col: headerMap["updated_at"] + 1,
-        value: now
-      }
+      { row: item.rowNumber, col: headerMap["post_tipo"] + 1, value: "single" },
+      { row: item.rowNumber, col: headerMap["caption"] + 1, value: single.caption },
+      { row: item.rowNumber, col: headerMap["hashtags"] + 1, value: single.hashtags },
+      { row: item.rowNumber, col: headerMap["estado_general"] + 1, value: "pending" },
+      { row: item.rowNumber, col: headerMap["estado_render"] + 1, value: "pending" },
+      { row: item.rowNumber, col: headerMap["estado_upload"] + 1, value: "pending" },
+      { row: item.rowNumber, col: headerMap["estado_publish"] + 1, value: "pending" },
+      { row: item.rowNumber, col: headerMap["lock_status"] + 1, value: "free" },
+      { row: item.rowNumber, col: headerMap["error_step"] + 1, value: "" },
+      { row: item.rowNumber, col: headerMap["error_message"] + 1, value: "" },
+      { row: item.rowNumber, col: headerMap["updated_at"] + 1, value: now }
     );
   }
 
@@ -239,7 +238,7 @@ async function main() {
     return;
   }
 
-  await updateCellsBatch(sheets, updates);
+  await updatePlanCells(sheets, updates);
 
   console.log("Listo.");
   console.log(`Singles procesados: ${SINGLES.length}`);
