@@ -117,10 +117,7 @@
 
   <label>Token de GitHub</label>
   <input type="password" id="token" placeholder="ghp_..." autocomplete="current-password">
-
-  <label>PIN</label>
-  <input type="password" id="pin" placeholder="PIN de autorización" autocomplete="off">
-  <p class="field-hint">El PIN se valida en GitHub Actions — nunca viaja al navegador de otra persona.</p>
+  <p class="field-hint">Solo necesitas permisos de <code>workflow</code> en este repo.</p>
 
   <label>Caption</label>
   <input type="text" id="caption" placeholder="Ej: y ya, sin drama.">
@@ -142,6 +139,19 @@
   const REPO     = "frase-generator-v2";
   const WORKFLOW = "publish.yml";
 
+  function parseFrases() {
+    return document.getElementById("frases").value
+      .split("\n")
+      .map(f => f.trim())
+      .filter(Boolean);
+  }
+
+  function setStatus(msg, cls) {
+    const el = document.getElementById("status");
+    el.textContent = msg;
+    el.className   = cls;
+  }
+
   function detectarTipo() {
     const frases = parseFrases();
     const el = document.getElementById("tipo-detectado");
@@ -157,28 +167,17 @@
     }
   }
 
-  function parseFrases() {
-    return document.getElementById("frases").value
-      .split("\n")
-      .map(f => f.trim())
-      .filter(Boolean);
-  }
-
   async function publicar(soloSheet) {
     const token   = document.getElementById("token").value.trim();
-    const pin     = document.getElementById("pin").value.trim();
     const caption = document.getElementById("caption").value.trim();
     const frases  = parseFrases();
-    const status  = document.getElementById("status");
     const btnPublicar = document.getElementById("btn-publicar");
     const btnGuardar  = document.getElementById("btn-guardar");
 
-    status.textContent = "";
-    status.className   = "";
+    setStatus("", "");
 
-    if (!token)           { setStatus("Falta el token de GitHub.", "error"); return; }
-    if (!pin)             { setStatus("Falta el PIN.", "error"); return; }
-    if (!caption)         { setStatus("Falta el caption.", "error"); return; }
+    if (!token)             { setStatus("Falta el token de GitHub.", "error"); return; }
+    if (!caption)           { setStatus("Falta el caption.", "error"); return; }
     if (frases.length < 1)  { setStatus("Escribe al menos una frase.", "error"); return; }
     if (frases.length > 10) { setStatus("Máximo 10 frases.", "error"); return; }
 
@@ -201,22 +200,22 @@
           body: JSON.stringify({
             ref: "main",
             inputs: {
-              frases:          frases.join("||"),
+              frases:         frases.join("||"),
               caption,
               tipo,
-              solo_registrar:  soloSheet ? "true" : "false",
-              pin                          // ← validado en GitHub Actions contra PUBLISHER_PIN
+              solo_registrar: soloSheet ? "true" : "false"
             }
           })
         }
       );
 
       if (res.status === 204) {
-        const msg = soloSheet
-          ? "📋 Guardado en sheet. Se publicará en el próximo horario programado."
-          : `✅ Enviado como ${tipo}. En 2-3 minutos estará publicado.`;
-
-        setStatus(msg, "ok");
+        setStatus(
+          soloSheet
+            ? "📋 Guardado en sheet. Se publicará en el próximo horario programado."
+            : `✅ Enviado como ${tipo}. En 2-3 minutos estará publicado.`,
+          "ok"
+        );
         document.getElementById("frases").value  = "";
         document.getElementById("caption").value = "";
         document.getElementById("tipo-detectado").textContent = "";
@@ -230,12 +229,6 @@
       btnPublicar.disabled = false;
       btnGuardar.disabled  = false;
     }
-  }
-
-  function setStatus(msg, cls) {
-    const el = document.getElementById("status");
-    el.textContent = msg;
-    el.className   = cls;
   }
 </script>
 
