@@ -80,20 +80,20 @@ function getLastAssignedBg(rows, headerMap) {
   return latestBg;
 }
 
-function getNextColor(color) {
-  if (!color) {
-    return BG_SEQUENCE[0];
-  }
+function getRandomColorExcept(lastColor) {
+  const normalizedLast = (lastColor || "").toLowerCase().trim();
 
-  const index = BG_SEQUENCE.findIndex(
-    (item) => item.toLowerCase() === color.toLowerCase()
+  const availableColors = BG_SEQUENCE.filter(
+    (color) => color.toLowerCase() !== normalizedLast
   );
 
-  if (index === -1) {
+  if (!availableColors.length) {
     return BG_SEQUENCE[0];
   }
 
-  return BG_SEQUENCE[(index + 1) % BG_SEQUENCE.length];
+  const randomIndex = Math.floor(Math.random() * availableColors.length);
+
+  return availableColors[randomIndex];
 }
 
 function findNextSingleRowForRender(rows, headerMap, targetRowNumber) {
@@ -134,10 +134,11 @@ function getBgForRow(row, rows, headerMap) {
     return existingBg;
   }
 
-  const lastPublishedBg = getLastAssignedBg(rows, headerMap);
+  const lastAssignedBg = getLastAssignedBg(rows, headerMap);
 
-  return getNextColor(lastPublishedBg);
+  return getRandomColorExcept(lastAssignedBg);
 }
+
 
 async function markRowAsProcessing({
   sheets,

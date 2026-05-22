@@ -61,21 +61,25 @@ function getLastPublishedBg(rows, headerMap) {
   return latestBg;
 }
 
-function getNextColor(color) {
-  if (!color) {
-    return BG_SEQUENCE[0];
-  }
+function getRandomColorExcept(lastColor) {
+  const normalizedLast = (lastColor || "").toLowerCase().trim();
 
-  const index = BG_SEQUENCE.findIndex(
-    (item) => item.toLowerCase() === color.toLowerCase()
+  const availableColors = BG_SEQUENCE.filter(
+    (color) => color.toLowerCase() !== normalizedLast
   );
 
-  if (index === -1) {
+  if (!availableColors.length) {
     return BG_SEQUENCE[0];
   }
 
-  return BG_SEQUENCE[(index + 1) % BG_SEQUENCE.length];
+  const randomIndex = Math.floor(Math.random() * availableColors.length);
+
+  return availableColors[randomIndex];
 }
+
+
+
+
 
 function hasCarouselAwaitingPublish(rows, headerMap) {
   const seenCarousels = new Map();
@@ -318,7 +322,7 @@ async function main() {
   groupLogger.info("Carrusel seleccionado para render");
 
   const lastPublishedBg = getLastPublishedBg(rows, headerMap);
-  const carouselBg = getNextColor(lastPublishedBg);
+  const carouselBg = getRandomColorExcept(lastPublishedBg);
 
   try {
     await markCarouselAsProcessing({
