@@ -19,89 +19,13 @@ const {
   POST_TIPOS,
   LOCK_STATUS
 } = require("../../core/status");
+const {
+  getPendingCarouselRows,
+  validateCarouselRows,
+  markCarouselGroupAsError
+} = require("../../utils/carousel-utils");
 
 const MAX_INTENTOS = 3;
-
-function getPendingCarouselRows(rows, headerMap) {
-  let selectedCarouselId = "";
-
-  for (let i = 1; i < rows.length; i++) {
-    const row = rows[i];
-
-    const postTipo = getCellValue(row, headerMap, "post_tipo").toLowerCase();
-    const estadoRender = getCellValue(row, headerMap, "estado_render").toLowerCase();
-    const estadoUpload = getCellValue(row, headerMap, "estado_upload").toLowerCase();
-    const estadoPublish = getCellValue(row, headerMap, "estado_publish").toLowerCase();
-    const lockStatus = getCellValue(row, headerMap, "lock_status").toLowerCase();
-    const carouselId = getCellValue(row, headerMap, "carousel_id");
-    const intentos = Number(getCellValue(row, headerMap, "intentos") || 0);
-
-    const isEligible =
-      postTipo === POST_TIPOS.CAROUSEL &&
-      estadoRender === STATUS.DONE &&
-      estadoUpload === STATUS.DONE &&
-      (estadoPublish === STATUS.PENDING || estadoPublish === STATUS.ERROR) &&
-      (lockStatus === LOCK_STATUS.FREE || lockStatus === LOCK_STATUS.LOCKED) &&
-      carouselId &&
-      intentos < MAX_INTENTOS;
-
-    if (isEligible) {
-      const targetId = process.env.TARGET_CAROUSEL_ID || "";
-      if (targetId && carouselId !== targetId) continue;
-      selectedCarouselId = carouselId;
-      break;
-    }
-  }
-
-  if (!selectedCarouselId) {
-    return { selectedCarouselId: "", groupRows: [] };
-  }
-
-  const groupRows = [];
-
-  for (let i = 1; i < rows.length; i++) {
-    const row = rows[i];
-
-    const postTipo = getCellValue(row, headerMap, "post_tipo").toLowerCase();
-    const carouselId = getCellValue(row, headerMap, "carousel_id");
-
-    if (postTipo === POST_TIPOS.CAROUSEL && carouselId === selectedCarouselId) {
-      groupRows.push({
-        rowNumber: i + 1,
-        values: row,
-        order: Number(getCellValue(row, headerMap, "carousel_order") || "0")
-      });
-    }
-  }
-
-  groupRows.sort((a, b) => a.order - b.order);
-
-  return { selectedCarouselId, groupRows };
-}
-
-function validateCarouselRows(groupRows, selectedCarouselId) {
-  if (groupRows.length < 2 || groupRows.length > 10) {
-    throw new Error(
-      `El carrusel ${selectedCarouselId} tiene ${groupRows.length} slides. Debe tener entre 2 y 10.`
-    );
-  }
-
-  const orders = groupRows.map((item) => item.order);
-
-  if (orders.some((order) => !Number.isInteger(order) || order < 1)) {
-    throw new Error(
-      `El carrusel ${selectedCarouselId} tiene carousel_order inválidos. Deben ser enteros >= 1.`
-    );
-  }
-
-  const uniqueOrders = new Set(orders);
-
-  if (uniqueOrders.size !== orders.length) {
-    throw new Error(
-      `El carrusel ${selectedCarouselId} tiene carousel_order duplicados.`
-    );
-  }
-}
 
 function buildCarouselPayload(groupRows, headerMap) {
   const imageUrls = [];
@@ -168,27 +92,6 @@ async function deleteCarouselAssets(publicIds, groupLogger) {
   }
 }
 
-async function markGroupAsError(sheets, headerMap, groupRows, errorMessage, attemptsDelta = 1) {
-  const errorTs = nowIsoLocal();
-  const updates = [];
-
-  for (const item of groupRows) {
-    const currentAttempts = Number(getCellValue(item.values, headerMap, "intentos") || "0");
-
-    updates.push(
-      { row: item.rowNumber, col: headerMap["estado_general"] + 1, value: GENERAL_STATUS.ERROR },
-      { row: item.rowNumber, col: headerMap["estado_publish"] + 1, value: STATUS.ERROR },
-      { row: item.rowNumber, col: headerMap["lock_status"] + 1, value: LOCK_STATUS.FREE },
-      { row: item.rowNumber, col: headerMap["intentos"] + 1, value: currentAttempts + attemptsDelta },
-      { row: item.rowNumber, col: headerMap["error_step"] + 1, value: "publish" },
-      { row: item.rowNumber, col: headerMap["error_message"] + 1, value: errorMessage },
-      { row: item.rowNumber, col: headerMap["updated_at"] + 1, value: errorTs }
-    );
-  }
-
-  await updateCellsBatch(sheets, updates);
-}
-
 async function main() {
   const cycleId = process.env.PIPELINE_CYCLE_ID || "";
   const log = logger.child({
@@ -236,7 +139,25 @@ async function main() {
 
   requireHeaders(headerMap, requiredHeaders);
 
-  const { selectedCarouselId, groupRows } = getPendingCarouselRows(rows, headerMap);
+  const { selectedCarouselId, groupRows } = getPendingCarouselRows(
+    rows,
+    headerMap,
+    (row, hm) => {
+      const estadoRender  = getCellValue(row, hm, "estado_render").toLowerCase();
+      const estadoUpload  = getCellValue(row, hm, "estado_upload").toLowerCase();
+      const estadoPublish = getCellValue(row, hm, "estado_publish").toLowerCase();
+      const lockStatus    = getCellValue(row, hm, "lock_status").toLowerCase();
+      const intentos      = Number(getCellValue(row, hm, "intentos") || 0);
+
+      return (
+        estadoRender === STATUS.DONE &&
+        estadoUpload === STATUS.DONE &&
+        (estadoPublish === STATUS.PENDING || estadoPublish === STATUS.ERROR) &&
+        (lockStatus === LOCK_STATUS.FREE || lockStatus === LOCK_STATUS.LOCKED) &&
+        intentos < MAX_INTENTOS
+      );
+    }
+  );
 
   if (!selectedCarouselId) {
     log.info("No hay carruseles pendientes para publish");
@@ -339,11 +260,13 @@ async function main() {
 
     await deleteCarouselAssets(publicIds, groupLogger);
   } catch (error) {
-    await markGroupAsError(
+    await markCarouselGroupAsError(
       sheets,
       headerMap,
       groupRows,
-      error.message || String(error)
+      "publish",
+      error.message || String(error),
+      cycleId
     );
 
     groupLogger.error("Error publicando carrusel", {}, error);
