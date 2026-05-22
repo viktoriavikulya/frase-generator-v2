@@ -22,9 +22,21 @@ const LOCK_STATUS = {
   LOCKED: "locked"
 };
 
+const MAX_INTENTOS = 3;
+
+const BG_SEQUENCE = [
+  "#f4c400", // retroYellow
+  "#3d5afe", // retroBlue
+  "#e53935", // retroRed
+  "#f6f1e8", // retroWhite
+  "#0d0f14"  // retroBlack
+];
+
 module.exports = {
   STATUS,
   GENERAL_STATUS,
   POST_TIPOS,
-  LOCK_STATUS
+  LOCK_STATUS,
+  MAX_INTENTOS,
+  BG_SEQUENCE
 };

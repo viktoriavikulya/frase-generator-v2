@@ -15,18 +15,10 @@ const {
   STATUS,
   GENERAL_STATUS,
   POST_TIPOS,
-  LOCK_STATUS
+  LOCK_STATUS,
+  MAX_INTENTOS,
+  BG_SEQUENCE
 } = require("../../core/status");
-
-const MAX_INTENTOS = 3;
-
-const BG_SEQUENCE = [
-  "#f4c400", // retroYellow
-  "#3d5afe", // retroBlue
-  "#e53935", // retroRed
-  "#f6f1e8", // retroWhite
-  "#0d0f14"  // retroBlack
-];
 
 function getLastAssignedBg(rows, headerMap) {
   let latestBg = "";
@@ -201,7 +193,6 @@ async function main() {
     selectedBg: bg
   });
 
-  // Capturamos el timestamp una sola vez para todo el batch de lock
   const lockTs = nowIsoLocal();
 
   await updateCellsBatch(sheets, [
@@ -217,7 +208,6 @@ async function main() {
   try {
     const result = await renderPhrase({ text: textToRender, mode, bg });
 
-    // Capturamos el timestamp una sola vez para el batch de éxito
     const doneTs = nowIsoLocal();
 
     await updateCellsBatch(sheets, [
@@ -232,7 +222,6 @@ async function main() {
 
     rowLogger.info("Fila renderizada correctamente", { outputFile: result.fileName, bg });
   } catch (error) {
-    // Capturamos el timestamp una sola vez para el batch de error
     const errorTs = nowIsoLocal();
 
     await updateCellsBatch(sheets, [

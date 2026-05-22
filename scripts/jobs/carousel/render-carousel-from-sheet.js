@@ -15,23 +15,15 @@ const {
   STATUS,
   GENERAL_STATUS,
   POST_TIPOS,
-  LOCK_STATUS
+  LOCK_STATUS,
+  MAX_INTENTOS,
+  BG_SEQUENCE
 } = require("../../core/status");
 const {
   getPendingCarouselRows,
   validateCarouselRows,
   markCarouselGroupAsError
 } = require("../../utils/carousel-utils");
-
-const MAX_INTENTOS = 3;
-
-const BG_SEQUENCE = [
-  "#f4c400", // retroYellow
-  "#3d5afe", // retroBlue
-  "#e53935", // retroRed
-  "#f6f1e8", // retroWhite
-  "#0d0f14"  // retroBlack
-];
 
 function getLastPublishedBg(rows, headerMap) {
   let latestBg = "";
@@ -191,7 +183,6 @@ async function main() {
   const lastPublishedBg = getLastPublishedBg(rows, headerMap);
   const carouselBg = getNextColor(lastPublishedBg);
 
-  // Capturamos el timestamp una sola vez para el batch de lock
   const lockTs = nowIsoLocal();
   const lockUpdates = [];
 
@@ -247,7 +238,6 @@ async function main() {
 
       const result = await renderPhrase({ text: textToRender, mode, bg: carouselBg });
 
-      // Capturamos el timestamp una sola vez para el batch de éxito de este slide
       const doneTs = nowIsoLocal();
 
       await updateCellsBatch(sheets, [

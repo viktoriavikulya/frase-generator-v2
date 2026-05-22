@@ -17,7 +17,8 @@ const {
   STATUS,
   GENERAL_STATUS,
   POST_TIPOS,
-  LOCK_STATUS
+  LOCK_STATUS,
+  MAX_INTENTOS
 } = require("../../core/status");
 const {
   getPendingCarouselRows,
@@ -25,7 +26,6 @@ const {
   markCarouselGroupAsError
 } = require("../../utils/carousel-utils");
 
-const MAX_INTENTOS = 3;
 const OUTPUT_DIR = path.resolve(__dirname, "..", "..", "..", "output");
 
 async function main() {
@@ -100,7 +100,6 @@ async function main() {
 
   groupLogger.info("Carrusel seleccionado para upload");
 
-  // Capturamos el timestamp una sola vez para el batch de lock
   const lockTs = nowIsoLocal();
   const prepUpdates = [];
 
@@ -175,7 +174,6 @@ async function main() {
         }
       }
 
-      // Capturamos el timestamp una sola vez para el batch de éxito de este slide
       const doneTs = nowIsoLocal();
 
       await updateCellsBatch(sheets, [

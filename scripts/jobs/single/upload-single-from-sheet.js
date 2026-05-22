@@ -17,10 +17,10 @@ const {
   STATUS,
   GENERAL_STATUS,
   POST_TIPOS,
-  LOCK_STATUS
+  LOCK_STATUS,
+  MAX_INTENTOS
 } = require("../../core/status");
 
-const MAX_INTENTOS = 3;
 const OUTPUT_DIR = path.resolve(__dirname, "..", "..", "..", "output");
 
 function findNextUploadRow(rows, headerMap, targetRowNumber) {
@@ -128,7 +128,6 @@ async function main() {
 
   rowLogger.info("Fila seleccionada para upload", { localPath });
 
-  // Capturamos el timestamp una sola vez para el batch de lock
   const lockTs = nowIsoLocal();
 
   await updateCellsBatch(sheets, [
@@ -153,7 +152,6 @@ async function main() {
       }
     }
 
-    // Capturamos el timestamp una sola vez para el batch de éxito
     const doneTs = nowIsoLocal();
 
     await updateCellsBatch(sheets, [
@@ -171,7 +169,6 @@ async function main() {
       publicId: uploadResult.publicId
     });
   } catch (error) {
-    // Capturamos el timestamp una sola vez para el batch de error
     const errorTs = nowIsoLocal();
 
     await updateCellsBatch(sheets, [

@@ -17,10 +17,9 @@ const {
   STATUS,
   GENERAL_STATUS,
   POST_TIPOS,
-  LOCK_STATUS
+  LOCK_STATUS,
+  MAX_INTENTOS
 } = require("../../core/status");
-
-const MAX_INTENTOS = 3;
 
 function getPendingSingleRow(rows, headerMap, targetRowNumber) {
   for (let i = 1; i < rows.length; i++) {
@@ -136,7 +135,6 @@ async function main() {
     hasExistingFacebook: Boolean(existingFacebookPostId)
   });
 
-  // Capturamos el timestamp una sola vez para el batch de lock
   const lockTs = nowIsoLocal();
 
   await updateCellsBatch(sheets, [
@@ -180,7 +178,6 @@ async function main() {
       ]);
     }
 
-    // Capturamos el timestamp una sola vez para el batch de éxito final
     const doneTs = nowIsoLocal();
 
     await updateCellsBatch(sheets, [
@@ -209,7 +206,6 @@ async function main() {
       }
     }
   } catch (error) {
-    // Capturamos el timestamp una sola vez para el batch de error
     const errorTs = nowIsoLocal();
 
     await updateCellsBatch(sheets, [

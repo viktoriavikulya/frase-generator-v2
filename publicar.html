@@ -28,6 +28,13 @@
       color: #aaa;
     }
 
+    .field-hint {
+      font-size: 12px;
+      color: #555;
+      margin-top: -12px;
+      margin-bottom: 16px;
+    }
+
     textarea, input[type="text"], input[type="password"] {
       width: 100%;
       background: #1a1c22;
@@ -47,13 +54,6 @@
     #frases {
       height: 200px;
       resize: vertical;
-    }
-
-    #hint-frases {
-      font-size: 12px;
-      color: #666;
-      margin-top: -12px;
-      margin-bottom: 16px;
     }
 
     #tipo-detectado {
@@ -107,103 +107,43 @@
       min-height: 20px;
     }
 
-    .ok { color: #4caf50; }
+    .ok    { color: #4caf50; }
     .error { color: #e53935; }
-
-    #pantalla-lock {
-      position: fixed;
-      inset: 0;
-      background: #0d0f14;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      gap: 16px;
-      padding: 24px;
-      z-index: 999;
-    }
-
-    #pantalla-lock h2 {
-      font-size: 20px;
-      color: #f4c400;
-    }
-
-    #pantalla-lock input {
-      width: 100%;
-      max-width: 300px;
-      text-align: center;
-      font-size: 18px;
-      letter-spacing: 4px;
-    }
-
-    #btn-entrar {
-      width: 100%;
-      max-width: 300px;
-      background: #f4c400;
-      color: #0d0f14;
-      border: none;
-      border-radius: 8px;
-      font-size: 16px;
-      font-weight: 700;
-      padding: 14px;
-      cursor: pointer;
-    }
-
-    #lock-error {
-      font-size: 13px;
-      color: #e53935;
-      min-height: 18px;
-    }
   </style>
 </head>
 <body>
 
-  <div id="pantalla-lock">
-    <h2>🔒 Acceso</h2>
-    <input type="password" id="clave-input" placeholder="Clave" onkeydown="if(event.key==='Enter') entrar()">
-    <button id="btn-entrar" onclick="entrar()">Entrar</button>
-    <div id="lock-error"></div>
-  </div>
-
   <h1>🔥 Publicar Post</h1>
 
-  <label>Token</label>
-  <input type="password" id="token" placeholder="Tu token de GitHub" autocomplete="current-password">
+  <label>Token de GitHub</label>
+  <input type="password" id="token" placeholder="ghp_..." autocomplete="current-password">
+
+  <label>PIN</label>
+  <input type="password" id="pin" placeholder="PIN de autorización" autocomplete="off">
+  <p class="field-hint">El PIN se valida en GitHub Actions — nunca viaja al navegador de otra persona.</p>
 
   <label>Caption</label>
   <input type="text" id="caption" placeholder="Ej: y ya, sin drama.">
 
   <label>Frases (una por línea)</label>
   <textarea id="frases" placeholder="Frase 1&#10;Frase 2" oninput="detectarTipo()"></textarea>
-  <div id="hint-frases">1 frase → single · 2 a 10 frases → carrusel</div>
+  <p class="field-hint">1 frase → single · 2 a 10 frases → carrusel</p>
   <div id="tipo-detectado"></div>
 
   <div class="acciones">
     <button id="btn-publicar" onclick="publicar(false)">🔥 Publicar ahora</button>
-    <button id="btn-guardar" onclick="publicar(true)">📋 Guardar en sheet</button>
+    <button id="btn-guardar"  onclick="publicar(true)">📋 Guardar en sheet</button>
   </div>
 
   <div id="status"></div>
 
 <script>
-  const OWNER = "imgifra";
-  const REPO = "frase-generator-v2";
+  const OWNER    = "imgifra";
+  const REPO     = "frase-generator-v2";
   const WORKFLOW = "publish.yml";
-  const CLAVE = "Mona";
-
-  function entrar() {
-    const input = document.getElementById("clave-input").value;
-    if (input === CLAVE) {
-      document.getElementById("pantalla-lock").style.display = "none";
-    } else {
-      document.getElementById("lock-error").textContent = "Clave incorrecta.";
-      document.getElementById("clave-input").value = "";
-    }
-  }
 
   function detectarTipo() {
-    const frasesRaw = document.getElementById("frases").value;
-    const frases = frasesRaw.split("\n").map(f => f.trim()).filter(Boolean);
+    const frases = parseFrases();
     const el = document.getElementById("tipo-detectado");
 
     if (frases.length === 0) {
@@ -217,70 +157,85 @@
     }
   }
 
+  function parseFrases() {
+    return document.getElementById("frases").value
+      .split("\n")
+      .map(f => f.trim())
+      .filter(Boolean);
+  }
+
   async function publicar(soloSheet) {
-    const token = document.getElementById("token").value.trim();
+    const token   = document.getElementById("token").value.trim();
+    const pin     = document.getElementById("pin").value.trim();
     const caption = document.getElementById("caption").value.trim();
-    const frasesRaw = document.getElementById("frases").value;
-    const frases = frasesRaw.split("\n").map(f => f.trim()).filter(Boolean);
-    const status = document.getElementById("status");
+    const frases  = parseFrases();
+    const status  = document.getElementById("status");
     const btnPublicar = document.getElementById("btn-publicar");
-    const btnGuardar = document.getElementById("btn-guardar");
+    const btnGuardar  = document.getElementById("btn-guardar");
 
     status.textContent = "";
-    status.className = "";
+    status.className   = "";
 
-    if (!token) { status.textContent = "Falta el token."; status.className = "error"; return; }
-    if (!caption) { status.textContent = "Falta el caption."; status.className = "error"; return; }
-    if (frases.length < 1) { status.textContent = "Escribe al menos una frase."; status.className = "error"; return; }
-    if (frases.length > 10) { status.textContent = "Máximo 10 frases."; status.className = "error"; return; }
+    if (!token)           { setStatus("Falta el token de GitHub.", "error"); return; }
+    if (!pin)             { setStatus("Falta el PIN.", "error"); return; }
+    if (!caption)         { setStatus("Falta el caption.", "error"); return; }
+    if (frases.length < 1)  { setStatus("Escribe al menos una frase.", "error"); return; }
+    if (frases.length > 10) { setStatus("Máximo 10 frases.", "error"); return; }
 
     const tipo = frases.length === 1 ? "single" : "carousel";
 
     btnPublicar.disabled = true;
-    btnGuardar.disabled = true;
-    status.textContent = soloSheet ? "Guardando en sheet..." : "Publicando...";
+    btnGuardar.disabled  = true;
+    setStatus(soloSheet ? "Guardando en sheet..." : "Publicando...", "");
 
     try {
-      const res = await fetch(`https://api.github.com/repos/${OWNER}/${REPO}/actions/workflows/${WORKFLOW}/dispatches`, {
-        method: "POST",
-        headers: {
-          "Authorization": `Bearer ${token}`,
-          "Accept": "application/vnd.github+json",
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          ref: "main",
-          inputs: {
-            frases: frases.join("||"),
-            caption,
-            tipo,
-            solo_registrar: soloSheet ? "true" : "false"
-          }
-        })
-      });
+      const res = await fetch(
+        `https://api.github.com/repos/${OWNER}/${REPO}/actions/workflows/${WORKFLOW}/dispatches`,
+        {
+          method: "POST",
+          headers: {
+            "Authorization": `Bearer ${token}`,
+            "Accept": "application/vnd.github+json",
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            ref: "main",
+            inputs: {
+              frases:          frases.join("||"),
+              caption,
+              tipo,
+              solo_registrar:  soloSheet ? "true" : "false",
+              pin                          // ← validado en GitHub Actions contra PUBLISHER_PIN
+            }
+          })
+        }
+      );
 
       if (res.status === 204) {
-        if (soloSheet) {
-          status.textContent = "📋 Guardado en sheet. Se publicará en el próximo horario programado.";
-        } else {
-          status.textContent = `✅ Enviado como ${tipo}. En 2-3 minutos estará publicado.`;
-        }
-        status.className = "ok";
-        document.getElementById("frases").value = "";
+        const msg = soloSheet
+          ? "📋 Guardado en sheet. Se publicará en el próximo horario programado."
+          : `✅ Enviado como ${tipo}. En 2-3 minutos estará publicado.`;
+
+        setStatus(msg, "ok");
+        document.getElementById("frases").value  = "";
         document.getElementById("caption").value = "";
         document.getElementById("tipo-detectado").textContent = "";
       } else {
         const data = await res.json();
-        status.textContent = `❌ Error: ${data.message}`;
-        status.className = "error";
+        setStatus(`❌ Error: ${data.message}`, "error");
       }
     } catch (err) {
-      status.textContent = `❌ Error: ${err.message}`;
-      status.className = "error";
+      setStatus(`❌ Error: ${err.message}`, "error");
     } finally {
       btnPublicar.disabled = false;
-      btnGuardar.disabled = false;
+      btnGuardar.disabled  = false;
     }
+  }
+
+  function setStatus(msg, cls) {
+    const el = document.getElementById("status");
+    el.textContent = msg;
+    el.className   = cls;
   }
 </script>
 
