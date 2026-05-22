@@ -15,8 +15,6 @@ const GENERATOR_URL = (
 
 const ROOT_DIR = path.join(__dirname, "..", "..");
 
-// El servidor vive durante todo el proceso. Esta promesa se resuelve
-// cuando está listo, y se reutiliza en llamadas concurrentes.
 let serverReadyPromise = null;
 
 function isPortInUse(port) {
@@ -24,23 +22,17 @@ function isPortInUse(port) {
     const socket = new net.Socket();
     socket
       .once("connect", () => { socket.destroy(); resolve(true); })
-      .once("error", () => resolve(false))
+      .once("error",   () => resolve(false))
       .connect(port, "127.0.0.1");
   });
 }
 
 function ensureServer() {
-  // Si ya hay una promesa en curso (o resuelta), la reutilizamos.
-  // Esto evita que dos renders simultáneos levanten el servidor dos veces.
   if (serverReadyPromise) return serverReadyPromise;
 
   serverReadyPromise = (async () => {
     const running = await isPortInUse(GENERATOR_PORT);
-    if (running) {
-      // Puerto ocupado por un proceso externo: lo usamos tal cual,
-      // pero no lo gestionamos nosotros (no lo detenemos al salir).
-      return;
-    }
+    if (running) return;
 
     const serve = serveStatic(ROOT_DIR, { index: ["index.html"] });
     const server = http.createServer((req, res) => {
@@ -52,11 +44,9 @@ function ensureServer() {
       server.listen(GENERATOR_PORT, "127.0.0.1", resolve);
     });
 
-    // Cerramos el servidor limpiamente cuando el proceso termina.
-    // Esto cubre tanto exit normal como SIGINT / SIGTERM en GitHub Actions.
     const shutdown = () => server.close();
-    process.once("exit", shutdown);
-    process.once("SIGINT", () => { shutdown(); process.exit(0); });
+    process.once("exit",   shutdown);
+    process.once("SIGINT",  () => { shutdown(); process.exit(0); });
     process.once("SIGTERM", () => { shutdown(); process.exit(0); });
   })();
 
@@ -95,8 +85,8 @@ async function renderPhrase({ text, mode = "normal", bg = "#ffffff" }) {
     fs.mkdirSync(outputDir, { recursive: true });
   }
 
-  const safeName = buildSafeName(String(text));
-  const fileName = `${safeName}_${mode}_${Date.now()}.png`;
+  const safeName  = buildSafeName(String(text));
+  const fileName  = `${safeName}_${mode}_${Date.now()}.png`;
   const outputPath = path.join(outputDir, fileName);
 
   await ensureServer();
@@ -113,6 +103,8 @@ async function renderPhrase({ text, mode = "normal", bg = "#ffffff" }) {
 
     await page.goto(url, { waitUntil: "domcontentloaded", timeout: 60000 });
 
+    // Espera a que los assets y el canvas estén listos.
+    // Timeout generoso para GitHub Actions donde la red puede ser lenta.
     await page.waitForFunction(
       () => {
         return (
@@ -121,8 +113,15 @@ async function renderPhrase({ text, mode = "normal", bg = "#ffffff" }) {
           typeof window.getCanvasBase64 === "function"
         );
       },
-      { timeout: 15000 }
-    );
+      { timeout: 30000 }  // subimos de 15s a 30s
+    ).catch((err) => {
+      // Mejor mensaje de error que el genérico de Playwright
+      throw new Error(
+        `Los assets del generador no cargaron a tiempo (30s). ` +
+        `Verifica que GENERATOR_URL esté accesible y que marca2.png y marca3.png existan. ` +
+        `Detalle: ${err.message}`
+      );
+    });
 
     await page.waitForTimeout(1200);
 
@@ -137,8 +136,6 @@ async function renderPhrase({ text, mode = "normal", bg = "#ffffff" }) {
 
     return { fileName, outputPath };
   } finally {
-    // Solo cerramos el browser. El servidor HTTP sigue vivo
-    // para el próximo render dentro del mismo proceso.
     await browser.close();
   }
 }
