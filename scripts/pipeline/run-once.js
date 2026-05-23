@@ -68,7 +68,7 @@ async function runAuto({ cycleId, branch, targetCarouselId }) {
     autoLogger.info("Modo auto procesó SINGLE", singleResult);
     return { ...singleResult, autoSelected: "single", autoTried: ["carousel", "single"] };
   }
-
+}
 
 
 
