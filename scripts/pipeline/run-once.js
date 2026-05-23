@@ -36,84 +36,41 @@ async function runCarousel({ cycleId, branch, targetCarouselId }) {
 }
 
 async function runAuto({ cycleId, branch, targetCarouselId }) {
-  const autoLogger = logger.child({
-    cycleId,
-    mode: branch,
-    tipo: "auto"
-  });
+  const autoLogger = logger.child({ cycleId, mode: branch, tipo: "auto" });
 
-  autoLogger.info("Modo auto iniciado. Se intentará primero SINGLE y luego CAROUSEL.");
+  autoLogger.info("Modo auto iniciado. Se intentará primero CAROUSEL y luego SINGLE.");
 
-  const singleResult = await runSingle({
-    cycleId,
-    branch
-  });
-
-  if (!singleResult.ok) {
-    autoLogger.error("Modo auto detenido por error en SINGLE", singleResult);
-
-    return {
-      ...singleResult,
-      autoTried: ["single"],
-      failedBranch: "single"
-    };
-  }
-
-  if (singleResult.processed) {
-    autoLogger.info("Modo auto procesó SINGLE", singleResult);
-
-    return {
-      ...singleResult,
-      autoSelected: "single",
-      autoTried: ["single"]
-    };
-  }
-
-  autoLogger.info("Modo auto no encontró SINGLE procesable. Intentando CAROUSEL.", {
-    singleSkipped: true,
-    singleNoPending: Boolean(singleResult.noPending)
-  });
-
-  const carouselResult = await runCarousel({
-    cycleId,
-    branch,
-    targetCarouselId
-  });
+  const carouselResult = await runCarousel({ cycleId, branch, targetCarouselId });
 
   if (!carouselResult.ok) {
     autoLogger.error("Modo auto detenido por error en CAROUSEL", carouselResult);
-
-    return {
-      ...carouselResult,
-      autoTried: ["single", "carousel"],
-      failedBranch: "carousel"
-    };
+    return { ...carouselResult, autoTried: ["carousel"], failedBranch: "carousel" };
   }
 
   if (carouselResult.processed) {
     autoLogger.info("Modo auto procesó CAROUSEL", carouselResult);
-
-    return {
-      ...carouselResult,
-      autoSelected: "carousel",
-      autoTried: ["single", "carousel"]
-    };
+    return { ...carouselResult, autoSelected: "carousel", autoTried: ["carousel"] };
   }
 
-  autoLogger.info("Modo auto no encontró contenido procesable.", {
-    singleNoPending: Boolean(singleResult.noPending),
+  autoLogger.info("Modo auto no encontró CAROUSEL procesable. Intentando SINGLE.", {
+    carouselSkipped: true,
     carouselNoPending: Boolean(carouselResult.noPending)
   });
 
-  return {
-    ok: true,
-    processed: false,
-    skipped: true,
-    noPending: true,
-    autoSelected: "",
-    autoTried: ["single", "carousel"]
-  };
-}
+  const singleResult = await runSingle({ cycleId, branch });
+
+  if (!singleResult.ok) {
+    autoLogger.error("Modo auto detenido por error en SINGLE", singleResult);
+    return { ...singleResult, autoTried: ["carousel", "single"], failedBranch: "single" };
+  }
+
+  if (singleResult.processed) {
+    autoLogger.info("Modo auto procesó SINGLE", singleResult);
+    return { ...singleResult, autoSelected: "single", autoTried: ["carousel", "single"] };
+  }
+
+
+
 
 async function main() {
   const cycleId = `${Date.now()}`;
