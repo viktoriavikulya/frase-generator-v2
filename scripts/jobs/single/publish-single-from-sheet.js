@@ -2,6 +2,7 @@ require("dotenv").config();
 
 const { publishImagePost } = require("../../libs/instagram-lib");
 const { publishFacebookImagePost } = require("../../libs/facebook-lib");
+const { publishThreadsImagePost } = require("../../libs/threads-lib");
 const { deleteImage } = require("../../libs/upload-lib");
 const {
   getSheetsClient,
@@ -76,7 +77,8 @@ async function main() {
     "estado_render", "estado_upload", "estado_publish", "lock_status",
     "intentos", "last_cycle_id", "error_step", "error_message",
     "instagram_creation_id", "instagram_media_id",
-    "facebook_photo_id", "facebook_post_id"
+    "facebook_photo_id", "facebook_post_id",
+    "threads_media_id"
   ];
 
   requireHeaders(headerMap, requiredHeaders);
@@ -101,6 +103,7 @@ async function main() {
   const existingInstagramMediaId = getCellValue(row, headerMap, "instagram_media_id");
   const existingFacebookPhotoId = getCellValue(row, headerMap, "facebook_photo_id");
   const existingFacebookPostId = getCellValue(row, headerMap, "facebook_post_id");
+  const existingThreadsMediaId = getCellValue(row, headerMap, "threads_media_id");
 
   const rowLogger = log.child({ rowNumber, rowId });
 
@@ -112,6 +115,7 @@ async function main() {
     attempt: currentAttempts + 1,
     hasExistingInstagram: Boolean(existingInstagramMediaId),
     hasExistingFacebook: Boolean(existingFacebookPostId),
+    hasExistingThreads: Boolean(existingThreadsMediaId),
   });
 
   const lockTs = nowIsoLocal();
@@ -137,6 +141,9 @@ async function main() {
     postId: existingFacebookPostId
   };
 
+  let threadsResult = {
+    mediaId: existingThreadsMediaId
+  };
 
   try {
     if (!instagramResult.mediaId) {
@@ -147,6 +154,12 @@ async function main() {
         { row: rowNumber, col: headerMap["instagram_media_id"] + 1, value: instagramResult.mediaId || "" },
         { row: rowNumber, col: headerMap["updated_at"] + 1, value: nowIsoLocal() }
       ]);
+
+      rowLogger.info("Publicado en Instagram", { instagramMediaId: instagramResult.mediaId });
+    } else {
+      rowLogger.info("Instagram ya estaba publicado; se omite republicación", {
+        instagramMediaId: instagramResult.mediaId
+      });
     }
 
     if (!facebookResult.postId) {
@@ -157,9 +170,28 @@ async function main() {
         { row: rowNumber, col: headerMap["facebook_post_id"] + 1, value: facebookResult.postId || "" },
         { row: rowNumber, col: headerMap["updated_at"] + 1, value: nowIsoLocal() }
       ]);
+
+      rowLogger.info("Publicado en Facebook", { facebookPostId: facebookResult.postId });
+    } else {
+      rowLogger.info("Facebook ya estaba publicado; se omite republicación", {
+        facebookPostId: facebookResult.postId
+      });
     }
 
+    if (!threadsResult.mediaId) {
+      threadsResult = await publishThreadsImagePost({ imageUrl, caption });
 
+      await updateCellsBatch(sheets, [
+        { row: rowNumber, col: headerMap["threads_media_id"] + 1, value: threadsResult.mediaId || "" },
+        { row: rowNumber, col: headerMap["updated_at"] + 1, value: nowIsoLocal() }
+      ]);
+
+      rowLogger.info("Publicado en Threads", { threadsMediaId: threadsResult.mediaId });
+    } else {
+      rowLogger.info("Threads ya estaba publicado; se omite republicación", {
+        threadsMediaId: threadsResult.mediaId
+      });
+    }
 
     const doneTs = nowIsoLocal();
 
@@ -176,6 +208,7 @@ async function main() {
     rowLogger.info("Fila publicada correctamente", {
       instagramMediaId: instagramResult.mediaId || "",
       facebookPostId: facebookResult.postId || "",
+      threadsMediaId: threadsResult.mediaId || "",
       totalAttempts: currentAttempts + 1
     });
 
@@ -195,6 +228,7 @@ async function main() {
       { row: rowNumber, col: headerMap["instagram_media_id"] + 1, value: instagramResult.mediaId || "" },
       { row: rowNumber, col: headerMap["facebook_photo_id"] + 1, value: facebookResult.photoId || "" },
       { row: rowNumber, col: headerMap["facebook_post_id"] + 1, value: facebookResult.postId || "" },
+      { row: rowNumber, col: headerMap["threads_media_id"] + 1, value: threadsResult.mediaId || "" },
       { row: rowNumber, col: headerMap["estado_general"] + 1, value: GENERAL_STATUS.ERROR },
       { row: rowNumber, col: headerMap["estado_publish"] + 1, value: STATUS.ERROR },
       { row: rowNumber, col: headerMap["lock_status"] + 1, value: LOCK_STATUS.FREE },
