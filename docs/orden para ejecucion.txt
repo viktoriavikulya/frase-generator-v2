@@ -1,18 +1,21 @@
-en sheet cambiar estado a 
-lista_para_render
+# Ejecución manual (desarrollo local)
 
-levantar el sevidor
+## Levantar el servidor de render
 npx http-server . -p 8080
 
-en otra terminal correr para renderizar
-node scripts/render-single-from-sheet.js
+## Correr el pipeline completo (en otra terminal)
+node scripts/pipeline/run-once.js
 
-luego subir con 
-node scripts/upload-single-from-sheet.js
+## Solo un tipo específico
+TIPO_INPUT=carousel node scripts/pipeline/run-once.js
+TIPO_INPUT=single node scripts/pipeline/run-once.js
 
-por ultimo publicar
-node scripts/publish-single-from-sheet.js
+## Herramientas de desarrollo
+node scripts/dev/render-all-retro-colors.js   # previsualiza todos los colores
+node scripts/dev/render-preview.js             # preview rápido de una frase
 
+
+## Estos son solo para preview y ver si el codigo funciona bien 
 
 node scripts/dev/render-all-retro-colors.js
 

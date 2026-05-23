@@ -4,3 +4,4 @@ output/
 config/service_account.json
 service_account.json
 repomix-output.xml
+*.csv

@@ -22,19 +22,14 @@ const {
   updateCellsBatch
 } = require("../../core/sheets");
 
+const { graphGet } = require("../../libs/graph-client");
 const { nowIsoLocal } = require("../../utils/common");
 const { logger } = require("../../utils/logger");
 const { GENERAL_STATUS } = require("../../core/status");
 
-const GRAPH_API_VERSION = process.env.GRAPH_API_VERSION || "v25.0";
-const IG_ACCESS_TOKEN   = process.env.IG_ACCESS_TOKEN;
+const IG_ACCESS_TOKEN = process.env.IG_ACCESS_TOKEN;
 
-// Cuántos días hacia atrás buscar posts para actualizar métricas.
-// Pasado ese tiempo los números no cambian mucho.
 const METRICS_DAYS = Number(process.env.METRICS_DAYS || 30);
-
-// Pausa entre llamadas a la Graph API (ms) para no saturar el rate limit.
-// Con 200 req/hora el límite es 1 cada 18s; ponemos 1.5s como margen seguro.
 const API_DELAY_MS = 1500;
 
 // ── Helpers ────────────────────────────────────────────────────────────────
@@ -43,57 +38,6 @@ function sleep(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-function buildGraphUrl(path) {
-    return `https://graph.facebook.com/${GRAPH_API_VERSION}/${path}`;
-}
-
-/**
- * GET genérico a la Graph API de Instagram.
- * Reutiliza el mismo patrón que instagram-lib.js pero sin importarlo
- * para no arrastrar dependencias de publicación.
- */
-async function graphGet(path, query = {}) {
-  const url = new URL(buildGraphUrl(path));
-
-  for (const [key, value] of Object.entries(query)) {
-    if (value !== undefined && value !== null) {
-      url.searchParams.set(key, String(value));
-    }
-  }
-
-  const res = await fetch(url.toString());
-  const rawText = await res.text();
-
-  let data;
-  try {
-    data = rawText ? JSON.parse(rawText) : {};
-  } catch {
-    data = null;
-  }
-
-  if (!res.ok || data?.error) {
-    const err = data?.error;
-    const msg = err
-      ? `${err.message} (code=${err.code}, subcode=${err.error_subcode})`
-      : `Graph API ${res.status}: ${rawText}`;
-    throw new Error(msg);
-  }
-
-  return data;
-}
-
-/**
- * Trae métricas de un media post.
- *
- * Para IMAGE y CAROUSEL_ALBUM (posts de imagen) los campos disponibles son:
- *   views, reach, saved, shares, likes, comments
- *
- * Nota: 'impressions' fue deprecado en v22.0 → se usa 'views'.
- * Nota: 'likes' y 'comments' están en el nodo media directo también,
- *       pero para consistency los traemos del endpoint /insights.
- *
- * @returns {{ views, reach, saves, shares, likes, comments } | null}
- */
 async function fetchMediaInsights(mediaId) {
   try {
     const data = await graphGet(`${mediaId}/insights`, {
@@ -101,13 +45,7 @@ async function fetchMediaInsights(mediaId) {
       access_token: IG_ACCESS_TOKEN
     });
 
-    const result = {
-      views:    0,
-      reach:    0,
-      saves:    0,
-      likes:    0,
-      comments: 0
-    };
+    const result = { views: 0, reach: 0, saves: 0, likes: 0, comments: 0 };
 
     for (const item of (data.data || [])) {
       const value = item.values?.[0]?.value ?? item.value ?? 0;
@@ -128,23 +66,12 @@ async function fetchMediaInsights(mediaId) {
   }
 }
 
-/**
- * Calcula el performance score.
- * Saves pesan más porque indican que la frase resonó de verdad.
- * Reach en denominador: normaliza frases vistas por muchos vs pocos.
- *
- * @returns {number|string} score redondeado a 4 decimales, o "" si no hay reach
- */
 function calcPerformanceScore({ likes, comments, saves, reach }) {
   if (!reach || reach === 0) return "";
   const raw = (saves * 3 + comments * 2 + likes) / reach;
   return Math.round(raw * 10000) / 10000;
 }
 
-/**
- * Calcula el engagement rate clásico.
- * @returns {number|string}
- */
 function calcEngagementRate({ likes, comments, saves, reach }) {
   if (!reach || reach === 0) return "";
   const raw = (likes + comments + saves) / reach;
@@ -187,15 +114,12 @@ async function main() {
     "fecha_metricas"
   ]);
 
-  // Límite inferior de fecha: posts más viejos que esto no se tocan
   const cutoff = Date.now() - METRICS_DAYS * 24 * 60 * 60 * 1000;
-
-  // Filas elegibles: publicadas, con instagram_media_id, dentro del período
   const eligible = [];
 
   for (let i = 1; i < rows.length; i++) {
-    const row         = rows[i];
-    const rowNumber   = i + 1;
+    const row        = rows[i];
+    const rowNumber  = i + 1;
 
     const estadoGeneral  = getCellValue(row, headerMap, "estado_general").toLowerCase();
     const mediaId        = getCellValue(row, headerMap, "instagram_media_id");
@@ -218,8 +142,8 @@ async function main() {
     return;
   }
 
-  let updated   = 0;
-  let failed    = 0;
+  let updated = 0;
+  let failed  = 0;
   const batchUpdates = [];
   const now = nowIsoLocal();
 
@@ -261,7 +185,6 @@ async function main() {
 
     updated++;
 
-    // Flush cada 10 filas para no acumular un batch enorme
     if (batchUpdates.length >= 80) {
       await updateCellsBatch(sheets, batchUpdates.splice(0));
       log.info("Batch parcial escrito al sheet");
@@ -270,7 +193,6 @@ async function main() {
     await sleep(API_DELAY_MS);
   }
 
-  // Flush final
   if (batchUpdates.length) {
     await updateCellsBatch(sheets, batchUpdates.splice(0));
   }

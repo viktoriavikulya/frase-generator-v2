@@ -1,144 +1,18 @@
+# Roadmap
 
-🧠 ESTADO ACTUAL (para tener contexto)
+## ✅ Completado
+- Pipeline completo: render → upload → publish (IG + FB)
+- Carruseles y singles
+- Métricas semanales (performance_score, saves, reach)
+- Selector de color desde el formulario
+- Tokens permanentes (usuario del sistema Meta)
+- Historial de 381+ posts con métricas
 
-Ya tienes:
+## 🔜 Próximo
+- Semana de puro carrusel para validar datos (forzar TIPO_INPUT=carousel en schedule)
+- Sistema de tendencias: Google Trends Colombia → Claude genera frases → aprobación manual → pipeline
+- API de X cuando esté disponible para reemplazar Google Trends
 
-✔ generación de frases (IA)
-✔ clasificación editorial
-✔ generación de captions (con criterio)
-✔ lógica de quitar captions
-✔ render automático (Playwright)
-✔ upload (Cloudinary)
-✔ publicación (Instagram API)
-✔ loop automático cada X tiempo
-
-👉 Traducción: ya tienes un content engine funcionando solo.
-
-🚀 ROADMAP DE LO QUE SIGUE
-🟢 NIVEL 1 — OPERACIÓN (corto plazo)
-
-Cosas que mejoran lo que ya tienes, sin romper nada.
-
-1. Logging y visibilidad
-ver qué está publicando exactamente
-ver cuándo falla algo
-[ ] logs más claros por fila
-[ ] saber qué salió sin caption vs con caption
-[ ] detectar errores silenciosos
-2. Control de frecuencia
-
-Ahora mismo:
-
-cada 2 horas fijo
-
-Pendiente:
-
-[ ] poder cambiar fácilmente WAIT_MS desde .env
-[ ] probar 1h vs 2h
-3. Control manual básico
-
-Para no depender 100% del automatismo:
-
-[ ] poder marcar una fila como “publicar ya”
-[ ] poder pausar el pipeline
-🟡 NIVEL 2 — CALIDAD DE CONTENIDO
-
-Aquí es donde subes nivel real.
-
-4. Afinar captions (lo que ya empezaste)
-[ ] captions más cortos automáticamente
-[ ] evitar captions que bajan el punch
-[ ] sistema:
-    - sin caption
-    - caption corto
-    - caption normal
-
-👉 esto ya lo tienes al 80%
-
-5. Score editorial (MUY IMPORTANTE)
-[ ] crear columna score_editorial
-[ ] priorizar frases fuertes
-
-Ejemplo:
-
-+2 sexo/deseo
-+2 ironía
-+2 corto
-+1 coqueteo
-
-👉 esto te evita publicar relleno
-
-6. Detección de frases “auto-suficientes”
-[ ] mejorar lógica de cuándo NO poner caption
-
-👉 ya empezaste con esto (bien)
-
-🟠 NIVEL 3 — INTELIGENCIA DEL SISTEMA
-
-Aquí deja de ser automatización y empieza a ser estrategia.
-
-7. Calendario editorial (lo que hablamos)
-[ ] meses_permitidos
-[ ] dias_permitidos
-[ ] fechas_especiales
-
-👉 evita publicar cosas fuera de contexto
-
-8. Selección inteligente de post
-
-Hoy:
-
-primera fila disponible
-
-Futuro:
-
-mejor frase disponible hoy
-9. Mezcla de contenido
-[ ] balancear:
-    - sexo/deseo
-    - relaciones
-    - sarcasmo
-    - coqueteo
-
-👉 evita que el feed se vuelva monotemático
-
-🔴 NIVEL 4 — GROWTH (aquí está el dinero)
-10. Métricas automáticas (lo que mencionaste)
-[ ] likes
-[ ] comments
-[ ] saves
-[ ] engagement_score
-
-👉 esto desbloquea TODO
-
-11. Aprendizaje automático (simple)
-[ ] detectar top performers
-[ ] replicar estilo
-12. A/B testing
-[ ] misma frase:
-    - con caption
-    - sin caption
-13. Variantes automáticas
-[ ] generar 3 versiones de una frase fuerte
-🟣 NIVEL 5 — EXPANSIÓN
-14. Carruseles
-[ ] varias frases en un post
-15. Reels (heavy)
-[ ] texto + audio
-16. Multicuenta
-[ ] varias páginas con estilos distintos
-
-Claro, solo lista:
-
-1. Integrar carrusel al pipeline automático
-2. Agregar columnas de programación (`tipo_fecha`, `fecha_objetivo`, `prioridad`)
-3. Filtrar publicaciones por momento adecuado (lógica de timing)
-4. Crear script de métricas (`likes`, `comments`, `saves`, `reach`)
-5. Guardar métricas en el Sheet
-6. Ranking automático de frases según rendimiento
-7. Ajuste automático de captions basado en métricas
-8. Variación visual (layouts, tipografías, estilos)
-9. Manejo de múltiples cuentas desde el mismo backend
-10. Logs centralizados del pipeline (historial de ejecuciones)
-11. Manejo de errores más robusto (reintentos, alerts)
-12. Panel simple de control (estado general del sistema)
+## 💡 Ideas futuras
+- Dashboard visual de métricas (top performers, tendencias por color)
+- Selección inteligente de post basada en patrones históricos
