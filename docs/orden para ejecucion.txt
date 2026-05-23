@@ -16,8 +16,11 @@ node scripts/dev/render-preview.js             # preview rápido de una frase
 
 
 ## Estos son solo para preview y ver si el codigo funciona bien 
+##correr una frase con todos lo colores
+node scripts/dev/render-all-retro-colors.js 
 
-node scripts/dev/render-all-retro-colors.js
-
+Correr una frases con solo un color
 node scripts/dev/render-preview.js
 
+## hacer un resumen del repo
+npx repomix@latest
