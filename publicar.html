@@ -4,166 +4,86 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Publicar · monacastrosa</title>
-  <link href="https://fonts.googleapis.com/css2?family=EB+Garamond:wght@400;500&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400;0,500;1,400&family=Noto+Serif:wght@700&display=swap" rel="stylesheet">
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
     :root[data-theme="dark"] {
-      --bg:           #080808;
-      --text:         #d9d3c9;
-      --text-title:   #e8e2d9;
-      --text-label:   #666;
-      --text-hint:    #444;
-      --text-muted:   #555;
-      --border:       #1e1e1e;
-      --border-focus: #666;
-      --placeholder:  #333;
-      --btn-main-bg:  #e8e2d9;
-      --btn-main-fg:  #080808;
-      --status-ok:    #4a7a4a;
-      --status-err:   #7a3030;
-      --toggle-bg:    #222;
-      --toggle-knob:  #d9d3c9;
+      --bg: #080808; --text: #d9d3c9; --text-title: #e8e2d9;
+      --text-label: #666; --text-hint: #444; --text-muted: #555;
+      --border: #1e1e1e; --border-focus: #666; --placeholder: #333;
+      --btn-main-bg: #e8e2d9; --btn-main-fg: #080808;
+      --status-ok: #4a7a4a; --status-err: #7a3030;
+      --toggle-bg: #222; --toggle-knob: #d9d3c9;
     }
-
     :root[data-theme="light"] {
-      --bg:           #f5f2ee;
-      --text:         #2a2520;
-      --text-title:   #1a1510;
-      --text-label:   #888;
-      --text-hint:    #aaa;
-      --text-muted:   #999;
-      --border:       #ddd;
-      --border-focus: #888;
-      --placeholder:  #bbb;
-      --btn-main-bg:  #1a1510;
-      --btn-main-fg:  #f5f2ee;
-      --status-ok:    #2e6e2e;
-      --status-err:   #8b2020;
-      --toggle-bg:    #ddd;
-      --toggle-knob:  #1a1510;
+      --bg: #f5f2ee; --text: #2a2520; --text-title: #1a1510;
+      --text-label: #888; --text-hint: #aaa; --text-muted: #999;
+      --border: #ddd; --border-focus: #888; --placeholder: #bbb;
+      --btn-main-bg: #1a1510; --btn-main-fg: #f5f2ee;
+      --status-ok: #2e6e2e; --status-err: #8b2020;
+      --toggle-bg: #ddd; --toggle-knob: #1a1510;
     }
 
-    body {
-      background: var(--bg);
-      color: var(--text);
-      font-family: -apple-system, BlinkMacSystemFont, sans-serif;
-      min-height: 100vh;
-      padding: 56px 24px 80px;
-      transition: background 0.25s, color 0.25s;
-    }
-
+    body { background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, sans-serif; min-height: 100vh; padding: 56px 24px 80px; transition: background 0.25s, color 0.25s; }
     .wrap { max-width: 420px; margin: 0 auto; }
-
     .topbar { display: flex; justify-content: flex-end; margin-bottom: 36px; }
-
-    .theme-toggle {
-      display: flex; align-items: center; gap: 8px;
-      cursor: pointer; background: none; border: none; padding: 4px;
-    }
-
+    .theme-toggle { display: flex; align-items: center; gap: 8px; cursor: pointer; background: none; border: none; padding: 4px; }
     .toggle-icon { font-size: 13px; color: var(--text-label); width: 16px; text-align: center; transition: color 0.25s; }
-
-    .toggle-track {
-      width: 40px; height: 22px;
-      background: var(--toggle-bg);
-      border-radius: 999px;
-      position: relative;
-      transition: background 0.25s;
-    }
-
-    .toggle-knob {
-      width: 16px; height: 16px;
-      background: var(--toggle-knob);
-      border-radius: 50%;
-      position: absolute;
-      top: 3px; left: 3px;
-      transition: transform 0.25s, background 0.25s;
-    }
-
+    .toggle-track { width: 40px; height: 22px; background: var(--toggle-bg); border-radius: 999px; position: relative; transition: background 0.25s; }
+    .toggle-knob { width: 16px; height: 16px; background: var(--toggle-knob); border-radius: 50%; position: absolute; top: 3px; left: 3px; transition: transform 0.25s, background 0.25s; }
     [data-theme="light"] .toggle-knob { transform: translateX(18px); }
-
     .eyebrow { font-size: 10px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--text-label); margin-bottom: 36px; }
-
-    .page-title {
-      font-family: 'EB Garamond', Georgia, serif;
-      font-size: 32px; font-weight: 400;
-      color: var(--text-title);
-      margin-bottom: 52px;
-      line-height: 1.2; letter-spacing: -0.01em;
-    }
-
+    .page-title { font-family: 'EB Garamond', Georgia, serif; font-size: 32px; font-weight: 400; color: var(--text-title); margin-bottom: 52px; line-height: 1.2; letter-spacing: -0.01em; }
     .field { margin-bottom: 32px; }
-
-    .field-label {
-      font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase;
-      color: var(--text-label); margin-bottom: 10px; display: block;
-    }
-
-    .field-input {
-      width: 100%; background: transparent;
-      border: none; border-bottom: 1px solid var(--border);
-      color: var(--text); font-size: 15px;
-      font-family: -apple-system, BlinkMacSystemFont, sans-serif;
-      padding: 8px 0 10px; outline: none;
-      transition: border-color 0.2s, color 0.25s;
-    }
-
+    .field-label { font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--text-label); margin-bottom: 10px; display: block; }
+    .field-input { width: 100%; background: transparent; border: none; border-bottom: 1px solid var(--border); color: var(--text); font-size: 15px; font-family: -apple-system, BlinkMacSystemFont, sans-serif; padding: 8px 0 10px; outline: none; transition: border-color 0.2s, color 0.25s; }
     .field-input::placeholder { color: var(--placeholder); }
     .field-input:focus { border-bottom-color: var(--border-focus); }
     textarea.field-input { resize: none; height: 100px; line-height: 1.7; }
-
     .field-hint { font-size: 11px; color: var(--text-hint); margin-top: 8px; }
-
     .tipo-tag { font-size: 11px; letter-spacing: 0.06em; color: var(--text-muted); margin-top: 8px; min-height: 16px; }
     .tipo-tag.over { color: var(--status-err); }
-
     .divider { border: none; border-top: 1px solid var(--border); margin: 36px 0; }
-
     .color-grid { display: flex; flex-wrap: wrap; gap: 7px; margin-bottom: 10px; }
-
-    .swatch {
-      width: 26px; height: 26px; border-radius: 50%;
-      cursor: pointer; border: 1.5px solid transparent; flex-shrink: 0;
-      transition: transform 0.15s, border-color 0.15s;
-    }
-    .swatch:hover    { transform: scale(1.18); }
+    .swatch { width: 26px; height: 26px; border-radius: 50%; cursor: pointer; border: 1.5px solid transparent; flex-shrink: 0; transition: transform 0.15s, border-color 0.15s; }
+    .swatch:hover { transform: scale(1.18); }
     .swatch.selected { border-color: var(--text-title); transform: scale(1.18); }
     .swatch.aleatorio { background: conic-gradient(#ff6b6b 0deg, #f4c400 90deg, #3d5afe 180deg, #e91e63 270deg, #ff6b6b 360deg); }
-
     .selected-label { font-size: 11px; color: var(--text-muted); min-height: 16px; letter-spacing: 0.04em; }
 
+    /* PREVIEW */
+    .preview-wrap { margin: 36px 0 0; opacity: 0; transform: translateY(8px); transition: opacity 0.3s, transform 0.3s; pointer-events: none; }
+    .preview-wrap.visible { opacity: 1; transform: translateY(0); pointer-events: auto; }
+    .preview-label { font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--text-label); margin-bottom: 12px; display: block; }
+    .preview-canvas-wrap { width: 100%; position: relative; }
+    .preview-canvas-wrap::before { content: ""; display: block; padding-top: 125%; }
+    .preview-canvas-wrap canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; border-radius: 8px; }
+    .carousel-nav { display: flex; align-items: center; justify-content: space-between; margin-top: 12px; }
+    .carousel-btn { background: none; border: 1px solid var(--border); color: var(--text-label); font-size: 16px; width: 32px; height: 32px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: border-color 0.15s, color 0.15s; }
+    .carousel-btn:hover { border-color: var(--border-focus); color: var(--text); }
+    .carousel-btn:disabled { opacity: 0.2; cursor: not-allowed; }
+    .carousel-dots { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; justify-content: center; }
+    .carousel-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--border-focus); opacity: 0.3; cursor: pointer; transition: opacity 0.15s, transform 0.15s; }
+    .carousel-dot.active { opacity: 1; transform: scale(1.3); }
+    .carousel-counter { font-size: 10px; letter-spacing: 0.1em; color: var(--text-label); min-width: 40px; text-align: right; }
+    .preview-carousel-nav { display: none; }
+    .preview-carousel-nav.active { display: flex; }
+
     .btns { display: flex; flex-direction: column; gap: 10px; margin-top: 44px; }
-
-    .btn-main {
-      width: 100%; background: var(--btn-main-bg); color: var(--btn-main-fg);
-      border: none; padding: 15px 24px;
-      font-family: -apple-system, BlinkMacSystemFont, sans-serif;
-      font-size: 11px; font-weight: 500; letter-spacing: 0.14em; text-transform: uppercase;
-      cursor: pointer; transition: opacity 0.15s, background 0.25s, color 0.25s;
-    }
-    .btn-main:hover    { opacity: 0.85; }
+    .btn-main { width: 100%; background: var(--btn-main-bg); color: var(--btn-main-fg); border: none; padding: 15px 24px; font-family: -apple-system, BlinkMacSystemFont, sans-serif; font-size: 11px; font-weight: 500; letter-spacing: 0.14em; text-transform: uppercase; cursor: pointer; transition: opacity 0.15s, background 0.25s, color 0.25s; }
+    .btn-main:hover { opacity: 0.85; }
     .btn-main:disabled { opacity: 0.25; cursor: not-allowed; }
-
-    .btn-ghost {
-      width: 100%; background: transparent; color: var(--text-label);
-      border: 1px solid var(--border); padding: 15px 24px;
-      font-family: -apple-system, BlinkMacSystemFont, sans-serif;
-      font-size: 11px; font-weight: 500; letter-spacing: 0.14em; text-transform: uppercase;
-      cursor: pointer; transition: color 0.15s, border-color 0.15s;
-    }
-    .btn-ghost:hover    { color: var(--text); border-color: var(--border-focus); }
+    .btn-ghost { width: 100%; background: transparent; color: var(--text-label); border: 1px solid var(--border); padding: 15px 24px; font-family: -apple-system, BlinkMacSystemFont, sans-serif; font-size: 11px; font-weight: 500; letter-spacing: 0.14em; text-transform: uppercase; cursor: pointer; transition: color 0.15s, border-color 0.15s; }
+    .btn-ghost:hover { color: var(--text); border-color: var(--border-focus); }
     .btn-ghost:disabled { opacity: 0.25; cursor: not-allowed; }
-
     #status { font-size: 12px; text-align: center; margin-top: 20px; min-height: 18px; letter-spacing: 0.04em; color: var(--text-muted); }
-    #status.ok    { color: var(--status-ok); }
+    #status.ok { color: var(--status-ok); }
     #status.error { color: var(--status-err); }
   </style>
 </head>
 <body>
-
 <div class="wrap">
-
   <div class="topbar">
     <button class="theme-toggle" onclick="toggleTheme()" aria-label="Cambiar modo">
       <span class="toggle-icon" id="theme-icon">☽</span>
@@ -179,16 +99,28 @@
     <input class="field-input" type="password" id="token" placeholder="ghp_..." autocomplete="current-password">
     <p class="field-hint">Necesita permiso <code>workflow</code> en este repo.</p>
   </div>
-
   <div class="field">
     <span class="field-label">Caption</span>
     <input class="field-input" type="text" id="caption" placeholder="y ya, sin drama.">
   </div>
-
   <div class="field">
     <span class="field-label">Frases</span>
-    <textarea class="field-input" id="frases" placeholder="Una por línea&#10;1 frase → single · 2–10 → carrusel" oninput="detectarTipo()"></textarea>
+    <textarea class="field-input" id="frases" placeholder="Una por línea&#10;1 frase → single · 2–10 → carrusel" oninput="onFrasesInput()"></textarea>
     <p class="tipo-tag" id="tipo-detectado"></p>
+  </div>
+
+  <!-- PREVIEW -->
+  <div class="preview-wrap" id="preview-wrap">
+    <span class="preview-label">Previsualización</span>
+    <div class="preview-canvas-wrap">
+      <canvas id="preview-canvas" width="1080" height="1350"></canvas>
+    </div>
+    <div class="preview-carousel-nav carousel-nav" id="carousel-nav">
+      <button class="carousel-btn" id="carousel-prev" onclick="carouselNav(-1)">&#8592;</button>
+      <div class="carousel-dots" id="carousel-dots"></div>
+      <span class="carousel-counter" id="carousel-counter"></span>
+      <button class="carousel-btn" id="carousel-next" onclick="carouselNav(1)">&#8594;</button>
+    </div>
   </div>
 
   <hr class="divider">
@@ -203,174 +135,621 @@
     <button class="btn-main"  id="btn-publicar" onclick="publicar(false)">Publicar ahora</button>
     <button class="btn-ghost" id="btn-guardar"  onclick="publicar(true)">Guardar en sheet</button>
   </div>
-
   <p id="status"></p>
-
 </div>
 
 <script>
-  const OWNER    = "imgifra";
-  const REPO     = "frase-generator-v2";
-  const WORKFLOW = "publish.yml";
+const OWNER    = "imgifra";
+const REPO     = "frase-generator-v2";
+const WORKFLOW = "publish.yml";
 
-  // COLORES_START
-  const COLORES = [
-    { hex: null,      label: "Aleatorio" },
-    { hex: "#f6f1e8", label: "retroWhite" },
-    { hex: "#0d0f14", label: "retroBlack" },
-    { hex: "#f4c400", label: "retroYellow" },
-    { hex: "#3d5afe", label: "retroBlue" },
-    { hex: "#e53935", label: "retroRed" },
-    { hex: "#0d0208", label: "retroWine" },
-    { hex: "#1a0033", label: "retroPurple" },
-    { hex: "#0a1628", label: "retroNavy" },
-    { hex: "#1c0a00", label: "retroCoffee" },
-    { hex: "#d9723e", label: "retroOrange" },
-    { hex: "#d4006a", label: "retroPink" },
-    { hex: "#b28c2c", label: "retroMustard" },
-    { hex: "#2e7d32", label: "retroGreen" },
-    { hex: "#2c4a3e", label: "retroForest" },
-    { hex: "#4a2040", label: "retroPlum" },
-    { hex: "#5c3317", label: "retroToasted" },
-    { hex: "#2e3f5c", label: "retroSlate" },
-    { hex: "#7a0020", label: "retroCrimson" },
-    { hex: "#b85c38", label: "retroTerra" },
-    { hex: "#5c3d8f", label: "retroLavender" },
-    { hex: "#4a5c2e", label: "retroOlive" },
-    { hex: "#c8e6c9", label: "retroMint" },
-    { hex: "#b3d9f2", label: "retroSky" },
-    { hex: "#d6cfc4", label: "retroAsh" },
-    { hex: "#0a0f0a", label: "retroNeon" },
-  ];
-  // COLORES_END
+const CANVAS_WIDTH  = 1080;
+const CANVAS_HEIGHT = 1350;
 
-  let colorSeleccionado = null;
+// COLORES_START
+const COLORES = [
+  { hex: null,      label: "Aleatorio" },
+  { hex: "#f6f1e8", label: "retroWhite" },
+  { hex: "#0d0f14", label: "retroBlack" },
+  { hex: "#f4c400", label: "retroYellow" },
+  { hex: "#3d5afe", label: "retroBlue" },
+  { hex: "#e53935", label: "retroRed" },
+  { hex: "#0d0208", label: "retroWine" },
+  { hex: "#1a0033", label: "retroPurple" },
+  { hex: "#0a1628", label: "retroNavy" },
+  { hex: "#1c0a00", label: "retroCoffee" },
+  { hex: "#d9723e", label: "retroOrange" },
+  { hex: "#d4006a", label: "retroPink" },
+  { hex: "#b28c2c", label: "retroMustard" },
+  { hex: "#2e7d32", label: "retroGreen" },
+  { hex: "#2c4a3e", label: "retroForest" },
+  { hex: "#4a2040", label: "retroPlum" },
+  { hex: "#5c3317", label: "retroToasted" },
+  { hex: "#2e3f5c", label: "retroSlate" },
+  { hex: "#7a0020", label: "retroCrimson" },
+  { hex: "#b85c38", label: "retroTerra" },
+  { hex: "#5c3d8f", label: "retroLavender" },
+  { hex: "#4a5c2e", label: "retroOlive" },
+  { hex: "#c8e6c9", label: "retroMint" },
+  { hex: "#b3d9f2", label: "retroSky" },
+  { hex: "#d6cfc4", label: "retroAsh" },
+  { hex: "#0a0f0a", label: "retroNeon" },
+];
+// COLORES_END
 
-  function toggleTheme() {
-    const html   = document.documentElement;
-    const isDark = html.getAttribute("data-theme") === "dark";
-    const next   = isDark ? "light" : "dark";
-    html.setAttribute("data-theme", next);
-    document.getElementById("theme-icon").textContent = next === "dark" ? "☽" : "○";
-    localStorage.setItem("theme", next);
+const RETRO_PALETTES = [
+  { id: "retroWhite",    bg: "#f6f1e8", frontColor: "#ff2bd6", midColor: "#ff2bd6", shadowColor: "#39ff14", patternColor: "#7f7a72", patternAlpha: 0.20 },
+  { id: "retroBlack",    bg: "#0d0f14", frontColor: "#39ff14", midColor: "#39ff14", shadowColor: "#c600eb", patternColor: "#39ff14", patternAlpha: 0.12 },
+  { id: "retroYellow",   bg: "#f4c400", frontColor: "#3d5afe", midColor: "#3d5afe", shadowColor: "#e53935", patternColor: "#8c2f2f", patternAlpha: 0.20 },
+  { id: "retroBlue",     bg: "#3d5afe", frontColor: "#e53935", midColor: "#e53935", shadowColor: "#f4c400", patternColor: "#f4c400", patternAlpha: 0.22 },
+  { id: "retroRed",      bg: "#e53935", frontColor: "#f4c400", midColor: "#f4c400", shadowColor: "#3d5afe", patternColor: "#f4c400", patternAlpha: 0.32 },
+  { id: "retroWine",     bg: "#0d0208", frontColor: "#c9184a", midColor: "#c9184a", shadowColor: "#6a0572", patternColor: null,      patternAlpha: 0.24 },
+  { id: "retroPurple",   bg: "#1a0033", frontColor: "#e040fb", midColor: "#e040fb", shadowColor: "#00e5ff", patternColor: null,      patternAlpha: 0.18 },
+  { id: "retroNavy",     bg: "#0a1628", frontColor: "#00e5ff", midColor: "#00e5ff", shadowColor: "#e040fb", patternColor: null,      patternAlpha: 0.18 },
+  { id: "retroCoffee",   bg: "#1c0a00", frontColor: "#ff6d00", midColor: "#ff6d00", shadowColor: "#c9184a", patternColor: null,      patternAlpha: 0.18 },
+  { id: "retroOrange",   bg: "#d9723e", frontColor: "#fff1d6", midColor: "#fff1d6", shadowColor: "#183f4a", patternColor: null,      patternAlpha: 0.30 },
+  { id: "retroPink",     bg: "#d4006a", frontColor: "#ffd600", midColor: "#ffd600", shadowColor: "#7a0045", patternColor: "#b8922e", patternAlpha: 0.60 },
+  { id: "retroMustard",  bg: "#b28c2c", frontColor: "#3d1a00", midColor: "#3d1a00", shadowColor: "#7a4800", patternColor: null,      patternAlpha: 0.18 },
+  { id: "retroGreen",    bg: "#2e7d32", frontColor: "#ffd600", midColor: "#ffd600", shadowColor: "#ff4d00", patternColor: null,      patternAlpha: 0.30 },
+  { id: "retroForest",   bg: "#2c4a3e", frontColor: "#e8d5a3", midColor: "#e8d5a3", shadowColor: "#0f1f19", patternColor: null,      patternAlpha: 0.18 },
+  { id: "retroPlum",     bg: "#4a2040", frontColor: "#f5c97a", midColor: "#f5c97a", shadowColor: "#1a0818", patternColor: null,      patternAlpha: 0.20 },
+  { id: "retroToasted",  bg: "#5c3317", frontColor: "#f2c98a", midColor: "#f2c98a", shadowColor: "#1e0a03", patternColor: "#f2c98a", patternAlpha: 0.22 },
+  { id: "retroSlate",    bg: "#2e3f5c", frontColor: "#e8f4f8", midColor: "#e8f4f8", shadowColor: "#0a1628", patternColor: null,      patternAlpha: 0.18 },
+  { id: "retroCrimson",  bg: "#7a0020", frontColor: "#ffd600", midColor: "#ffd600", shadowColor: "#2d000b", patternColor: null,      patternAlpha: 0.22 },
+  { id: "retroTerra",    bg: "#b85c38", frontColor: "#fff1d6", midColor: "#fff1d6", shadowColor: "#3d1200", patternColor: null,      patternAlpha: 0.25 },
+  { id: "retroLavender", bg: "#5c3d8f", frontColor: "#f5e6ff", midColor: "#f5e6ff", shadowColor: "#1a0033", patternColor: null,      patternAlpha: 0.20 },
+  { id: "retroOlive",    bg: "#4a5c2e", frontColor: "#e8d5a3", midColor: "#e8d5a3", shadowColor: "#1a2008", patternColor: null,      patternAlpha: 0.20 },
+  { id: "retroMint",     bg: "#c8e6c9", frontColor: "#0d2600", midColor: "#0d2600", shadowColor: "#ff6d00", patternColor: null,      patternAlpha: 0.18 },
+  { id: "retroSky",      bg: "#b3d9f2", frontColor: "#0a1f40", midColor: "#0a1f40", shadowColor: "#c2185b", patternColor: null,      patternAlpha: 0.18 },
+  { id: "retroAsh",      bg: "#d6cfc4", frontColor: "#1a0f00", midColor: "#1a0f00", shadowColor: "#7b3f00", patternColor: null,      patternAlpha: 0.20 },
+  { id: "retroNeon",     bg: "#0a0f0a", frontColor: "#b5ff00", midColor: "#b5ff00", shadowColor: "#ff2bd6", patternColor: "#b5ff00", patternAlpha: 0.10 },
+];
+
+const RETRO_3D_TEXT_CONFIG = {
+  boxWidthRatio: 0.76, boxHeightRatio: 0.62, centerYRatio: 0.50,
+  maxFont: 150, minFont: 58, lineHeightFactor: 0.88,
+  layoutTargetFill: 1, drawTargetFill: 1, justify: true,
+  minSpaceFactor: 0.70, maxSpaceFactor: 3.20,
+  singleWordPenalty: 180, manyWordsPenalty: 90, lastLineShortPenalty: 700,
+  fillPenalty: 260, spacePenalty: 80, minFontPenalty: 20,
+  maxJumpRatio: 1.65, variationBonusMin: 1.15, variationBonusMax: 1.65,
+  variationBonus: -35
+};
+
+const previewCanvas = document.getElementById("preview-canvas");
+const ctx = previewCanvas.getContext("2d");
+
+let colorSeleccionado = null;
+let carouselIndex     = 0;
+let currentFrases     = [];
+
+function hexToRgb(hex) {
+  hex = hex.replace("#", "");
+  return { r: parseInt(hex.slice(0,2),16), g: parseInt(hex.slice(2,4),16), b: parseInt(hex.slice(4,6),16) };
+}
+function hexToRgba(hex, alpha) {
+  const {r,g,b} = hexToRgb(hex);
+  return `rgba(${r},${g},${b},${alpha})`;
+}
+function getBrightness(hex) {
+  const {r,g,b} = hexToRgb(hex);
+  return (r*299 + g*587 + b*114) / 1000;
+}
+
+function getPaletteEntry(bg) {
+  return RETRO_PALETTES.find(p => p.bg === (bg||"").toLowerCase()) ?? null;
+}
+function getRetro3DBackground(hex) {
+  const n = (hex||"").toLowerCase();
+  const exact = RETRO_PALETTES.find(p => p.bg === n);
+  if (exact) return exact.bg;
+  const inp = hexToRgb(n);
+  const whiteDist = Math.pow(inp.r-255,2)+Math.pow(inp.g-255,2)+Math.pow(inp.b-255,2);
+  if (whiteDist < 2000) return "#f6f1e8";
+  const blackDist = Math.pow(inp.r-10,2)+Math.pow(inp.g-10,2)+Math.pow(inp.b-10,2);
+  if (blackDist < 2000) return "#0d0f14";
+  let nearest = RETRO_PALETTES[0].bg, minDist = Infinity;
+  for (const e of RETRO_PALETTES) {
+    const c = hexToRgb(e.bg);
+    const d = Math.pow(inp.r-c.r,2)+Math.pow(inp.g-c.g,2)+Math.pow(inp.b-c.b,2);
+    if (d < minDist) { minDist=d; nearest=e.bg; }
   }
+  return nearest;
+}
+function getRetro3DPalette(bg) {
+  const e = getPaletteEntry(bg);
+  if (!e) return { frontColor: "#f4c400", midColor: "#f4c400", shadowColor: "#3d5afe" };
+  return { frontColor: e.frontColor, midColor: e.midColor, shadowColor: e.shadowColor };
+}
 
-  (function initTheme() {
-    const saved = localStorage.getItem("theme");
-    if (saved && saved !== "dark") {
-      document.documentElement.setAttribute("data-theme", saved);
-      document.getElementById("theme-icon").textContent = "○";
-    }
-  })();
+function drawRetroPattern(targetCtx, bg) {
+  const palette      = getRetro3DPalette(bg);
+  const entry        = getPaletteEntry(bg);
+  const patternColor = entry?.patternColor ?? palette.shadowColor ?? palette.frontColor;
+  const alpha        = entry?.patternAlpha ?? (getBrightness(bg) < 100 ? 0.12 : 0.18);
 
-  function initColores() {
-    const grid  = document.getElementById("color-grid");
-    const light = ["#f6f1e8", "#f4c400", "#c8e6c9", "#b3d9f2", "#d6cfc4"];
-    COLORES.forEach(({ hex, label }) => {
-      const s = document.createElement("div");
-      s.className = "swatch" + (hex === null ? " aleatorio" : "");
-      if (hex === null) { s.classList.add("selected"); }
-      else {
-        s.style.background = hex;
-        if (light.includes(hex)) s.style.outline = "1px solid #2a2a2a";
+  targetCtx.save();
+  targetCtx.fillStyle    = hexToRgba(patternColor, alpha);
+  targetCtx.font         = "700 26px 'Noto Serif', serif";
+  targetCtx.textAlign    = "left";
+  targetCtx.textBaseline = "middle";
+
+  const text      = "@monacastrosa";
+  const amplitude = 10;
+
+  const charWidths = [];
+  for (const ch of text) charWidths.push(targetCtx.measureText(ch).width);
+  const totalTextWidth = charWidths.reduce((a,b) => a+b, 0);
+
+  const reps         = Math.round(CANVAS_WIDTH / (totalTextWidth + 10));
+  const stepX        = CANVAS_WIDTH / reps;
+  const scale        = stepX / totalTextWidth;
+  const avgCharWidth = (totalTextWidth / text.length) * scale;
+  const sampleStep   = Math.max(2, avgCharWidth * 0.5);
+  const rowsCount    = Math.round(CANVAS_HEIGHT / 28);
+  const stepY        = CANVAS_HEIGHT / rowsCount;
+  const startY       = -(stepY + amplitude);
+
+  for (let row = 0, baseY = startY; baseY < CANVAS_HEIGHT + stepY + amplitude; row++, baseY += stepY) {
+    const rowShift = (row % 2) * (stepX / 2);
+    const startX   = -stepX / 2 + rowShift;
+    for (let tileX = startX; tileX < CANVAS_WIDTH + stepX; tileX += stepX) {
+      let cursorX = tileX;
+      for (let i = 0; i < text.length; i++) {
+        const ch        = text[i];
+        const cw        = charWidths[i] * scale;
+        const cx        = cursorX + cw / 2;
+        const waveY     = baseY + Math.sin((2*Math.PI*cx) / CANVAS_WIDTH) * amplitude;
+        const waveYNext = baseY + Math.sin((2*Math.PI*(cx+sampleStep)) / CANVAS_WIDTH) * amplitude;
+        const angle     = Math.atan2(waveYNext - waveY, sampleStep);
+        targetCtx.save();
+        targetCtx.translate(cx, waveY);
+        targetCtx.rotate(angle);
+        targetCtx.scale(scale, 1);
+        targetCtx.fillText(ch, -charWidths[i]/2, 0);
+        targetCtx.restore();
+        cursorX += cw;
       }
-      s.title   = label;
-      s.onclick = () => seleccionarColor(hex, label, s);
-      grid.appendChild(s);
-    });
+    }
+  }
+  targetCtx.restore();
+}
+
+function addGrain(targetCtx, amount) {
+  const imageData = targetCtx.getImageData(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+  const data = imageData.data;
+  for (let i = 0; i < data.length; i += 4) {
+    const noise = (Math.random() - 0.5) * amount;
+    data[i]   += noise; data[i+1] += noise; data[i+2] += noise;
+  }
+  targetCtx.putImageData(imageData, 0, 0);
+}
+
+function drawRetroLines(normalizedBg) {
+  const palette = getRetro3DPalette(normalizedBg);
+  const margin = 38, len = 120, depth = 6;
+  ctx.save();
+  ctx.lineCap   = "square";
+  ctx.lineWidth = 10;
+
+  function drawCornerLines(paths, front, shadow) {
+    for (let i = depth; i >= 1; i--) {
+      const t = i / depth;
+      const extrudeColor = t > 0.7 ? shadow : t > 0.4 ? front : shadow;
+      ctx.strokeStyle = extrudeColor;
+      ctx.beginPath();
+      for (const [mx,my,lx,ly] of paths) { ctx.moveTo(mx+i, my+i); ctx.lineTo(lx+i, ly+i); }
+      ctx.stroke();
+    }
+    ctx.strokeStyle = front;
+    ctx.beginPath();
+    for (const [mx,my,lx,ly] of paths) { ctx.moveTo(mx, my); ctx.lineTo(lx, ly); }
+    ctx.stroke();
   }
 
-  function seleccionarColor(hex, label, el) {
-    document.querySelectorAll(".swatch").forEach(s => s.classList.remove("selected"));
-    el.classList.add("selected");
-    colorSeleccionado = hex;
-    document.getElementById("color-label").textContent =
-      hex === null ? "Aleatorio" : `${label} · ${hex}`;
+  const front  = palette.frontColor;
+  const shadow = palette.shadowColor;
+
+  drawCornerLines([
+    [CANVAS_WIDTH - margin - len, margin, CANVAS_WIDTH - margin, margin],
+    [CANVAS_WIDTH - margin, margin, CANVAS_WIDTH - margin, margin + len]
+  ], front, shadow);
+
+  drawCornerLines([
+    [margin, CANVAS_HEIGHT - margin - len, margin, CANVAS_HEIGHT - margin],
+    [margin, CANVAS_HEIGHT - margin, margin + len, CANVAS_HEIGHT - margin]
+  ], front, shadow);
+
+  ctx.restore();
+}
+
+function drawCornerTagRetro3D(normalizedBg) {
+  const tag      = "@monacastrosa";
+  const palette  = getRetro3DPalette(normalizedBg);
+  const fontSize = 40, depth = 3;
+
+  ctx.save();
+  ctx.font         = `700 ${fontSize}px 'Noto Serif', serif`;
+  ctx.textAlign    = "center";
+  ctx.textBaseline = "top";
+
+  for (let i = depth; i >= 1; i--) {
+    const t = i / depth;
+    const extrudeColor = t > 2/3 ? palette.shadowColor : t > 1/3 ? palette.frontColor : palette.shadowColor;
+    ctx.fillStyle = extrudeColor;
+    ctx.fillText(tag, CANVAS_WIDTH/2 + i, 35 + i);
+  }
+  ctx.fillStyle = palette.frontColor;
+  ctx.fillText(tag, CANVAS_WIDTH/2, 35);
+  ctx.restore();
+}
+
+function layoutTextBalanced(text, boxWidth, boxHeight, ctxLocal, options) {
+  const cfg   = { ...RETRO_3D_TEXT_CONFIG, ...options };
+  const words = text.split(/\s+/).filter(Boolean);
+  if (!words.length) return [];
+
+  function setFont(size) { ctxLocal.font = `700 ${size}px 'Noto Serif', serif`; }
+
+  function measureWords(lineWords, fontSize) {
+    setFont(fontSize);
+    const naturalSpace = ctxLocal.measureText(" ").width;
+    const wordWidths   = lineWords.map(w => ctxLocal.measureText(w).width);
+    const wordsWidth   = wordWidths.reduce((a,b) => a+b, 0);
+    const gaps         = lineWords.length - 1;
+    return { naturalSpace, wordWidths, wordsWidth, naturalWidth: wordsWidth + naturalSpace*gaps, gaps };
   }
 
-  function parseFrases() {
-    return document.getElementById("frases").value
-      .split("\n").map(f => f.trim()).filter(Boolean);
+  function getBestFontForLine(lineWords) {
+    let low = cfg.minFont, high = cfg.maxFont, best = cfg.minFont;
+    while (low <= high) {
+      const mid = Math.floor((low+high)/2);
+      if (measureWords(lineWords, mid).naturalWidth <= boxWidth * cfg.layoutTargetFill) { best=mid; low=mid+1; } else high=mid-1;
+    }
+    return best;
   }
 
-  function setStatus(msg, cls) {
-    const el = document.getElementById("status");
-    el.textContent = msg; el.className = cls;
+  function scoreLine(lineWords, isLastLine) {
+    const fontSize     = getBestFontForLine(lineWords);
+    const m            = measureWords(lineWords, fontSize);
+    const fillRatio    = m.naturalWidth / boxWidth;
+    const desiredWidth = boxWidth * cfg.layoutTargetFill;
+    let score = 0;
+    score += Math.pow(cfg.layoutTargetFill - fillRatio, 2) * cfg.fillPenalty;
+    if (lineWords.length === 1 && words.length > 4) score += cfg.singleWordPenalty;
+    if (lineWords.length >= 4) score += Math.pow(lineWords.length-3, 2) * cfg.manyWordsPenalty;
+    if (isLastLine && fillRatio < 0.55 && words.length > 6) score += Math.pow(0.55-fillRatio, 2) * cfg.lastLineShortPenalty;
+    if (m.gaps > 0) {
+      const rawSpace        = (desiredWidth - m.wordsWidth) / m.gaps;
+      const maxAllowedSpace = m.naturalSpace * cfg.maxSpaceFactor;
+      if (rawSpace > maxAllowedSpace) score += Math.pow(rawSpace/m.naturalSpace - cfg.maxSpaceFactor, 2) * cfg.spacePenalty;
+    }
+    if (fontSize <= cfg.minFont + 2) score += cfg.minFontPenalty;
+    return { score, fontSize, fillRatio };
   }
 
-  function detectarTipo() {
-    const frases = parseFrases();
-    const el     = document.getElementById("tipo-detectado");
-    if (frases.length === 0)      { el.textContent = ""; el.className = "tipo-tag"; }
-    else if (frases.length === 1) { el.textContent = "Single"; el.className = "tipo-tag"; }
-    else if (frases.length <= 10) { el.textContent = `Carrusel · ${frases.length} frases`; el.className = "tipo-tag"; }
-    else                          { el.textContent = `Máximo 10 frases (tienes ${frases.length})`; el.className = "tipo-tag over"; }
-  }
+  const n        = words.length;
+  let bestLayout = null, bestScore = Infinity;
+  const minLines = Math.max(2, Math.ceil(n/5));
+  const maxLines = Math.min(n, Math.max(minLines, Math.ceil(n/2)+2));
 
-  async function publicar(soloSheet) {
-    const token   = document.getElementById("token").value.trim();
-    const caption = document.getElementById("caption").value.trim();
-    const frases  = parseFrases();
-    const bp = document.getElementById("btn-publicar");
-    const bg = document.getElementById("btn-guardar");
+  for (let lineCount = minLines; lineCount <= maxLines; lineCount++) {
+    const dp   = Array.from({length: lineCount+1}, () => Array(n+1).fill(Infinity));
+    const prev = Array.from({length: lineCount+1}, () => Array(n+1).fill(-1));
+    const meta = Array.from({length: lineCount+1}, () => Array(n+1).fill(null));
+    dp[0][0] = 0;
 
-    setStatus("", "");
-    if (!token)             { setStatus("Falta el token de GitHub.", "error"); return; }
-    if (!caption)           { setStatus("Falta el caption.", "error"); return; }
-    if (frases.length < 1)  { setStatus("Escribe al menos una frase.", "error"); return; }
-    if (frases.length > 10) { setStatus("Máximo 10 frases.", "error"); return; }
-
-    const tipo = frases.length === 1 ? "single" : "carousel";
-    bp.disabled = true; bg.disabled = true;
-    setStatus(soloSheet ? "Guardando en sheet..." : "Publicando...", "");
-
-    try {
-      const res = await fetch(
-        `https://api.github.com/repos/${OWNER}/${REPO}/actions/workflows/${WORKFLOW}/dispatches`,
-        {
-          method: "POST",
-          headers: {
-            "Authorization": `Bearer ${token}`,
-            "Accept":        "application/vnd.github+json",
-            "Content-Type":  "application/json"
-          },
-          body: JSON.stringify({
-            ref: "main",
-            inputs: {
-              frases:          frases.join("||"),
-              caption,
-              tipo,
-              color:           colorSeleccionado || "",
-              solo_registrar:  soloSheet ? "true" : "false"
-            }
-          })
+    for (let line = 1; line <= lineCount; line++) {
+      for (let end = line; end <= n; end++) {
+        for (let start = line-1; start < end; start++) {
+          const lineWords  = words.slice(start, end);
+          const isLastLine = line === lineCount;
+          const result     = scoreLine(lineWords, isLastLine);
+          const candidate  = dp[line-1][start] + result.score;
+          if (candidate < dp[line][end]) { dp[line][end]=candidate; prev[line][end]=start; meta[line][end]=result; }
         }
-      );
-
-      if (res.status === 204) {
-        setStatus(
-          soloSheet
-            ? "Guardado en sheet. Se publicará en el próximo horario."
-            : `Enviado como ${tipo}. En 2–3 minutos estará publicado.`,
-          "ok"
-        );
-        document.getElementById("frases").value            = "";
-        document.getElementById("caption").value           = "";
-        document.getElementById("tipo-detectado").textContent = "";
-        document.getElementById("tipo-detectado").className   = "tipo-tag";
-      } else {
-        const data = await res.json();
-        setStatus(`Error: ${data.message}`, "error");
       }
-    } catch (err) {
-      setStatus(`Error: ${err.message}`, "error");
-    } finally {
-      bp.disabled = false; bg.disabled = false;
     }
+
+    if (dp[lineCount][n] === Infinity) continue;
+    const lines = [];
+    let end = n;
+    for (let line = lineCount; line >= 1; line--) {
+      const start = prev[line][end];
+      if (start < 0) { lines.length=0; break; }
+      lines.unshift({ text: words.slice(start,end).join(" "), words: words.slice(start,end), fontSize: meta[line][end].fontSize, fillRatio: meta[line][end].fillRatio });
+      end = start;
+    }
+    if (!lines.length) continue;
+
+    const totalHeight = lines.reduce((acc,item) => acc + item.fontSize*cfg.lineHeightFactor, 0);
+    if (totalHeight > boxHeight) continue;
+
+    let jumpPenalty = 0;
+    for (let i = 0; i < lines.length-1; i++) {
+      const ratio = Math.max(lines[i].fontSize, lines[i+1].fontSize) / Math.min(lines[i].fontSize, lines[i+1].fontSize);
+      if (ratio > cfg.maxJumpRatio) jumpPenalty += Math.pow(ratio-cfg.maxJumpRatio, 2) * 100;
+    }
+    const sizes     = lines.map(l => l.fontSize);
+    const variation = Math.max(...sizes) / Math.min(...sizes);
+    let variationBonus = 0;
+    if (variation > cfg.variationBonusMin && variation < cfg.variationBonusMax) variationBonus = cfg.variationBonus;
+
+    const finalScore = dp[lineCount][n] + jumpPenalty + variationBonus;
+    if (finalScore < bestScore) { bestScore=finalScore; bestLayout=lines; }
   }
 
-  initColores();
-</script>
+  if (!bestLayout) return [{ text, words, fontSize: cfg.minFont, fillRatio: 1 }];
+  return bestLayout;
+}
 
+function drawRetro3DLine(line, x, y, opts) {
+  const cfg = { ...RETRO_3D_TEXT_CONFIG, ...opts };
+  const { frontColor, midColor, shadowColor, fontSize, boxWidth, targetFill, justify, minSpaceFactor, maxSpaceFactor } = cfg;
+
+  const depth = Math.max(4, Math.round(fontSize * 0.06));
+  const words = line.split(/\s+/).filter(Boolean);
+  if (!words.length) return;
+
+  const targetW = boxWidth * targetFill;
+  ctx.save();
+  ctx.font         = `700 ${fontSize}px 'Noto Serif', serif`;
+  ctx.textBaseline = "middle";
+
+  const wordWidths   = words.map(w => ctx.measureText(w).width);
+  const totalWordsW  = wordWidths.reduce((a,b) => a+b, 0);
+  const gaps         = words.length - 1;
+  const naturalSpace = ctx.measureText(" ").width;
+  const minSpace     = naturalSpace * minSpaceFactor;
+  const maxSpace     = naturalSpace * maxSpaceFactor;
+  let spaceSize = naturalSpace;
+  if (gaps > 0 && justify) {
+    const rawSpace = (targetW - totalWordsW) / gaps;
+    spaceSize = Math.max(minSpace, Math.min(rawSpace, maxSpace));
+  }
+  const actualLineW = totalWordsW + spaceSize * gaps;
+
+  function getExtrudeColor(i) {
+    const t = i / depth;
+    if (t > 0.70) return shadowColor;
+    if (t > 0.40) return midColor;
+    return shadowColor;
+  }
+
+  function drawWord(word, wx) {
+    ctx.textAlign = "left";
+    for (let i = depth; i >= 1; i--) { ctx.fillStyle = getExtrudeColor(i); ctx.fillText(word, wx+i, y+i); }
+    ctx.fillStyle = frontColor;
+    ctx.fillText(word, wx, y);
+  }
+
+  if (gaps === 0) {
+    ctx.textAlign = "center";
+    for (let i = depth; i >= 1; i--) { ctx.fillStyle = getExtrudeColor(i); ctx.fillText(words[0], x+i, y+i); }
+    ctx.fillStyle = frontColor;
+    ctx.fillText(words[0], x, y);
+    ctx.restore(); return;
+  }
+
+  let cursorX = x - actualLineW / 2;
+  for (let i = 0; i < words.length; i++) {
+    drawWord(words[i], cursorX);
+    cursorX += wordWidths[i] + spaceSize;
+  }
+  ctx.restore();
+}
+
+function drawRetro3D(rawText, bg) {
+  const cfg  = RETRO_3D_TEXT_CONFIG;
+  ctx.save();
+
+  const text = rawText.trim().replace(/([,;:.!?])(\S)/g, "$1 $2");
+  if (!text) { ctx.restore(); return; }
+
+  const normalizedBg = getRetro3DBackground(bg);
+
+  ctx.fillStyle = normalizedBg;
+  ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+
+  const bgCanvas    = document.createElement("canvas");
+  bgCanvas.width    = CANVAS_WIDTH;
+  bgCanvas.height   = CANVAS_HEIGHT;
+  const bgCtx       = bgCanvas.getContext("2d");
+  bgCtx.fillStyle   = normalizedBg;
+  bgCtx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+  drawRetroPattern(bgCtx, normalizedBg);
+  addGrain(bgCtx, 14);
+
+  ctx.drawImage(bgCanvas, 0, 0);
+  drawRetroLines(normalizedBg);
+  drawCornerTagRetro3D(normalizedBg);
+
+  const boxWidth  = CANVAS_WIDTH  * cfg.boxWidthRatio;
+  const boxHeight = CANVAS_HEIGHT * cfg.boxHeightRatio;
+  const centerX   = CANVAS_WIDTH  / 2;
+  const centerY   = CANVAS_HEIGHT * cfg.centerYRatio;
+
+  const lines = layoutTextBalanced(text, boxWidth, boxHeight, ctx, {
+    maxFont: cfg.maxFont, minFont: cfg.minFont,
+    lineHeightFactor: cfg.lineHeightFactor, layoutTargetFill: cfg.layoutTargetFill
+  });
+
+  ctx.textAlign    = "center";
+  ctx.textBaseline = "middle";
+
+  const palette     = getRetro3DPalette(normalizedBg);
+  const totalHeight = lines.reduce((acc,item) => acc + item.fontSize*cfg.lineHeightFactor, 0);
+  let y = centerY - totalHeight / 2;
+
+  for (const item of lines) {
+    const lineHeight = item.fontSize * cfg.lineHeightFactor;
+    y += lineHeight / 2;
+    drawRetro3DLine(item.text, centerX, y, {
+      frontColor:     palette.frontColor,
+      midColor:       palette.midColor,
+      shadowColor:    palette.shadowColor,
+      fontSize:       item.fontSize,
+      boxWidth,
+      targetFill:     cfg.drawTargetFill,
+      justify:        cfg.justify,
+      minSpaceFactor: cfg.minSpaceFactor,
+      maxSpaceFactor: cfg.maxSpaceFactor
+    });
+    y += lineHeight / 2;
+  }
+
+  ctx.restore();
+}
+
+function updatePreview() {
+  const wrap = document.getElementById("preview-wrap");
+  if (!currentFrases.length) { wrap.classList.remove("visible"); return; }
+  wrap.classList.add("visible");
+
+  const frase = currentFrases[carouselIndex] || currentFrases[0];
+  const bg    = colorSeleccionado || "#f4c400";
+  drawRetro3D(frase, bg);
+
+  const nav = document.getElementById("carousel-nav");
+  if (currentFrases.length > 1) {
+    nav.classList.add("active");
+    renderDots(currentFrases.length);
+    updateCarouselNav(currentFrases.length);
+  } else {
+    nav.classList.remove("active");
+  }
+}
+
+function renderDots(total) {
+  const el = document.getElementById("carousel-dots");
+  el.innerHTML = "";
+  for (let i = 0; i < total; i++) {
+    const d = document.createElement("div");
+    d.className = "carousel-dot" + (i === carouselIndex ? " active" : "");
+    d.onclick   = () => { carouselIndex=i; updatePreview(); };
+    el.appendChild(d);
+  }
+}
+
+function updateCarouselNav(total) {
+  document.getElementById("carousel-prev").disabled    = carouselIndex === 0;
+  document.getElementById("carousel-next").disabled    = carouselIndex === total-1;
+  document.getElementById("carousel-counter").textContent = `${carouselIndex+1} / ${total}`;
+}
+
+function carouselNav(dir) {
+  carouselIndex = Math.max(0, Math.min(carouselIndex+dir, currentFrases.length-1));
+  updatePreview();
+}
+
+function toggleTheme() {
+  const html = document.documentElement;
+  const next = html.getAttribute("data-theme") === "dark" ? "light" : "dark";
+  html.setAttribute("data-theme", next);
+  document.getElementById("theme-icon").textContent = next === "dark" ? "☽" : "○";
+  localStorage.setItem("theme", next);
+}
+(function initTheme() {
+  const saved = localStorage.getItem("theme");
+  if (saved && saved !== "dark") {
+    document.documentElement.setAttribute("data-theme", saved);
+    document.getElementById("theme-icon").textContent = "○";
+  }
+})();
+
+function initColores() {
+  const grid  = document.getElementById("color-grid");
+  const light = ["#f6f1e8","#f4c400","#c8e6c9","#b3d9f2","#d6cfc4"];
+  COLORES.forEach(({hex, label}) => {
+    const s = document.createElement("div");
+    s.className = "swatch" + (hex === null ? " aleatorio" : "");
+    if (hex === null) s.classList.add("selected");
+    else {
+      s.style.background = hex;
+      if (light.includes(hex)) s.style.outline = "1px solid #2a2a2a";
+    }
+    s.title   = label;
+    s.onclick = () => seleccionarColor(hex, label, s);
+    grid.appendChild(s);
+  });
+}
+
+function seleccionarColor(hex, label, el) {
+  document.querySelectorAll(".swatch").forEach(s => s.classList.remove("selected"));
+  el.classList.add("selected");
+  colorSeleccionado = hex;
+  document.getElementById("color-label").textContent = hex === null ? "Aleatorio" : `${label} · ${hex}`;
+  updatePreview();
+}
+
+function parseFrases() {
+  return document.getElementById("frases").value.split("\n").map(f => f.trim()).filter(Boolean);
+}
+function setStatus(msg, cls) {
+  const el = document.getElementById("status");
+  el.textContent = msg; el.className = cls;
+}
+function onFrasesInput() {
+  detectarTipo();
+  currentFrases = parseFrases();
+  carouselIndex = 0;
+  updatePreview();
+}
+function detectarTipo() {
+  const frases = parseFrases();
+  const el     = document.getElementById("tipo-detectado");
+  if (!frases.length)         { el.textContent=""; el.className="tipo-tag"; }
+  else if (frases.length===1) { el.textContent="Single"; el.className="tipo-tag"; }
+  else if (frases.length<=10) { el.textContent=`Carrusel · ${frases.length} frases`; el.className="tipo-tag"; }
+  else                        { el.textContent=`Máximo 10 frases (tienes ${frases.length})`; el.className="tipo-tag over"; }
+}
+
+async function publicar(soloSheet) {
+  const token   = document.getElementById("token").value.trim();
+  const caption = document.getElementById("caption").value.trim();
+  const frases  = parseFrases();
+  const bp = document.getElementById("btn-publicar");
+  const bg = document.getElementById("btn-guardar");
+
+  setStatus("", "");
+  if (!token)            { setStatus("Falta el token de GitHub.", "error"); return; }
+  if (!caption)          { setStatus("Falta el caption.", "error"); return; }
+  if (frases.length < 1) { setStatus("Escribe al menos una frase.", "error"); return; }
+  if (frases.length > 10){ setStatus("Máximo 10 frases.", "error"); return; }
+
+  const tipo = frases.length === 1 ? "single" : "carousel";
+  bp.disabled = true; bg.disabled = true;
+  setStatus(soloSheet ? "Guardando en sheet..." : "Publicando...", "");
+
+  try {
+    const res = await fetch(
+      `https://api.github.com/repos/${OWNER}/${REPO}/actions/workflows/${WORKFLOW}/dispatches`,
+      {
+        method: "POST",
+        headers: { "Authorization": `Bearer ${token}`, "Accept": "application/vnd.github+json", "Content-Type": "application/json" },
+        body: JSON.stringify({ ref: "main", inputs: { frases: frases.join("||"), caption, tipo, color: colorSeleccionado||"", solo_registrar: soloSheet?"true":"false" } })
+      }
+    );
+    if (res.status === 204) {
+      setStatus(soloSheet ? "Guardado en sheet. Se publicará en el próximo horario." : `Enviado como ${tipo}. En 2–3 minutos estará publicado.`, "ok");
+      document.getElementById("frases").value = "";
+      document.getElementById("caption").value = "";
+      document.getElementById("tipo-detectado").textContent = "";
+      document.getElementById("tipo-detectado").className   = "tipo-tag";
+      document.getElementById("preview-wrap").classList.remove("visible");
+      currentFrases = []; carouselIndex = 0;
+    } else {
+      const data = await res.json();
+      setStatus(`Error: ${data.message}`, "error");
+    }
+  } catch (err) {
+    setStatus(`Error: ${err.message}`, "error");
+  } finally {
+    bp.disabled = false; bg.disabled = false;
+  }
+}
+
+initColores();
+</script>
 </body>
 </html>
