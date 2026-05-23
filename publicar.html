@@ -223,6 +223,12 @@ let colorSeleccionado = null;
 let carouselIndex     = 0;
 let currentFrases     = [];
 
+// ── Logo asset ──
+const retroLogoImage  = new Image();
+retroLogoImage.crossOrigin = "anonymous";
+retroLogoImage.src    = "https://raw.githubusercontent.com/imgifra/frase-generator-v2/main/assets/marca3.png";
+retroLogoImage.onload = () => { if (currentFrases.length) updatePreview(); };
+
 function hexToRgb(hex) {
   hex = hex.replace("#", "");
   return { r: parseInt(hex.slice(0,2),16), g: parseInt(hex.slice(2,4),16), b: parseInt(hex.slice(4,6),16) };
@@ -539,6 +545,19 @@ function drawRetro3DLine(line, x, y, opts) {
   ctx.restore();
 }
 
+// ── drawRetroCornerLogo — copia de js/mode-retro3d.js ──
+function drawRetroCornerLogo() {
+  if (!retroLogoImage.complete || retroLogoImage.naturalWidth === 0) return;
+  const logoSize = 260;
+  const margin   = 30;
+  const x = CANVAS_WIDTH  - logoSize - margin;
+  const y = CANVAS_HEIGHT - logoSize - margin;
+  ctx.save();
+  ctx.globalAlpha = 1;
+  ctx.drawImage(retroLogoImage, x, y, logoSize, logoSize);
+  ctx.restore();
+}
+
 function drawRetro3D(rawText, bg) {
   const cfg  = RETRO_3D_TEXT_CONFIG;
   ctx.save();
@@ -598,6 +617,7 @@ function drawRetro3D(rawText, bg) {
     y += lineHeight / 2;
   }
 
+  drawRetroCornerLogo();
   ctx.restore();
 }
 
