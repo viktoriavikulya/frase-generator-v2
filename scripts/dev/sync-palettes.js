@@ -41,13 +41,22 @@ replaceMarkedBlock(
 
 console.log("✔  js/palettes.js actualizado");
 
-// ── 2. publicar.html ─────────────────────────────────────────────────────────
+// ── 2. publicar.html — COLORES ───────────────────────────────────────────────
 
 replaceMarkedBlock(
   PUBLICAR,
   "COLORES_START",
   "COLORES_END",
   buildColoresBlock()
+);
+
+// ── 3. publicar.html — RETRO_PALETTES para preview ───────────────────────────
+
+replaceMarkedBlock(
+  PUBLICAR,
+  "RETRO_PALETTES_START",
+  "RETRO_PALETTES_END",
+  buildPalettesBlock()
 );
 
 console.log("✔  publicar.html actualizado");
