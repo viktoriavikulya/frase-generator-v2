@@ -322,7 +322,8 @@ async function main() {
   groupLogger.info("Carrusel seleccionado para render");
 
   const lastPublishedBg = getLastPublishedBg(rows, headerMap);
-  const carouselBg = getRandomColorExcept(lastPublishedBg);
+  const sheetBg = getCellValue(groupRows[0].values, headerMap, "background_color");
+  const carouselBg = sheetBg ? sheetBg : getRandomColorExcept(lastPublishedBg);
 
   try {
     await markCarouselAsProcessing({
