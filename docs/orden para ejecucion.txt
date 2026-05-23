@@ -1,26 +1,31 @@
 # Ejecución manual (desarrollo local)
 
-## Levantar el servidor de render
+## 1. Levantar el servidor de render
+En una terminal:
 npx http-server . -p 8080
 
-## Correr el pipeline completo (en otra terminal)
+## 2. Correr el pipeline
+En otra terminal:
+
+# Pipeline completo (auto: carousel primero, cae a single si no hay)
 node scripts/pipeline/run-once.js
 
-## Solo un tipo específico
+# Solo un tipo específico
 TIPO_INPUT=carousel node scripts/pipeline/run-once.js
-TIPO_INPUT=single node scripts/pipeline/run-once.js
+TIPO_INPUT=single   node scripts/pipeline/run-once.js
 
-## Herramientas de desarrollo
-node scripts/dev/render-all-retro-colors.js   # previsualiza todos los colores
-node scripts/dev/render-preview.js             # preview rápido de una frase
+## 3. Herramientas de desarrollo
 
+# Previsualiza la frase con todas las paletas de color
+node scripts/dev/render-all-retro-colors.js
 
-## Estos son solo para preview y ver si el codigo funciona bien 
-##correr una frase con todos lo colores
-node scripts/dev/render-all-retro-colors.js 
-
-Correr una frases con solo un color
+# Preview rápido de una sola frase con un color específico
 node scripts/dev/render-preview.js
 
-## hacer un resumen del repo
+## 4. Otros
+
+# Sincronizar paletas después de editar retro-palettes.js
+npm run sync-palettes
+
+# Generar resumen del repo
 npx repomix@latest
