@@ -27,6 +27,11 @@ const RETRO_PALETTES = [
   { id: "retroSky",      bg: "#b3d9f2", frontColor: "#0a1f40", midColor: "#0a1f40", shadowColor: "#c2185b", patternColor: null     , patternAlpha: 0.18, inCycle: true },
   { id: "retroAsh",      bg: "#d6cfc4", frontColor: "#1a0f00", midColor: "#1a0f00", shadowColor: "#7b3f00", patternColor: null     , patternAlpha: 0.20, inCycle: true },
   { id: "retroNeon",     bg: "#0a0f0a", frontColor: "#b5ff00", midColor: "#b5ff00", shadowColor: "#ff2bd6", patternColor: "#b5ff00", patternAlpha: 0.10, inCycle: true },
+  { id: "retroTeal",     bg: "#00695c", frontColor: "#ffd600", midColor: "#ffd600", shadowColor: "#00e5ff", patternColor: null     , patternAlpha: 0.18, inCycle: true },
+  { id: "retroGrayDark", bg: "#2e2e2e", frontColor: "#f5f5f5", midColor: "#f5f5f5", shadowColor: "#ff6d00", patternColor: "#f5f5f5", patternAlpha: 0.10, inCycle: true },
+  { id: "retroBabyPink", bg: "#f8bbd0", frontColor: "#4a0030", midColor: "#4a0030", shadowColor: "#880e4f", patternColor: null     , patternAlpha: 0.20, inCycle: true },
+  { id: "retroLime",     bg: "#76c442", frontColor: "#1a2e00", midColor: "#1a2e00", shadowColor: "#003300", patternColor: null     , patternAlpha: 0.22, inCycle: true },
+  { id: "retroSkyDeep",  bg: "#1565c0", frontColor: "#e3f2fd", midColor: "#e3f2fd", shadowColor: "#0d47a1", patternColor: null     , patternAlpha: 0.18, inCycle: true },
 ];
 // RETRO_PALETTES_END
 
