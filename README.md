@@ -61,7 +61,7 @@ Trae para cada post: views, reach, saves, likes, comments, replies y calcula un 
 **Telegram te avisó de un error:**
 1. Abrí el Google Sheet y buscá la fila con `estado_general = error`
 2. Fijate en las columnas `instagram_error`, `facebook_error`, `threads_error` para ver qué plataforma falló
-3. Si la imagen ya estaba subida (tiene `cloudinary_url`), usá el input `publish_only` con el `row_id` para republicar sin re-renderizar
+3. Si la imagen ya estaba subida (tiene `media_url`), usá el input `publish_only` con el `row_id` para republicar sin re-renderizar
 4. Si falló desde el render, usá `reintentar: true` para que el pipeline lo tome de nuevo
 
 **Una fila quedó bloqueada (`lock_status = locked`):**
@@ -94,7 +94,7 @@ node scripts/dev/render-all-retro-colors.js # previsualiza las 26 paletas
 
 # Sincronizar paletas (después de editar retro-palettes.js)
 npm run sync-palettes
-npm run check-palettes  # verificar que están sincronizadas
+npm run check-palettes-sync  # verificar que están sincronizadas
 ```
 
 ---

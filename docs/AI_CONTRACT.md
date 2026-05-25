@@ -9,7 +9,7 @@ Léela completa antes de tocar código.
 
 Sistema automatizado de publicación de contenido para Instagram, Facebook y Threads.
 Toma frases escritas manualmente, las renderiza como imágenes estilo retro 3D con Playwright,
-las sube a Cloudinary y las publica en las tres plataformas. Corre 3 veces al día vía GitHub Actions.
+las sube a Cloudinary y las publica en las tres plataformas. Corre 2 veces al día vía GitHub Actions.
 
 **Stack:** Node.js · Google Sheets (estado) · Cloudinary (imágenes) · Meta Graph API · Playwright
 
@@ -101,7 +101,8 @@ Cada fila es un post (o un slide de carrusel).
 | `carousel_id` | string | ID compartido por todos los slides del carrusel (prefijo `car_` + 12 chars) |
 | `carousel_order` | número | Posición del slide dentro del carrusel |
 | `background_color` | hex (`#rrggbb`) | Color asignado al render |
-| `cloudinary_url` | URL | Imagen subida — se borra después de publicar |
+| `media_url` | URL | Imagen subida a Cloudinary — se usa para publicar |
+| `cloudinary_public_id` | string | ID del asset en Cloudinary — se borra después de publicar |
 | `instagram_media_id` | ID | Seteado después de publicar en IG |
 | `updated_at` | ISO 8601 local | Timestamp del último cambio — usado por releaseStaleLocks |
 
@@ -174,7 +175,7 @@ npm run sync-palettes
 Para verificar que estén sincronizadas:
 
 ```bash
-npm run check-palettes
+npm run check-palettes-sync
 ```
 
 ### Regla #5 — Los IDs de fila son UUIDs, nunca números de fila

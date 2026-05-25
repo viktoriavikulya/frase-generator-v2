@@ -2,7 +2,7 @@
 
 ## Qué hace el proyecto
 
-Sistema automatizado de publicación de contenido para Instagram, Facebook y Threads. Toma frases (ingresadas manualmente vía formulario web), las renderiza como imágenes con estilo retro 3D, las sube a Cloudinary y las publica en las tres redes sociales. Corre 3 veces al día vía GitHub Actions.
+Sistema automatizado de publicación de contenido para Instagram, Facebook y Threads. Toma frases (ingresadas manualmente vía formulario web), las renderiza como imágenes con estilo retro 3D, las sube a Cloudinary y las publica en las tres redes sociales. Corre 2 veces al día vía GitHub Actions.
 
 ---
 
@@ -116,7 +116,8 @@ Ambos llaman a `pipeline-runner.js` con la configuración de sus scripts. El flu
 ```
 En modo schedule:
   1. Intentar publicar pendientes del ciclo anterior
-  2. Render → Upload → Publish
+  2. Intentar subir pendientes ya renderizados
+  3. Render → Upload → Publish
 
 En modo formulario (form):
   1. Render → Upload → Publish (sin intentar publicar pendientes)
@@ -228,7 +229,8 @@ Cada fila del sheet es un post (o un slide de carrusel). Las columnas clave:
 | `lock_status` | `free` / `locked` — evita que dos ciclos procesen la misma fila |
 | `background_color` | Color hex usado |
 | `output_file` | Nombre del PNG generado |
-| `cloudinary_url` | URL pública de la imagen |
+| `media_url` | URL pública de la imagen subida a Cloudinary |
+| `cloudinary_public_id` | ID del asset en Cloudinary, usado para borrarlo después de publicar |
 | `instagram_media_id` | ID del post en IG |
 | `instagram_error` / `facebook_error` / `threads_error` | Error específico por plataforma del último intento |
 | `likes`, `saves`, `reach`, `views` | Métricas |

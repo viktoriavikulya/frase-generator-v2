@@ -23,7 +23,7 @@ const {
   validateCarouselRows,
   markCarouselGroupAsError
 } = require("../../utils/carousel-utils");
-const { getRecentUsedBgs, getRandomColorAvoidingSimilar } = require("../../utils/render-utils");
+const { getNextBackgroundColor } = require("../../utils/render-utils");
 
 function hasCarouselAwaitingPublish(rows, headerMap) {
   const seenCarousels = new Map();
@@ -187,9 +187,8 @@ async function main() {
 
   groupLogger.info("Carrusel seleccionado para render");
 
-  const recentUsedBgs = getRecentUsedBgs(rows, headerMap, 6);
   const sheetBg       = getCellValue(groupRows[0].values, headerMap, "background_color");
-  const carouselBg    = sheetBg ? sheetBg : getRandomColorAvoidingSimilar(recentUsedBgs);
+  const carouselBg    = sheetBg ? sheetBg : getNextBackgroundColor(rows, headerMap);
 
   try {
     await markCarouselAsProcessing({ sheets, headerMap, groupRows, cycleId });

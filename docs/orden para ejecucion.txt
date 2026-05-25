@@ -1,8 +1,10 @@
 # Ejecución manual (desarrollo local)
 
-## 1. Levantar el servidor de render
-En una terminal:
-npx http-server . -p 8080
+## 1. Servidor de render
+No hace falta levantarlo manualmente para el pipeline: `render-lib.js` arranca un servidor local automáticamente en `GENERATOR_PORT` (por defecto 5173) si no hay uno corriendo.
+
+Si querés abrir el generador visual a mano:
+npx http-server . -p 5173
 
 ## 2. Correr el pipeline
 En otra terminal:
