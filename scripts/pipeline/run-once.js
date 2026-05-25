@@ -241,7 +241,6 @@ async function runPublishOnly({ cycleId, tipo, publishOnlyId }) {
   if (!result.ok) {
     log.error("publish-only falló", { publishOnlyId, resolvedTipo });
 
-    // FIX: leer errores por plataforma del sheet antes de notificar
     const platformErrors = await readPlatformErrors({
       tipo: resolvedTipo,
       rowId:       resolvedTipo === "single"   ? publishOnlyId : null,
@@ -254,6 +253,23 @@ async function runPublishOnly({ cycleId, tipo, publishOnlyId }) {
       failedStep: `${resolvedTipo}-publish-only`,
       tipo: resolvedTipo,
       platformErrors
+    };
+  }
+
+  if (result.noPending) {
+    log.error("publish-only no encontró contenido publicable. La fila existe, pero no cumple condiciones de publish.", {
+      publishOnlyId,
+      resolvedTipo,
+      targetRowNumber,
+      targetCarouselId
+    });
+
+    return {
+      ok: false,
+      processed: false,
+      failedStep: `${resolvedTipo}-publish-only-no-pending`,
+      tipo: resolvedTipo,
+      reason: "PUBLISH_ONLY_NO_PENDING"
     };
   }
 
