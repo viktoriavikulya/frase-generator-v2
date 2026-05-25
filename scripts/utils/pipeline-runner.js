@@ -30,7 +30,7 @@ async function runPipelineSteps({
   // render+upload done pero sin publicar (recuperación de ciclos anteriores).
   // En form mode este bloque se salta — va directo a render → upload → publish.
   if (publishFirst) {
-    const pendingPublishResult = runStep(
+    const pendingPublishResult = await runStep(
       publishFirstStepName || publishStepName,
       publishScript,
       {
@@ -73,7 +73,7 @@ async function runPipelineSteps({
     pipelineLogger.info("No había publicaciones pendientes; se continúa con render normal.");
   }
 
-  const renderResult = runStep(renderStepName, renderScript, {
+  const renderResult = await runStep(renderStepName, renderScript, {
     pipeline: label,
     ...context
   });
@@ -129,7 +129,7 @@ async function runPipelineSteps({
     };
   }
 
-  const uploadResult = runStep(uploadStepName, uploadScript, {
+  const uploadResult = await runStep(uploadStepName, uploadScript, {
     pipeline: label,
     ...context
   });
@@ -150,7 +150,7 @@ async function runPipelineSteps({
     };
   }
 
-  const publishResult = runStep(publishStepName, publishScript, {
+  const publishResult = await runStep(publishStepName, publishScript, {
     pipeline: label,
     ...context
   });

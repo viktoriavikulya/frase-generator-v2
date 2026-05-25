@@ -48,6 +48,20 @@ function buildStepEnv(context = {}) {
   };
 }
 
+/**
+ * Ejecuta un script hijo de forma SÍNCRONA (spawnSync) y devuelve su resultado.
+ *
+ * IMPORTANTE: esta función es intencionalmente síncrona para garantizar que los
+ * pasos del pipeline se ejecuten en orden estricto (render → upload → publish).
+ * Si se migra a spawn() async en el futuro, pipeline-runner.js ya tiene los
+ * `await` en cada llamada — pero también habrá que revisar toda la lógica de
+ * manejo de resultados para asegurarse de que sigue siendo secuencial.
+ *
+ * Códigos de salida reconocidos:
+ *   0  → éxito
+ *   10 → sin pendientes (noPending = true)
+ *   cualquier otro → error
+ */
 function runStep(stepName, scriptPath, context = {}) {
   const stepLogger = logger.child({
     ...context,

@@ -257,18 +257,20 @@ async function main() {
   }
 }
 
+// FIX: usar finally para garantizar que stopServer() siempre se llama,
+// incluso si main() resuelve correctamente pero stopServer() lanza.
+// El patrón anterior (.then + .catch separados) dejaba stopServer() sin
+// try/catch en el camino feliz, lo que producía unhandled rejections.
 main()
-  .then(async () => {
-    await stopServer();
-    process.exit(0);
+  .catch((err) => {
+    logger.error("Error en render-carousel-from-sheet", {}, err);
+    process.exitCode = 1;
   })
-  .catch(async (err) => {
+  .finally(async () => {
     try {
       await stopServer();
     } catch (stopError) {
       logger.warn("No se pudo cerrar el servidor de render", {}, stopError);
     }
-
-    logger.error("Error en render-carousel-from-sheet", {}, err);
-    process.exit(1);
+    process.exit(process.exitCode ?? 0);
   });

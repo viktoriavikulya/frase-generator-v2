@@ -7,6 +7,7 @@ const net = require("net");
 const serveStatic = require("serve-static");
 const finalhandler = require("finalhandler");
 const { chromium } = require("playwright");
+const { logger } = require("../utils/logger");
 
 const GENERATOR_PORT = Number(process.env.GENERATOR_PORT || 5173);
 
@@ -111,6 +112,29 @@ async function stopServer() {
   });
 }
 
+// ---------------------------------------------------------------------------
+// Shutdown handlers para señales del SO (SIGTERM, SIGINT)
+// ---------------------------------------------------------------------------
+// Sin estos handlers, si GitHub Actions cancela el job (SIGTERM) o el usuario
+// hace Ctrl+C (SIGINT), el servidor HTTP en el puerto 5173 queda huérfano.
+// El próximo render fallará al intentar levantarlo porque el puerto ya está ocupado.
+
+async function handleShutdown(signal) {
+  logger.warn(`Señal ${signal} recibida — cerrando servidor de render`, { signal });
+  try {
+    await stopServer();
+  } catch (err) {
+    logger.warn("Error al cerrar servidor durante shutdown", { signal, error: err.message });
+  }
+  // Salida con código 1 para que el proceso reporta terminación forzada
+  process.exit(1);
+}
+
+process.once("SIGTERM", () => handleShutdown("SIGTERM"));
+process.once("SIGINT",  () => handleShutdown("SIGINT"));
+
+// ---------------------------------------------------------------------------
+
 function stripAccents(text) {
   return text.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
 }
@@ -163,7 +187,8 @@ async function renderPhrase({ text, mode = "normal", bg = "#ffffff" }) {
     bg
   });
 
-  console.log("Abriendo:", url);
+  // FIX: console.log → logger.info para consistencia con el resto del proyecto
+  logger.info("Abriendo generador de render", { url });
 
   const browser = await chromium.launch({
     headless: true

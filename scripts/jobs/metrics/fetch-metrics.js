@@ -15,17 +15,17 @@ const {
 } = require("../../core/sheets");
 
 const { graphGet } = require("../../libs/graph-client");
+const { threadsGet } = require("../../libs/threads-lib");
 const { nowIsoLocal } = require("../../utils/common");
 const { logger } = require("../../utils/logger");
 const { GENERAL_STATUS } = require("../../core/status");
 
-const IG_ACCESS_TOKEN  = process.env.IG_ACCESS_TOKEN;
+const IG_ACCESS_TOKEN      = process.env.IG_ACCESS_TOKEN;
 const FB_PAGE_ACCESS_TOKEN = process.env.FB_PAGE_ACCESS_TOKEN;
 const THREADS_ACCESS_TOKEN = process.env.THREADS_ACCESS_TOKEN;
 
-const METRICS_DAYS  = Number(process.env.METRICS_DAYS || 30);
-const API_DELAY_MS  = 1500;
-const THREADS_API_BASE = "https://graph.threads.net/v1.0";
+const METRICS_DAYS = Number(process.env.METRICS_DAYS || 30);
+const API_DELAY_MS = 1500;
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
@@ -111,17 +111,10 @@ async function fetchFacebookInsights(postId) {
 
 async function fetchThreadsInsights(mediaId) {
   try {
-    const url = new URL(`${THREADS_API_BASE}/${mediaId}/insights`);
-    url.searchParams.set("metric", "views,likes,replies,reposts,quotes");
-    url.searchParams.set("access_token", THREADS_ACCESS_TOKEN);
-
-    const res      = await fetch(url.toString());
-    const rawText  = await res.text();
-    const data     = rawText ? JSON.parse(rawText) : {};
-
-    if (!res.ok || data?.error) {
-      throw new Error(data?.error?.message || `Threads API ${res.status}`);
-    }
+    const data = await threadsGet(`${mediaId}/insights`, {
+      metric:       "views,likes,replies,reposts,quotes",
+      access_token: THREADS_ACCESS_TOKEN
+    });
 
     const result = { views: 0, likes: 0, replies: 0, reposts: 0, quotes: 0 };
 

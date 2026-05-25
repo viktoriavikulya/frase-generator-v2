@@ -35,6 +35,10 @@ on:
         description: 'Republicar sin re-renderizar. Pasar row_id (single) o carousel_id (carousel)'
         required: false
         default: ''
+      unlock_id:
+        description: 'Desbloquear fila atascada. Pasar row_id (single) o carousel_id (carousel)'
+        required: false
+        default: ''
 
 concurrency:
   group: publish-posts
@@ -88,8 +92,14 @@ jobs:
       - name: Install Playwright browsers
         run: npx playwright install --with-deps chromium
 
+      - name: Desbloquear fila manualmente
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.unlock_id != '' }}
+        env:
+          UNLOCK_ID: ${{ inputs.unlock_id }}
+        run: node scripts/pipeline/unlock-row.js
+
       - name: Registrar frases si vienen del formulario
-        if: ${{ github.event_name == 'workflow_dispatch' && inputs.frases != '' }}
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.frases != '' && inputs.unlock_id == '' }}
         env:
           FRASES_INPUT: ${{ inputs.frases }}
           CAPTION_INPUT: ${{ inputs.caption }}
@@ -98,7 +108,7 @@ jobs:
         run: node scripts/pipeline/register-from-form.js
 
       - name: Run pipeline formulario
-        if: ${{ github.event_name == 'workflow_dispatch' && inputs.frases != '' && inputs.solo_registrar != 'true' }}
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.frases != '' && inputs.solo_registrar != 'true' && inputs.unlock_id == '' }}
         env:
           FORM_MODE: "true"
           TARGET_CAROUSEL_ID: ${{ env.TARGET_CAROUSEL_ID }}
@@ -107,7 +117,7 @@ jobs:
         run: node scripts/pipeline/run-once.js
 
       - name: Run publish-only
-        if: ${{ github.event_name == 'workflow_dispatch' && inputs.publish_only != '' && inputs.frases == '' }}
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.publish_only != '' && inputs.frases == '' && inputs.unlock_id == '' }}
         env:
           PUBLISH_ONLY: "true"
           PUBLISH_ONLY_ID: ${{ inputs.publish_only }}
@@ -115,7 +125,7 @@ jobs:
         run: node scripts/pipeline/run-once.js
 
       - name: Run pipeline reintentar
-        if: ${{ github.event_name == 'workflow_dispatch' && inputs.reintentar == 'true' && inputs.frases == '' && inputs.publish_only == '' }}
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.reintentar == 'true' && inputs.frases == '' && inputs.publish_only == '' && inputs.unlock_id == '' }}
         env:
           TIPO_INPUT: ${{ inputs.tipo }}
         run: node scripts/pipeline/run-once.js

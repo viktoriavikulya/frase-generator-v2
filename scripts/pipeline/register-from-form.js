@@ -1,5 +1,6 @@
 require("dotenv").config();
 
+const { randomUUID } = require("crypto");
 const {
   getSheetsClient,
   buildHeaderMap,
@@ -10,15 +11,20 @@ const {
 } = require("../core/sheets");
 
 const { nowIsoLocal } = require("../utils/common");
+const { logger } = require("../utils/logger");
 
-function generateCarouselId(frases) {
-  const str = frases.map(f => f.toLowerCase().trim()).sort().join("||");
-  let hash = 0;
-  for (let i = 0; i < str.length; i++) {
-    hash = ((hash << 5) - hash) + str.charCodeAt(i);
-    hash |= 0;
-  }
-  return "car_" + Math.abs(hash).toString(16).slice(0, 8) + "_" + Date.now();
+/**
+ * Genera un ID único para un carrusel.
+ *
+ * FIX: la versión anterior calculaba un hash del contenido de las frases y
+ * lo combinaba con Date.now(). El hash era inútil (Date.now() ya lo hacía
+ * único) y generaba colisiones si dos registros ocurrían en el mismo
+ * milisegundo con el mismo contenido. Ahora usa crypto.randomUUID(), que
+ * garantiza unicidad sin depender del tiempo ni del contenido.
+ */
+function generateCarouselId() {
+  // "car_" + primeros 12 chars del UUID sin guiones → legible en el sheet
+  return "car_" + randomUUID().replace(/-/g, "").slice(0, 12);
 }
 
 /**
@@ -86,10 +92,10 @@ function validateFrasesByTipo(tipo, frases) {
 }
 
 async function main() {
-  const frasesRaw = process.env.FRASES_INPUT || "";
-  const caption = process.env.CAPTION_INPUT || "";
-  const tipoRaw = process.env.TIPO_INPUT || "carousel";
-  const colorInput = process.env.COLOR_INPUT || "";
+  const frasesRaw  = process.env.FRASES_INPUT  || "";
+  const caption    = process.env.CAPTION_INPUT  || "";
+  const tipoRaw    = process.env.TIPO_INPUT     || "carousel";
+  const colorInput = process.env.COLOR_INPUT    || "";
 
   if (!["single", "carousel"].includes(tipoRaw)) {
     throw new Error(`TIPO_INPUT inválido: ${tipoRaw}. Usa "single" o "carousel".`);
@@ -103,17 +109,17 @@ async function main() {
     .filter(Boolean);
 
   if (frases.length < 1) {
-    console.log("No hay frases suficientes, nada que registrar.");
+    logger.info("No hay frases suficientes, nada que registrar.");
     process.exit(0);
   }
 
   validateFrasesByTipo(tipo, frases);
 
-  console.log(`Registrando ${frases.length} frases como ${tipo} con caption: "${caption}"`);
+  logger.info(`Registrando frases`, { count: frases.length, tipo, caption });
 
-  const sheets = await getSheetsClient();
-  const rows = await readRows(sheets);
-  const headers = rows[0];
+  const sheets    = await getSheetsClient();
+  const rows      = await readRows(sheets);
+  const headers   = rows[0];
   const headerMap = buildHeaderMap(headers);
 
   const requiredHeaders = [
@@ -130,10 +136,10 @@ async function main() {
 
   requireHeaders(headerMap, requiredHeaders);
 
-  const carouselId = tipo === "carousel" ? generateCarouselId(frases) : "";
-  const nextRow = findNextEmptyRow(rows, headerMap);
+  const carouselId = tipo === "carousel" ? generateCarouselId() : "";
+  const nextRow    = findNextEmptyRow(rows, headerMap);
 
-  console.log(`Primera fila vacía detectada: ${nextRow}`);
+  logger.info("Primera fila vacía detectada", { nextRow });
 
   if (tipo === "carousel" && process.env.GITHUB_ENV) {
     const fs = require("fs");
@@ -146,8 +152,8 @@ async function main() {
   }
 
   const hashtags = "#monacastrosa #frasesreales #humorcotidiano #vidareal";
-  const now = nowIsoLocal();
-  const updates = [];
+  const now      = nowIsoLocal();
+  const updates  = [];
 
   frases.forEach((frase, i) => {
     const row = nextRow + i;
@@ -157,7 +163,10 @@ async function main() {
       }
     };
 
-    add("row_id", `${Date.now()}_${i}`);  // ID único estable — inmune a reordenamientos del sheet
+    // FIX: crypto.randomUUID() garantiza unicidad real por fila.
+    // El patrón anterior ${Date.now()}_${i} generaba IDs idénticos si dos
+    // registros corrían en el mismo milisegundo (posible en GitHub Actions).
+    add("row_id", randomUUID());
     add("frase_original", frase);
     add("frase_corregida", frase);
     add("post_tipo", tipo);
@@ -183,13 +192,13 @@ async function main() {
   await updateCellsBatch(sheets, updates);
 
   if (tipo === "carousel") {
-    console.log(`✅ ${frases.length} frases registradas como pending — carousel_id: ${carouselId}, fila inicial: ${nextRow}`);
+    logger.info("Frases registradas como pending", { count: frases.length, carouselId, nextRow });
   } else {
-    console.log(`✅ ${frases.length} frases registradas como pending — tipo: single, row: ${nextRow}`);
+    logger.info("Frases registradas como pending", { count: frases.length, tipo: "single", nextRow });
   }
 }
 
 main().catch(err => {
-  console.error("Error registrando frases:", err);
+  logger.error("Error registrando frases", {}, err);
   process.exit(1);
 });

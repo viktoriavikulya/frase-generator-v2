@@ -44,10 +44,10 @@ Cada flecha es un script independiente. El estado viaja a través de Google Shee
 │   │   ├── graph-client.js    Base HTTP para Meta API (graphGet, graphPost — soporta arrays)
 │   │   ├── instagram-lib.js   Publica en IG: containers, polling, carousels
 │   │   ├── facebook-lib.js    Publica en FB: fotos + carrusels con retry
-│   │   ├── threads-lib.js     Publica en Threads: image + carousel
-│   │   ├── render-lib.js      Servidor HTTP local + Playwright
+│   │   ├── threads-lib.js     Publica en Threads: image + carousel, con retry automático
+│   │   ├── render-lib.js      Servidor HTTP local + Playwright (maneja SIGTERM/SIGINT)
 │   │   ├── upload-lib.js      Sube/borra en Cloudinary
-│   │   ├── telegram-lib.js    Notificaciones al bot de Telegram
+│   │   ├── telegram-lib.js    Notificaciones al bot de Telegram (incluye errores por plataforma)
 │   │   └── retro-palettes.js  FUENTE DE VERDAD de las paletas (ver regla #4)
 │   ├── jobs/
 │   │   ├── single/            render/upload/publish/apply-plan para posts únicos
@@ -57,7 +57,8 @@ Cada flecha es un script independiente. El estado viaja a través de Google Shee
 │   │   ├── run-once.js        Punto de entrada: decide single/carousel/auto/publish-only + releaseStaleLocks
 │   │   ├── run-single.js      Pipeline de single
 │   │   ├── run-carousel.js    Pipeline de carousel
-│   │   └── register-from-form.js  Escribe frases del formulario al sheet (genera row_id)
+│   │   ├── register-from-form.js  Escribe frases del formulario al sheet (genera row_id con randomUUID)
+│   │   └── unlock-row.js      Desbloquea manualmente una fila atascada (lock_status → free)
 │   ├── utils/
 │   │   ├── pipeline-runner.js Ejecuta steps render→upload→publish en orden
 │   │   ├── pipeline-utils.js  runStep (timeout 4min) + releaseStaleLocks + buildStepEnv
@@ -84,7 +85,7 @@ Cada fila es un post (o un slide de carrusel).
 
 | Columna | Valores posibles | Significado |
 |---|---|---|
-| `row_id` | `${timestamp}_${i}` | **Identificador único e inmutable de la fila** — generado por register-from-form.js |
+| `row_id` | UUID (ej. `550e8400-e29b-41d4...`) | **Identificador único e inmutable de la fila** — generado por register-from-form.js con `crypto.randomUUID()` |
 | `post_tipo` | `single` / `carousel` | Tipo de post |
 | `estado_general` | `pending` → `processing` → `published` / `error` | Estado global |
 | `estado_render` | `pending` / `processing` / `done` / `error` | Paso 1 |
@@ -97,7 +98,7 @@ Cada fila es un post (o un slide de carrusel).
 | `instagram_error` | string | Error específico del último intento en Instagram (opcional) |
 | `facebook_error` | string | Error específico del último intento en Facebook (opcional) |
 | `threads_error` | string | Error específico del último intento en Threads (opcional) |
-| `carousel_id` | string | ID compartido por todos los slides del carrusel |
+| `carousel_id` | string | ID compartido por todos los slides del carrusel (prefijo `car_` + 12 chars) |
 | `carousel_order` | número | Posición del slide dentro del carrusel |
 | `background_color` | hex (`#rrggbb`) | Color asignado al render |
 | `cloudinary_url` | URL | Imagen subida — se borra después de publicar |
@@ -106,16 +107,17 @@ Cada fila es un post (o un slide de carrusel).
 
 ### Sobre `row_id`
 
-Es el identificador oficial de cada fila. Se genera en `register-from-form.js` como
-`${Date.now()}_${i}` (índice `i` diferencia slides de un mismo carrusel).
+Es el identificador oficial de cada fila. Se genera en `register-from-form.js` con
+`crypto.randomUUID()` — garantiza unicidad real independientemente del timing o paralelismo.
 Es estable e inmune a reordenamientos manuales del sheet — no usar el número de fila como ID.
-Se usa por el modo `publish-only` para encontrar la fila exacta a republicar.
+Se usa por el modo `publish-only` y `unlock-row.js` para encontrar la fila exacta.
 
 ### Sobre `instagram_error` / `facebook_error` / `threads_error`
 
 Columnas opcionales. Si no existen en el sheet el pipeline las ignora sin romper nada.
 Se escriben individualmente: si Instagram OK pero Facebook falla, solo `facebook_error` tiene valor.
-Se limpian al inicio de cada intento.
+Se limpian al inicio de cada intento. `run-once.js` las lee después de un fallo y las
+incluye en la notificación de Telegram para identificar exactamente qué plataforma falló.
 
 ---
 
@@ -137,162 +139,109 @@ lockStatus === LOCK_STATUS.FREE || lockStatus === LOCK_STATUS.LOCKED
 Si un proceso falla, el `catch` siempre escribe `lock_status = free` antes de terminar.
 Si el proceso es killed (timeout de GitHub Actions), `releaseStaleLocks` en `run-once.js`
 libera las filas bloqueadas al inicio del siguiente ciclo.
+Para desbloqueo manual inmediato, usar el input `unlock_id` en `publish.yml`.
 
 ### Regla #2 — `releaseStaleLocks` siempre al inicio del ciclo
 
 `run-once.js` llama `releaseStaleLocks({ cycleId })` antes de cualquier pipeline.
 Si agregas un nuevo punto de entrada al sistema, también debe llamarlo.
-**Excepción:** el modo `publish-only` lo omite intencionalmente (es un paso directo y acotado).
+**Excepción:** el modo `publish-only` y `unlock-row.js` lo omiten intencionalmente (son pasos directos y acotados).
 
 ### Regla #3 — Siempre usar el logger estructurado
 
 En cualquier script bajo `scripts/`, usar `logger.info / logger.warn / logger.error`.
-**Nunca `console.log` o `console.error`** — el logger agrega `cycleId`, `job` y timestamp
-que hacen los logs de GitHub Actions buscables.
+Nunca `console.log`, `console.warn`, ni `console.error` — no aparecen en los logs
+estructurados de GitHub Actions y dificultan el debugging.
 
 ```js
-// ✅
+// ✅ correcto
 const { logger } = require("../utils/logger");
-logger.info("Subiendo imagen", { fileName, cloudinaryUrl });
+logger.info("Procesando fila", { rowId, cycleId });
 
-// ❌
-console.log("Subiendo imagen:", fileName);
+// ❌ incorrecto
+console.log("Procesando fila", rowId);
 ```
 
-### Regla #4 — Las paletas tienen una única fuente de verdad
+### Regla #4 — Las paletas tienen una sola fuente de verdad
 
-`scripts/libs/retro-palettes.js` es la fuente de verdad.
-`js/palettes.js` es un espejo generado — **no editar a mano**.
+`scripts/libs/retro-palettes.js` es la fuente. `js/palettes.js` es un espejo generado.
+**Nunca editar `js/palettes.js` a mano.** Después de cambiar `retro-palettes.js`, correr:
 
-Si modificás, agregás o eliminás una paleta:
-1. Editar `retro-palettes.js`
-2. Correr `npm run sync-palettes`
-3. Verificar con `node scripts/dev/check-palettes-sync.js`
+```bash
+npm run sync-palettes
+```
 
-### Regla #5 — Los datos van en `data/`, no en el código
+Para verificar que estén sincronizadas:
 
-Arrays de contenido (planes de publicación, listas de captions, etc.) van en `data/*.json`.
-Los scripts los leen con `require("../../data/archivo.json")`.
-No hardcodear arrays de datos dentro de scripts.
+```bash
+npm run check-palettes
+```
 
-### Regla #6 — `graphPost` centralizado en `graph-client.js`
+### Regla #5 — Los IDs de fila son UUIDs, nunca números de fila
 
-Toda llamada a la Meta Graph API pasa por `graphGet` o `graphPost` de `graph-client.js`.
-`facebook-lib.js` y el resto importan esas funciones — no reimplementan su propia versión HTTP.
-`graphPost` ya soporta valores array (para `attached_media[0]`, etc.).
-
-### Regla #7 — `stopServer` en `render-lib.js`
-
-El singleton del servidor se limpia **antes** de llamar `close()`.
-Si `close()` falla, el próximo `ensureServer()` puede arrancar uno nuevo sin conflicto.
-No invertir este orden.
-
-### Regla #8 — Errores de publish por plataforma
-
-Cada plataforma (Instagram, Facebook, Threads) tiene su propio bloque try/catch en los
-scripts de publish. Si una falla, se escribe su columna `*_error` antes de relanzar.
-**No colapsar los tres en un solo try/catch** — perdería la granularidad de qué plataforma falló.
+`row_id` es un UUID generado por `crypto.randomUUID()`. No usar el número de fila de Sheets
+como identificador — es mutable si alguien reordena el sheet manualmente.
 
 ---
 
-## Modo publish-only
+## Inputs del workflow `publish.yml`
 
-Para republicar un post cuyo render y upload ya están `done` pero el publish falló:
-
-1. Desde `publicar.html`, sección "Republicar post" → pegar el `row_id` (single) o `carousel_id` (carousel)
-2. Eso dispara el workflow con `PUBLISH_ONLY=true` y `PUBLISH_ONLY_ID=<id>`
-3. `run-once.js` detecta el modo, resetea `estado_publish → pending` e `intentos → 0`, y llama directo al publish script sin render ni upload
-
-El modo publish-only **no llama `releaseStaleLocks`** ni corre render/upload.
-Es idempotente: si una plataforma ya estaba publicada (`media_id` presente), el publish script la saltea.
-
----
-
-## Patrones de código a seguir
-
-### Leer y escribir el sheet
-
-```js
-const sheets = await getSheetsClient();
-const rows   = await readRows(sheets);
-const hm     = buildHeaderMap(rows[0]);
-requireHeaders(hm, ["frase_original", "estado_general", "lock_status"]);
-
-const valor = getCellValue(rows[i], hm, "frase_original");
-
-await updateCellsBatch(sheets, [
-  { row: 5, col: hm["estado_general"] + 1, value: "done" },
-  { row: 5, col: hm["lock_status"] + 1,    value: "free" }
-]);
-```
-
-### Tomar una fila con lock
-
-El patrón estándar es: leer elegibles → escribir `locked` y `processing` en batch atómico → procesar → liberar en `finally`.
-
-Ver `upload-single-from-sheet.js` como referencia completa.
-
-### Columnas opcionales
-
-Usar el patrón `add()` de `register-from-form.js` o el helper `platformErrorUpdates()` de los
-scripts de publish: solo escriben si la columna existe en el `headerMap`. Nunca lanzar error
-por columnas que podrían no existir en todos los sheets.
-
-```js
-// ✅ columna opcional — no rompe si no existe
-if ("instagram_error" in headerMap) {
-  updates.push({ row, col: headerMap["instagram_error"] + 1, value: msg });
-}
-```
-
-### Agregar un nuevo modo de render
-
-1. Crear `js/mode-nuevo.js` con la función de dibujo
-2. Registrarlo en `js/app.js` en el switch de modos
-3. Playwright lo toma automáticamente via `?mode=nuevo` en la URL
-4. Probar localmente con `npm run render-preview`
-
----
-
-## Variables de entorno requeridas
-
-| Variable | Dónde se usa |
+| Input | Cuándo usarlo |
 |---|---|
-| `SHEET_ID` | ID del Google Sheet |
-| `WORKSHEET_NAME` | Nombre de la hoja activa |
-| `SERVICE_ACCOUNT_JSON` | Credenciales de Google (base64 o JSON string) |
-| `CLOUDINARY_CLOUD_NAME` | Cloudinary |
-| `CLOUDINARY_API_KEY` | Cloudinary |
-| `CLOUDINARY_API_SECRET` | Cloudinary |
-| `IG_USER_ID` | Instagram User ID |
-| `IG_ACCESS_TOKEN` | Token permanente de Instagram |
-| `FB_PAGE_ID` | Facebook Page ID |
-| `FB_PAGE_ACCESS_TOKEN` | Token permanente de Facebook |
-| `THREADS_USER_ID` | Threads User ID |
-| `THREADS_ACCESS_TOKEN` | Token permanente de Threads |
-| `GRAPH_API_VERSION` | Versión de la API (ej. `v25.0`) |
-| `TELEGRAM_BOT_TOKEN` | Token del bot de Telegram |
-| `TELEGRAM_CHAT_ID` | Chat ID donde llegan las notificaciones |
+| `frases` | Frases nuevas desde el formulario (separadas por `\|\|`) |
+| `caption` | Caption del post |
+| `tipo` | `carousel` / `single` |
+| `color` | Color hex del fondo (vacío = aleatorio) |
+| `solo_registrar` | `true` = guardar en sheet sin publicar |
+| `reintentar` | `true` = reintentar posts con `estado_general = error` |
+| `publish_only` | `row_id` o `carousel_id` — publica sin re-renderizar ni re-subir |
+| `unlock_id` | `row_id` o `carousel_id` — desbloquea una fila atascada inmediatamente sin esperar el siguiente ciclo |
 
 ---
 
-## Lo que no existe (no inventar)
+## Checklist antes de enviar un cambio
 
-- No hay base de datos — el estado está 100% en Google Sheets
-- No hay servidor permanente — GitHub Actions levanta y baja todo por ciclo
-- No hay autenticación web — `publicar.html` es estático en GitHub Pages
-- No hay cola de mensajes — el pipeline es síncrono y secuencial por diseño
-- `mode-brat.js` y `mode-normal.js` existen pero **no están activos en producción**
+1. **¿Usaste `logger` en lugar de `console.*`?**
+2. **¿El lock se libera en el `catch`?** (si tocaste un script que escribe `locked`)
+3. **¿Editaste `retro-palettes.js`?** → correr `npm run sync-palettes`
+4. **¿Agregaste una columna nueva al sheet?** → documentarla aquí y en `arquitectura-proyecto.md`
+5. **¿El nuevo código genera IDs?** → usar `crypto.randomUUID()`, nunca `Date.now()` solo
+6. **¿Creaste un nuevo punto de entrada al pipeline?** → llamar `releaseStaleLocks` al inicio
 
 ---
 
-## Antes de proponer un cambio
+## Casos de uso operativos frecuentes
 
-1. **¿Toca el lock o la elegibilidad de filas?** → Revisar regla #1 y testear con dos ciclos paralelos.
-2. **¿Toca las paletas?** → Usar `sync-palettes` y `check-palettes-sync`.
-3. **¿Agrega datos hardcodeados en un script?** → Moverlos a `data/*.json`.
-4. **¿Agrega logging?** → Usar el logger, no `console`.
-5. **¿Agrega un nuevo punto de entrada al pipeline?** → Llamar `releaseStaleLocks` al inicio (salvo publish-only).
-6. **¿Toca `stopServer` o el singleton del servidor?** → Limpiar el singleton antes de `close()`.
-7. **¿Toca el publish de alguna plataforma?** → Mantener el try/catch por plataforma — ver regla #8.
+### Una fila quedó bloqueada (lock_status = locked)
+
+Opción A — esperar: `releaseStaleLocks` la libera automáticamente al inicio del siguiente ciclo (si lleva más de 10 minutos bloqueada).
+
+Opción B — inmediato: en GitHub Actions → `publish.yml` → Run workflow → campo `unlock_id` → pegar el `row_id` o `carousel_id`.
+
+### Un post falló en publish pero ya tiene la imagen subida
+
+En GitHub Actions → `publish.yml` → Run workflow → campo `publish_only` → pegar el `row_id` o `carousel_id`.
+Saltea render y upload, va directo a publicar.
+
+### Quiero guardar frases sin publicar ahora
+
+En el formulario (`publicar.html`), activar "Solo guardar". O desde GitHub Actions, usar `solo_registrar: true`.
+
+### Ver qué plataforma falló exactamente
+
+La notificación de Telegram de error incluye el bloque "Error por plataforma" con el mensaje
+específico de Instagram, Facebook y/o Threads según cuál haya fallado. También están en las
+columnas `instagram_error`, `facebook_error`, `threads_error` del sheet.
+
+---
+
+## Preguntas frecuentes para la IA
+
+1. **¿Dónde está el estado del sistema?** → Google Sheets, columnas `estado_*` y `lock_status`
+2. **¿Cómo se evita el doble procesamiento?** → `lock_status = locked` mientras se procesa, `free` al terminar
+3. **¿Cómo se comunica un step con el siguiente?** → A través del sheet; cada step lee el estado que dejó el anterior
+4. **¿Por qué hay `runStep` en lugar de llamadas directas?** → `runStep` ejecuta cada script como proceso hijo con timeout de 4 minutos, aislando fallos y evitando que un step colgado bloquee el pipeline completo
+5. **¿Dónde se generan los IDs de fila?** → En `register-from-form.js` con `crypto.randomUUID()`
+6. **¿Cómo funciona el retry automático?** → `threads-lib.js` y `facebook-lib.js` tienen `withRetry` que reintenta errores transitorios (HTTP 5xx, código de error 1). Los errores de auth y validación fallan inmediatamente.
+7. **¿Por qué `publish-only` y `unlock-row` no llaman `releaseStaleLocks`?** → Son operaciones puntuales sobre una fila conocida; el stale check aplica a ciclos completos, no a operaciones manuales.
 8. **¿Necesita identificar una fila?** → Usar `row_id`, nunca el número de fila del sheet.

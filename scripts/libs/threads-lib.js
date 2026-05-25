@@ -46,77 +46,140 @@ function throwIfTokenError(graphError) {
   );
 }
 
-async function threadsGet(path, query = {}) {
-  const url = new URL(`${THREADS_API_BASE}/${path}`);
+// ---------------------------------------------------------------------------
+// Retry helpers
+// ---------------------------------------------------------------------------
 
-  for (const [key, value] of Object.entries(query)) {
-    if (value !== undefined && value !== null) {
-      url.searchParams.set(key, String(value));
+const RETRY_ATTEMPTS = 3;
+const RETRY_DELAY_MS = 5000;
+
+/**
+ * Determina si un error es transitorio y vale la pena reintentar.
+ * - code 1 de la Graph API = error interno de Meta (transitorio)
+ * - HTTP 5xx = error de servidor (transitorio)
+ * Los errores de autenticación (code 190) y de validación (4xx) no se reintentan.
+ */
+function isTransientError(error) {
+  return error.graphError?.code === 1 || (error.status >= 500 && error.status < 600);
+}
+
+/**
+ * Ejecuta fn hasta `retries` veces, esperando `delayMs` entre intentos.
+ * Solo reintenta si isTransientError(error) es true.
+ */
+async function withRetry(fn, { retries = RETRY_ATTEMPTS, delayMs = RETRY_DELAY_MS, onRetry } = {}) {
+  for (let attempt = 1; attempt <= retries; attempt++) {
+    try {
+      return await fn();
+    } catch (error) {
+      if (isTransientError(error) && attempt < retries) {
+        if (onRetry) onRetry(attempt, retries, error);
+        await sleep(delayMs);
+        continue;
+      }
+      throw error;
     }
   }
+}
 
-  const res     = await fetch(url.toString());
-  const rawText = await res.text();
+// ---------------------------------------------------------------------------
+// HTTP primitives (con retry en errores transitorios)
+// ---------------------------------------------------------------------------
 
-  let data;
-  try {
-    data = rawText ? JSON.parse(rawText) : {};
-  } catch {
-    data = null;
-  }
+async function threadsGet(path, query = {}) {
+  return withRetry(
+    async () => {
+      const url = new URL(`${THREADS_API_BASE}/${path}`);
 
-  if (!res.ok || data?.error) {
-    throwIfTokenError(data?.error);
-    const err = data?.error;
-    const msg = err
-      ? `${err.message} | code=${err.code} | fbtrace_id=${err.fbtrace_id}`
-      : `Threads API ${res.status}: ${rawText}`;
-    throw new Error(msg);
-  }
+      for (const [key, value] of Object.entries(query)) {
+        if (value !== undefined && value !== null) {
+          url.searchParams.set(key, String(value));
+        }
+      }
 
-  return data;
+      const res     = await fetch(url.toString());
+      const rawText = await res.text();
+
+      let data;
+      try {
+        data = rawText ? JSON.parse(rawText) : {};
+      } catch {
+        data = null;
+      }
+
+      if (!res.ok || data?.error) {
+        throwIfTokenError(data?.error);
+        const err = data?.error;
+        const msg = err
+          ? `${err.message} | code=${err.code} | fbtrace_id=${err.fbtrace_id}`
+          : `Threads API ${res.status}: ${rawText}`;
+        const error = new Error(msg);
+        error.status     = res.status;
+        error.graphError = err || null;
+        throw error;
+      }
+
+      return data;
+    },
+    {
+      onRetry: (attempt, total, err) =>
+        logger.warn("threadsGet reintento", { path, attempt, total, error: err.message })
+    }
+  );
 }
 
 async function threadsPost(path, body) {
-  const url = `${THREADS_API_BASE}/${path}`;
+  return withRetry(
+    async () => {
+      const url = `${THREADS_API_BASE}/${path}`;
 
-  const form = new URLSearchParams();
-  for (const [key, value] of Object.entries(body)) {
-    if (value !== undefined && value !== null) {
-      form.append(key, String(value));
+      const form = new URLSearchParams();
+      for (const [key, value] of Object.entries(body)) {
+        if (value !== undefined && value !== null) {
+          form.append(key, String(value));
+        }
+      }
+
+      const res = await fetch(url, {
+        method:  "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body:    form.toString()
+      });
+
+      const rawText = await res.text();
+
+      let data;
+      try {
+        data = rawText ? JSON.parse(rawText) : {};
+      } catch {
+        data = null;
+      }
+
+      if (!res.ok || data?.error) {
+        throwIfTokenError(data?.error);
+        const err = data?.error;
+        const msg = err
+          ? `${err.message} | code=${err.code} | fbtrace_id=${err.fbtrace_id}`
+          : `Threads API ${res.status}: ${rawText}`;
+
+        const error = new Error(msg);
+        error.status      = res.status;
+        error.graphError  = err || null;
+        throw error;
+      }
+
+      return data;
+    },
+    {
+      onRetry: (attempt, total, err) =>
+        logger.warn("threadsPost reintento", { path, attempt, total, error: err.message })
     }
-  }
-
-  const res = await fetch(url, {
-    method:  "POST",
-    headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body:    form.toString()
-  });
-
-  const rawText = await res.text();
-
-  let data;
-  try {
-    data = rawText ? JSON.parse(rawText) : {};
-  } catch {
-    data = null;
-  }
-
-  if (!res.ok || data?.error) {
-    throwIfTokenError(data?.error);
-    const err = data?.error;
-    const msg = err
-      ? `${err.message} | code=${err.code} | fbtrace_id=${err.fbtrace_id}`
-      : `Threads API ${res.status}: ${rawText}`;
-
-    const error = new Error(msg);
-    error.status      = res.status;
-    error.graphError  = err || null;
-    throw error;
-  }
-
-  return data;
+  );
 }
+
+// ---------------------------------------------------------------------------
+// Container polling
+// ---------------------------------------------------------------------------
 
 async function getContainerStatus(containerId) {
   return threadsGet(`${containerId}`, {
@@ -141,6 +204,10 @@ async function waitUntilContainerReady(containerId) {
 
   throw new Error(`El contenedor de Threads ${containerId} no estuvo listo a tiempo`);
 }
+
+// ---------------------------------------------------------------------------
+// Public API
+// ---------------------------------------------------------------------------
 
 async function publishThreadsImagePost({ imageUrl, caption }) {
   ensureEnv();
@@ -197,8 +264,12 @@ async function publishThreadsCarouselPost({ imageUrls, caption }) {
 
     if (!child.id) throw new Error(`No se recibió id del item del carrusel para ${imageUrl}`);
 
+    logger.info("Slide de carrusel creado, esperando que esté listo...", { containerId: child.id, imageUrl });
+
+    await waitUntilContainerReady(child.id);
+
     childIds.push(child.id);
-    logger.info("Slide de carrusel creado", { containerId: child.id, imageUrl });
+    logger.info("Slide de carrusel listo", { containerId: child.id, imageUrl });
   }
 
   const parent = await threadsPost(`${THREADS_USER_ID}/threads`, {
@@ -225,6 +296,7 @@ async function publishThreadsCarouselPost({ imageUrls, caption }) {
 }
 
 module.exports = {
+  threadsGet,
   publishThreadsImagePost,
   publishThreadsCarouselPost
 };

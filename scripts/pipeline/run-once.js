@@ -24,6 +24,70 @@ function getTipoInput() {
   );
 }
 
+/**
+ * Lee los errores por plataforma de la primera fila del sheet que tenga
+ * estado_general = "error" y coincida con el tipo indicado.
+ * Si no encuentra nada, retorna undefined (notifyError omite el bloque).
+ *
+ * @param {object} opts
+ * @param {"single"|"carousel"} opts.tipo
+ * @param {string|null} [opts.rowId]       row_id específico (single)
+ * @param {string|null} [opts.carouselId]  carousel_id específico (carousel)
+ * @returns {Promise<{instagram?:string, facebook?:string, threads?:string}|undefined>}
+ */
+async function readPlatformErrors({ tipo, rowId = null, carouselId = null }) {
+  try {
+    const {
+      getSheetsClient,
+      buildHeaderMap,
+      getCellValue,
+      readRows
+    } = require("../core/sheets");
+
+    const sheets    = await getSheetsClient();
+    const rows      = await readRows(sheets);
+    const headers   = rows[0];
+    const headerMap = buildHeaderMap(headers);
+
+    // Si no hay columnas de error por plataforma en el sheet, salir limpio
+    if (!("instagram_error" in headerMap)) return undefined;
+
+    for (let i = 1; i < rows.length; i++) {
+      const row = rows[i];
+
+      // Filtrar por ID si se proporcionó
+      if (tipo === "single" && rowId) {
+        if (getCellValue(row, headerMap, "row_id") !== rowId) continue;
+      }
+      if (tipo === "carousel" && carouselId) {
+        if (getCellValue(row, headerMap, "carousel_id") !== carouselId) continue;
+      }
+
+      // Solo filas que efectivamente fallaron
+      const estadoGeneral = getCellValue(row, headerMap, "estado_general");
+      if (estadoGeneral !== "error") continue;
+
+      const ig  = getCellValue(row, headerMap, "instagram_error") || "";
+      const fb  = getCellValue(row, headerMap, "facebook_error")  || "";
+      const th  = getCellValue(row, headerMap, "threads_error")   || "";
+
+      // Si ninguna plataforma tiene error registrado, no vale la pena agregar el bloque
+      if (!ig && !fb && !th) return undefined;
+
+      return {
+        ...(ig ? { instagram: ig } : {}),
+        ...(fb ? { facebook:  fb } : {}),
+        ...(th ? { threads:   th } : {})
+      };
+    }
+  } catch (err) {
+    // No rompemos el flujo principal si esto falla
+    logger.warn("No se pudieron leer los errores de plataforma del sheet", { error: err.message });
+  }
+
+  return undefined;
+}
+
 async function runSingle({ cycleId, branch }) {
   return runSinglePipeline({ cycleId, branch });
 }
@@ -85,15 +149,6 @@ async function runPublishOnly({ cycleId, tipo, publishOnlyId }) {
 
   log.info("Modo publish-only iniciado — se omite render y upload");
 
-  // Para single: el ID es el row_id del sheet, que publish-single-from-sheet
-  // no usa directamente para seleccionar (usa TARGET_ROW_NUMBER). Buscamos la
-  // fila por row_id y pasamos el número de fila como env.
-  // Para carousel: el ID es el carousel_id, que ya acepta TARGET_CAROUSEL_ID.
-  //
-  // publish-only fuerza el estado a pending para que el script lo tome,
-  // incluso si tiene estado_publish = error y ya agotó los intentos.
-  // Reseteamos intentos a 0 para darle una chance limpia.
-
   const {
     getSheetsClient,
     buildHeaderMap,
@@ -101,7 +156,7 @@ async function runPublishOnly({ cycleId, tipo, publishOnlyId }) {
     readRows,
     updateCellsBatch
   } = require("../core/sheets");
-  const { STATUS, GENERAL_STATUS, LOCK_STATUS, POST_TIPOS } = require("../core/status");
+  const { STATUS, GENERAL_STATUS, LOCK_STATUS } = require("../core/status");
   const { runStep } = require("../utils/pipeline-utils");
 
   const sheets    = await getSheetsClient();
@@ -109,13 +164,11 @@ async function runPublishOnly({ cycleId, tipo, publishOnlyId }) {
   const headers   = rows[0];
   const headerMap = buildHeaderMap(headers);
 
-  // Detectar tipo si es "auto": buscar la fila por row_id o carousel_id
   let resolvedTipo = tipo;
   let targetRowNumber = null;
   let targetCarouselId = null;
 
   if (resolvedTipo === "auto" || resolvedTipo === "single") {
-    // Buscar por row_id
     for (let i = 1; i < rows.length; i++) {
       const rowId = getCellValue(rows[i], headerMap, "row_id");
       if (rowId === publishOnlyId) {
@@ -127,7 +180,6 @@ async function runPublishOnly({ cycleId, tipo, publishOnlyId }) {
   }
 
   if (!targetRowNumber && (resolvedTipo === "auto" || resolvedTipo === "carousel")) {
-    // Buscar por carousel_id
     for (let i = 1; i < rows.length; i++) {
       const carouselId = getCellValue(rows[i], headerMap, "carousel_id");
       if (carouselId === publishOnlyId) {
@@ -145,11 +197,6 @@ async function runPublishOnly({ cycleId, tipo, publishOnlyId }) {
 
   log.info("Fila(s) encontrada(s)", { resolvedTipo, targetRowNumber, targetCarouselId });
 
-  // Resetear estado para que el publish-script la tome:
-  // - estado_publish → pending
-  // - intentos → 0
-  // - lock_status → free
-  // - estado_general → pending
   const resetTs = new Date().toISOString();
 
   if (resolvedTipo === "single" && targetRowNumber) {
@@ -163,7 +210,6 @@ async function runPublishOnly({ cycleId, tipo, publishOnlyId }) {
       { row: targetRowNumber, col: headerMap["error_message"]   + 1, value: "" }
     ]);
   } else if (resolvedTipo === "carousel" && targetCarouselId) {
-    // Resetear todas las filas del carrusel
     const groupRows = [];
     for (let i = 1; i < rows.length; i++) {
       const cid = getCellValue(rows[i], headerMap, "carousel_id");
@@ -180,7 +226,6 @@ async function runPublishOnly({ cycleId, tipo, publishOnlyId }) {
     ]));
   }
 
-  // Llamar al publish script directamente, con la fila ya apuntada
   const publishScript = resolvedTipo === "carousel"
     ? "scripts/jobs/carousel/publish-carousel-from-sheet.js"
     : "scripts/jobs/single/publish-single-from-sheet.js";
@@ -195,7 +240,21 @@ async function runPublishOnly({ cycleId, tipo, publishOnlyId }) {
 
   if (!result.ok) {
     log.error("publish-only falló", { publishOnlyId, resolvedTipo });
-    return { ok: false, processed: false, failedStep: `${resolvedTipo}-publish-only`, tipo: resolvedTipo };
+
+    // FIX: leer errores por plataforma del sheet antes de notificar
+    const platformErrors = await readPlatformErrors({
+      tipo: resolvedTipo,
+      rowId:       resolvedTipo === "single"   ? publishOnlyId : null,
+      carouselId:  resolvedTipo === "carousel" ? publishOnlyId : null
+    });
+
+    return {
+      ok: false,
+      processed: false,
+      failedStep: `${resolvedTipo}-publish-only`,
+      tipo: resolvedTipo,
+      platformErrors
+    };
   }
 
   log.info("publish-only completado", { publishOnlyId, resolvedTipo });
@@ -203,8 +262,8 @@ async function runPublishOnly({ cycleId, tipo, publishOnlyId }) {
 }
 
 async function main() {
-  const startMs  = Date.now();
-  const cycleId  = `${Date.now()}`;
+  const startMs        = Date.now();
+  const cycleId        = `${Date.now()}`;
   const isFormMode     = process.env.FORM_MODE === "true";
   const isPublishOnly  = process.env.PUBLISH_ONLY === "true";
   const publishOnlyId  = (process.env.PUBLISH_ONLY_ID || "").trim();
@@ -236,15 +295,16 @@ async function main() {
       process.exit(1);
     }
 
-    const durationMs  = Date.now() - startMs;
-    const tipoFinal   = result.tipo || tipo;
+    const durationMs = Date.now() - startMs;
+    const tipoFinal  = result.tipo || tipo;
 
     if (!result.ok) {
       await notifyError({
-        tipo:       tipoFinal,
+        tipo:           tipoFinal,
         cycleId,
-        failedStep: result.failedStep || "publish-only",
-        durationMs
+        failedStep:     result.failedStep || "publish-only",
+        durationMs,
+        platformErrors: result.platformErrors  // FIX: plataforma exacta que falló
       });
       process.exit(1);
     }
@@ -255,7 +315,6 @@ async function main() {
 
   // ── Flujo normal ───────────────────────────────────────────────────────────
 
-  // Liberar locks stale de ciclos anteriores y notificar si hubo
   const staleReleased = await releaseStaleLocks({ cycleId });
   if (staleReleased > 0) {
     await notifyStaleLocks({ filasLiberadas: staleReleased, cycleId });
@@ -276,11 +335,19 @@ async function main() {
 
   // ── Notificaciones Telegram ──────────────────────────────────────────────
   if (!result.ok) {
+    // FIX: leer errores por plataforma del sheet para enriquecer la alerta
+    const platformErrors = await readPlatformErrors({
+      tipo:       tipoFinal,
+      rowId:      result.failedRowId      || null,
+      carouselId: result.failedCarouselId || null
+    });
+
     await notifyError({
       tipo:       tipoFinal,
       cycleId,
       failedStep: result.failedStep || result.failedBranch || "desconocido",
-      durationMs
+      durationMs,
+      platformErrors  // FIX: plataforma exacta que falló
     });
 
     logger.error("Pipeline falló", result);
@@ -296,7 +363,6 @@ async function main() {
       durationMs
     });
   } else {
-    // Solo notificar "sin pendientes" en modo scheduled para no spamear en formulario
     if (!isFormMode) {
       await notifyNoPending({ cycleId, branch });
     }

@@ -14,6 +14,8 @@
 
 "use strict";
 
+const { logger } = require("../utils/logger"); // FIX: console.warn → logger
+
 const TELEGRAM_API = "https://api.telegram.org";
 
 function getConfig() {
@@ -29,12 +31,12 @@ function isConfigured() {
 }
 
 /**
- * Envía un mensaje Markdown al chat configurado.
+ * Envía un mensaje HTML al chat configurado.
  * Silencioso si las variables de entorno no están seteadas.
  */
 async function sendMessage(text) {
   if (!isConfigured()) {
-    console.warn("[telegram] TELEGRAM_BOT_TOKEN o TELEGRAM_CHAT_ID no configurados — notificación omitida.");
+    logger.warn("TELEGRAM_BOT_TOKEN o TELEGRAM_CHAT_ID no configurados — notificación omitida.");
     return;
   }
 
@@ -53,11 +55,20 @@ async function sendMessage(text) {
 
     if (!res.ok) {
       const body = await res.text().catch(() => "");
-      console.warn(`[telegram] Error al enviar mensaje (${res.status}): ${body}`);
+      logger.warn(`Error al enviar mensaje a Telegram (${res.status}): ${body}`);
     }
   } catch (err) {
-    console.warn("[telegram] Error de red al enviar notificación:", err.message);
+    logger.warn("Error de red al enviar notificación a Telegram", { error: err.message });
   }
+}
+
+// ─── Helpers ────────────────────────────────────────────────────────────────
+
+function escapeHtml(str) {
+  return String(str)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
 }
 
 // ─── Builders de mensajes ────────────────────────────────────────────────────
@@ -66,17 +77,17 @@ async function sendMessage(text) {
  * Notificación de éxito — post publicado correctamente.
  *
  * @param {object} opts
- * @param {string} opts.tipo       "single" | "carousel"
- * @param {string} opts.cycleId    ID del ciclo
- * @param {string} opts.branch     "form" | "scheduled"
+ * @param {string} opts.tipo         "single" | "carousel"
+ * @param {string} opts.cycleId      ID del ciclo
+ * @param {string} opts.branch       "form" | "scheduled"
  * @param {boolean} [opts.recovered] true si era un post pendiente que se recuperó
  * @param {number}  opts.durationMs  tiempo total del pipeline
  */
 async function notifySuccess({ tipo, cycleId, branch, recovered = false, durationMs }) {
-  const emoji   = tipo === "carousel" ? "🎠" : "🖼";
-  const origen  = branch === "form" ? "formulario" : "programado";
-  const durSeg  = Math.round((durationMs || 0) / 1000);
-  const tag     = recovered ? " <i>(pendiente recuperado)</i>" : "";
+  const emoji  = tipo === "carousel" ? "🎠" : "🖼";
+  const origen = branch === "form" ? "formulario" : "programado";
+  const durSeg = Math.round((durationMs || 0) / 1000);
+  const tag    = recovered ? " <i>(pendiente recuperado)</i>" : "";
 
   await sendMessage(
     `${emoji} <b>Publicado correctamente</b>${tag}\n` +
@@ -89,20 +100,33 @@ async function notifySuccess({ tipo, cycleId, branch, recovered = false, duratio
  * Notificación de error en un step del pipeline.
  *
  * @param {object} opts
- * @param {string} opts.tipo        "single" | "carousel"
+ * @param {string} opts.tipo          "single" | "carousel"
  * @param {string} opts.cycleId
- * @param {string} opts.failedStep  ej. "single-render", "carousel-publish"
- * @param {string} [opts.reason]    mensaje de error adicional si está disponible
+ * @param {string} opts.failedStep    ej. "single-render", "carousel-publish"
+ * @param {string} [opts.reason]      mensaje de error general si está disponible
  * @param {number}  opts.durationMs
+ * @param {object}  [opts.platformErrors]  errores por plataforma: { instagram?, facebook?, threads? }
  */
-async function notifyError({ tipo, cycleId, failedStep, reason, durationMs }) {
-  const durSeg   = Math.round((durationMs || 0) / 1000);
-  const stepPart = failedStep ? `\nStep fallido: <code>${failedStep}</code>` : "";
-  const reasonPart = reason   ? `\nDetalle: <i>${escapeHtml(reason)}</i>` : "";
+async function notifyError({ tipo, cycleId, failedStep, reason, durationMs, platformErrors }) {
+  const durSeg     = Math.round((durationMs || 0) / 1000);
+  const stepPart   = failedStep ? `\nStep fallido: <code>${failedStep}</code>` : "";
+  const reasonPart = reason     ? `\nDetalle: <i>${escapeHtml(reason)}</i>` : "";
+
+  // Bloque de errores por plataforma — solo se muestra si hay al menos uno
+  let platformPart = "";
+  if (platformErrors) {
+    const lines = [];
+    if (platformErrors.instagram) lines.push(`  • Instagram: <i>${escapeHtml(platformErrors.instagram.slice(0, 150))}</i>`);
+    if (platformErrors.facebook)  lines.push(`  • Facebook: <i>${escapeHtml(platformErrors.facebook.slice(0, 150))}</i>`);
+    if (platformErrors.threads)   lines.push(`  • Threads: <i>${escapeHtml(platformErrors.threads.slice(0, 150))}</i>`);
+    if (lines.length > 0) {
+      platformPart = "\n\n<b>Error por plataforma:</b>\n" + lines.join("\n");
+    }
+  }
 
   await sendMessage(
     `❌ <b>Error en el pipeline</b>\n` +
-    `Tipo: ${tipo} · Ciclo: <code>${cycleId}</code>${stepPart}${reasonPart}\n` +
+    `Tipo: ${tipo} · Ciclo: <code>${cycleId}</code>${stepPart}${reasonPart}${platformPart}\n` +
     `Duración: ${durSeg}s`
   );
 }
@@ -155,15 +179,6 @@ async function notifyFatal({ cycleId, errorMessage }) {
     `Ciclo: <code>${cycleId}</code>\n` +
     `Error: <i>${escapeHtml(String(errorMessage).slice(0, 300))}</i>`
   );
-}
-
-// ─── Helpers ────────────────────────────────────────────────────────────────
-
-function escapeHtml(str) {
-  return String(str)
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;");
 }
 
 module.exports = {

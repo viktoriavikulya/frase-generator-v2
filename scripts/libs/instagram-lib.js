@@ -1,6 +1,7 @@
 require("dotenv").config();
 
 const { graphGet, graphPost } = require("./graph-client");
+const { logger } = require("../utils/logger");
 
 const IG_USER_ID = process.env.IG_USER_ID;
 const IG_ACCESS_TOKEN = process.env.IG_ACCESS_TOKEN;
@@ -45,23 +46,6 @@ function throwIfTokenError(graphError) {
   );
 }
 
-function buildGraphErrorMessage(res, data, rawText) {
-  const error = data?.error;
-
-  if (!error) {
-    return `Graph API error ${res.status}${rawText ? `: ${rawText}` : ""}`;
-  }
-
-  const parts = [error.message || `Graph API error ${res.status}`];
-
-  if (error.code !== undefined)          parts.push(`code=${error.code}`);
-  if (error.error_subcode !== undefined) parts.push(`subcode=${error.error_subcode}`);
-  if (error.error_user_title)            parts.push(`title=${error.error_user_title}`);
-  if (error.error_user_msg)              parts.push(`user_msg=${error.error_user_msg}`);
-  if (error.fbtrace_id)                  parts.push(`fbtrace_id=${error.fbtrace_id}`);
-
-  return parts.join(" | ");
-}
 
 async function igGraphPost(path, body) {
   try {
@@ -86,9 +70,7 @@ async function createImageContainer({ imageUrl, caption }) {
 
   const safeCaption = typeof caption === "string" ? caption.trim() : "";
 
-  console.log("Creando contenedor de imagen...");
-  console.log("imageUrl:", imageUrl);
-  console.log("caption:", safeCaption || "[sin caption]");
+  logger.info("Creando contenedor de imagen en Instagram", { imageUrl, caption: safeCaption || "[sin caption]" });
 
   return igGraphPost(`${IG_USER_ID}/media`, {
     image_url: imageUrl,
@@ -111,7 +93,7 @@ async function waitUntilContainerReady(creationId) {
     const statusData = await getContainerStatus(creationId);
     const statusCode = statusData.status_code || statusData.status || "";
 
-    console.log(`Container ${creationId} estado intento ${attempt}/${MAX_POLL_ATTEMPTS}: ${statusCode}`);
+    logger.info("Instagram container estado", { containerId: creationId, attempt, maxAttempts: MAX_POLL_ATTEMPTS, statusCode });
 
     if (statusCode === "FINISHED" || statusCode === "PUBLISHED") return statusData;
     if (statusCode === "ERROR")   throw new Error(`El contenedor ${creationId} falló con status_code=ERROR`);
