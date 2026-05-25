@@ -1,234 +1,97 @@
 require("dotenv").config();
 
-const { logger } = require("../utils/logger"); // MEJORA #13: logger estructurado en lugar de console.log
+const path = require("path");
+const { v2: cloudinary } = require("cloudinary");
 
-const THREADS_USER_ID       = process.env.THREADS_USER_ID;
-const THREADS_ACCESS_TOKEN  = process.env.THREADS_ACCESS_TOKEN;
-const THREADS_API_BASE      = "https://graph.threads.net/v1.0";
+const CLOUDINARY_CLOUD_NAME = process.env.CLOUDINARY_CLOUD_NAME;
+const CLOUDINARY_API_KEY = process.env.CLOUDINARY_API_KEY;
+const CLOUDINARY_API_SECRET = process.env.CLOUDINARY_API_SECRET;
 
-const POLL_INTERVAL_MS  = 3000;
-const MAX_POLL_ATTEMPTS = 20;
-
-const TOKEN_EXPIRED_SUBCODES = new Set([460, 463, 467]);
-
-function ensureEnv() {
-  if (!THREADS_USER_ID)      throw new Error("Falta THREADS_USER_ID en .env");
-  if (!THREADS_ACCESS_TOKEN) throw new Error("Falta THREADS_ACCESS_TOKEN en .env");
+if (!CLOUDINARY_CLOUD_NAME) {
+  throw new Error("Falta CLOUDINARY_CLOUD_NAME en el .env");
 }
 
-function sleep(ms) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
+if (!CLOUDINARY_API_KEY) {
+  throw new Error("Falta CLOUDINARY_API_KEY en el .env");
 }
 
-function throwIfTokenError(graphError) {
-  if (!graphError || graphError.code !== 190) return;
-
-  const sub = graphError.error_subcode;
-
-  if (TOKEN_EXPIRED_SUBCODES.has(sub)) {
-    throw new Error(
-      `[TOKEN VENCIDO] El THREADS_ACCESS_TOKEN expiró (code=190, subcode=${sub}). ` +
-      "Renovalo en Meta for Developers → tu app → Threads → Generador de tokens " +
-      "y actualiza el secret THREADS_ACCESS_TOKEN en GitHub."
-    );
-  }
-
-  if (sub === 458) {
-    throw new Error(
-      "[TOKEN REVOCADO] El usuario desautorizó la app de Threads (code=190, subcode=458). " +
-      "Es necesario volver a autorizar la app y generar un token nuevo."
-    );
-  }
-
-  throw new Error(
-    `[TOKEN INVÁLIDO] El THREADS_ACCESS_TOKEN es inválido o fue revocado (code=190, subcode=${sub ?? "none"}). ` +
-    "Verificá el valor del secret THREADS_ACCESS_TOKEN en GitHub."
-  );
+if (!CLOUDINARY_API_SECRET) {
+  throw new Error("Falta CLOUDINARY_API_SECRET en el .env");
 }
 
-async function threadsGet(path, query = {}) {
-  const url = new URL(`${THREADS_API_BASE}/${path}`);
+cloudinary.config({
+  cloud_name: CLOUDINARY_CLOUD_NAME,
+  api_key: CLOUDINARY_API_KEY,
+  api_secret: CLOUDINARY_API_SECRET
+});
 
-  for (const [key, value] of Object.entries(query)) {
-    if (value !== undefined && value !== null) {
-      url.searchParams.set(key, String(value));
-    }
-  }
-
-  const res     = await fetch(url.toString());
-  const rawText = await res.text();
-
-  let data;
-  try {
-    data = rawText ? JSON.parse(rawText) : {};
-  } catch {
-    data = null;
-  }
-
-  if (!res.ok || data?.error) {
-    throwIfTokenError(data?.error);
-    const err = data?.error;
-    const msg = err
-      ? `${err.message} | code=${err.code} | fbtrace_id=${err.fbtrace_id}`
-      : `Threads API ${res.status}: ${rawText}`;
-    throw new Error(msg);
-  }
-
-  return data;
+function sanitizeName(value) {
+  return (value || "")
+    .toString()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9_-]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .replace(/-+/g, "-");
 }
 
-async function threadsPost(path, body) {
-  const url = `${THREADS_API_BASE}/${path}`;
-
-  const form = new URLSearchParams();
-  for (const [key, value] of Object.entries(body)) {
-    if (value !== undefined && value !== null) {
-      form.append(key, String(value));
-    }
+function buildPublicId(fileName) {
+  if (!fileName) {
+    throw new Error("buildPublicId requiere fileName.");
   }
 
-  const res = await fetch(url, {
-    method:  "POST",
-    headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body:    form.toString()
+  const baseName = path.parse(fileName).name;
+  const safeBaseName = sanitizeName(baseName);
+
+  if (!safeBaseName) {
+    throw new Error(`Nombre de archivo invalido para Cloudinary: ${fileName}`);
+  }
+
+  return `mono_generator/${safeBaseName}`;
+}
+
+async function uploadImage(localPath, fileName) {
+  if (!localPath) {
+    throw new Error("uploadImage requiere localPath.");
+  }
+
+  if (!fileName) {
+    throw new Error("uploadImage requiere fileName.");
+  }
+
+  const publicId = buildPublicId(fileName);
+
+  const result = await cloudinary.uploader.upload(localPath, {
+    public_id: publicId,
+    overwrite: true,
+    resource_type: "image"
   });
 
-  const rawText = await res.text();
-
-  let data;
-  try {
-    data = rawText ? JSON.parse(rawText) : {};
-  } catch {
-    data = null;
-  }
-
-  if (!res.ok || data?.error) {
-    throwIfTokenError(data?.error);
-    const err = data?.error;
-    const msg = err
-      ? `${err.message} | code=${err.code} | fbtrace_id=${err.fbtrace_id}`
-      : `Threads API ${res.status}: ${rawText}`;
-
-    const error = new Error(msg);
-    error.status      = res.status;
-    error.graphError  = err || null;
-    throw error;
-  }
-
-  return data;
+  return {
+    publicId: result.public_id,
+    secureUrl: result.secure_url,
+    width: result.width,
+    height: result.height,
+    format: result.format
+  };
 }
 
-async function getContainerStatus(containerId) {
-  return threadsGet(`${containerId}`, {
-    fields:       "id,status,error_message",
-    access_token: THREADS_ACCESS_TOKEN
-  });
-}
-
-async function waitUntilContainerReady(containerId) {
-  for (let attempt = 1; attempt <= MAX_POLL_ATTEMPTS; attempt++) {
-    const statusData = await getContainerStatus(containerId);
-    const status     = statusData.status || "";
-
-    logger.info("Threads container estado", { containerId, attempt, maxAttempts: MAX_POLL_ATTEMPTS, status });
-
-    if (status === "FINISHED") return statusData;
-    if (status === "ERROR")    throw new Error(`El contenedor de Threads ${containerId} falló: ${statusData.error_message || "error desconocido"}`);
-    if (status === "EXPIRED")  throw new Error(`El contenedor de Threads ${containerId} expiró antes de publicarse`);
-
-    await sleep(POLL_INTERVAL_MS);
+async function deleteImage(publicId) {
+  if (!publicId) {
+    return {
+      result: "skipped",
+      reason: "missing_public_id"
+    };
   }
 
-  throw new Error(`El contenedor de Threads ${containerId} no estuvo listo a tiempo`);
-}
-
-async function publishThreadsImagePost({ imageUrl, caption }) {
-  ensureEnv();
-
-  if (!imageUrl) throw new Error("imageUrl es requerido para publicar en Threads.");
-
-  const safeCaption = typeof caption === "string" ? caption.trim() : "";
-
-  logger.info("Creando contenedor de imagen en Threads", { imageUrl, caption: safeCaption || "[sin caption]" });
-
-  const container = await threadsPost(`${THREADS_USER_ID}/threads`, {
-    media_type:   "IMAGE",
-    image_url:    imageUrl,
-    text:         safeCaption,
-    access_token: THREADS_ACCESS_TOKEN
+  return cloudinary.uploader.destroy(publicId, {
+    resource_type: "image"
   });
-
-  if (!container.id) throw new Error("No se recibió id del contenedor de Threads.");
-
-  await waitUntilContainerReady(container.id);
-
-  const published = await threadsPost(`${THREADS_USER_ID}/threads_publish`, {
-    creation_id:  container.id,
-    access_token: THREADS_ACCESS_TOKEN
-  });
-
-  if (!published.id) throw new Error("No se recibió id del post publicado en Threads.");
-
-  logger.info("Post publicado en Threads", { mediaId: published.id });
-
-  return { containerId: container.id, mediaId: published.id };
-}
-
-async function publishThreadsCarouselPost({ imageUrls, caption }) {
-  ensureEnv();
-
-  if (!Array.isArray(imageUrls) || imageUrls.length < 2 || imageUrls.length > 10) {
-    throw new Error("Un carrusel de Threads debe tener entre 2 y 10 imágenes.");
-  }
-
-  const safeCaption = typeof caption === "string" ? caption.trim() : "";
-
-  logger.info("Creando carrusel en Threads", { slides: imageUrls.length, caption: safeCaption || "[sin caption]" });
-
-  const childIds = [];
-
-  for (const imageUrl of imageUrls) {
-    const child = await threadsPost(`${THREADS_USER_ID}/threads`, {
-      media_type:       "IMAGE",
-      image_url:        imageUrl,
-      is_carousel_item: true,
-      access_token:     THREADS_ACCESS_TOKEN
-    });
-
-    if (!child.id) throw new Error(`No se recibió id del item del carrusel para ${imageUrl}`);
-
-    logger.info("Slide de carrusel creado, esperando que esté listo...", { containerId: child.id, imageUrl });
-
-    await waitUntilContainerReady(child.id);
-
-    childIds.push(child.id);
-    logger.info("Slide de carrusel listo", { containerId: child.id, imageUrl });
-  }
-
-  const parent = await threadsPost(`${THREADS_USER_ID}/threads`, {
-    media_type:   "CAROUSEL",
-    children:     childIds.join(","),
-    text:         safeCaption,
-    access_token: THREADS_ACCESS_TOKEN
-  });
-
-  if (!parent.id) throw new Error("No se recibió id del contenedor padre del carrusel de Threads.");
-
-  await waitUntilContainerReady(parent.id);
-
-  const published = await threadsPost(`${THREADS_USER_ID}/threads_publish`, {
-    creation_id:  parent.id,
-    access_token: THREADS_ACCESS_TOKEN
-  });
-
-  if (!published.id) throw new Error("No se recibió id del carrusel publicado en Threads.");
-
-  logger.info("Carrusel publicado en Threads", { mediaId: published.id, childIds });
-
-  return { containerId: parent.id, mediaId: published.id, childIds };
 }
 
 module.exports = {
-  publishThreadsImagePost,
-  publishThreadsCarouselPost
+  buildPublicId,
+  uploadImage,
+  deleteImage
 };

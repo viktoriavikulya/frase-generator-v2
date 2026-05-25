@@ -73,6 +73,72 @@ async function runPipelineSteps({
     pipelineLogger.info("No había publicaciones pendientes; se continúa con render normal.");
   }
 
+  if (!isFormMode) {
+    const pendingUploadResult = await runStep(uploadStepName, uploadScript, {
+      pipeline: label,
+      ...context
+    });
+
+    if (!pendingUploadResult.ok && !pendingUploadResult.noPending) {
+      pipelineLogger.error("Error subiendo pendiente ya renderizado", {
+        status: pendingUploadResult.status,
+        failedStep: `${failedStepPrefix}-upload-pending`,
+        durationMs: Date.now() - startMs
+      });
+
+      pipelineLogger.info("Pipeline terminado", { processed: false });
+
+      return {
+        ok: false,
+        processed: false,
+        failedStep: `${failedStepPrefix}-upload-pending`
+      };
+    }
+
+    if (pendingUploadResult.ok && !pendingUploadResult.noPending) {
+      pipelineLogger.info("Se completo upload pendiente; publicando antes de crear contenido nuevo.", {
+        durationMs: Date.now() - startMs
+      });
+
+      const publishAfterUploadResult = await runStep(publishStepName, publishScript, {
+        pipeline: label,
+        ...context
+      });
+
+      if (!publishAfterUploadResult.ok || publishAfterUploadResult.noPending) {
+        pipelineLogger.error("Error publicando despues de recuperar upload pendiente", {
+          status: publishAfterUploadResult.status,
+          noPending: Boolean(publishAfterUploadResult.noPending),
+          failedStep: `${failedStepPrefix}-publish-after-upload-pending`,
+          durationMs: Date.now() - startMs
+        });
+
+        pipelineLogger.info("Pipeline terminado", { processed: false });
+
+        return {
+          ok: false,
+          processed: false,
+          failedStep: `${failedStepPrefix}-publish-after-upload-pending`
+        };
+      }
+
+      pipelineLogger.info("Se completo un post renderizado pendiente antes de crear uno nuevo.", {
+        processed: true,
+        durationMs: Date.now() - startMs
+      });
+
+      pipelineLogger.info("Pipeline terminado", { processed: true });
+
+      return {
+        ok: true,
+        processed: true,
+        recoveredPending: true
+      };
+    }
+
+    pipelineLogger.info("No habia uploads pendientes; se continua con render normal.");
+  }
+
   const renderResult = await runStep(renderStepName, renderScript, {
     pipeline: label,
     ...context

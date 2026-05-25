@@ -123,7 +123,20 @@ async function main() {
   const localPath = path.join(OUTPUT_DIR, outputFile);
 
   if (!fs.existsSync(localPath)) {
-    throw new Error(`No existe el archivo local: ${localPath}`);
+    const resetTs = nowIsoLocal();
+
+    await updateCellsBatch(sheets, [
+      { row: rowNumber, col: headerMap["estado_general"] + 1, value: GENERAL_STATUS.ERROR },
+      { row: rowNumber, col: headerMap["estado_render"] + 1, value: STATUS.ERROR },
+      { row: rowNumber, col: headerMap["estado_upload"] + 1, value: STATUS.PENDING },
+      { row: rowNumber, col: headerMap["lock_status"] + 1, value: LOCK_STATUS.FREE },
+      { row: rowNumber, col: headerMap["error_step"] + 1, value: "render" },
+      { row: rowNumber, col: headerMap["error_message"] + 1, value: `Archivo renderizado no disponible en este runner: ${localPath}` },
+      { row: rowNumber, col: headerMap["updated_at"] + 1, value: resetTs }
+    ]);
+
+    rowLogger.warn("Archivo local no existe; la fila queda lista para re-render", { localPath });
+    process.exit(10);
   }
 
   rowLogger.info("Fila seleccionada para upload", { localPath });

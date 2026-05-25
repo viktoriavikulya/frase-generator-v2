@@ -127,6 +127,43 @@ async function main() {
   await updateCellsBatch(sheets, prepUpdates);
 
   try {
+    const missingFiles = groupRows
+      .map((item) => {
+        const fileName = getCellValue(item.values, headerMap, "output_file");
+        const localPath = fileName ? path.join(OUTPUT_DIR, fileName) : "";
+        return {
+          rowNumber: item.rowNumber,
+          fileName,
+          localPath,
+          missing: !fileName || !fs.existsSync(localPath)
+        };
+      })
+      .filter((item) => item.missing);
+
+    if (missingFiles.length > 0) {
+      const resetTs = nowIsoLocal();
+
+      await updateCellsBatch(sheets, groupRows.flatMap((item) => [
+        { row: item.rowNumber, col: headerMap["estado_general"] + 1, value: GENERAL_STATUS.ERROR },
+        { row: item.rowNumber, col: headerMap["estado_render"] + 1, value: STATUS.ERROR },
+        { row: item.rowNumber, col: headerMap["estado_upload"] + 1, value: STATUS.PENDING },
+        { row: item.rowNumber, col: headerMap["lock_status"] + 1, value: LOCK_STATUS.FREE },
+        { row: item.rowNumber, col: headerMap["error_step"] + 1, value: "render" },
+        { row: item.rowNumber, col: headerMap["error_message"] + 1, value: "Archivo renderizado no disponible en este runner; se requiere re-render." },
+        { row: item.rowNumber, col: headerMap["updated_at"] + 1, value: resetTs }
+      ]));
+
+      groupLogger.warn("Faltan archivos locales; el carrusel queda listo para re-render", {
+        missingFiles: missingFiles.map((item) => ({
+          rowNumber: item.rowNumber,
+          fileName: item.fileName,
+          localPath: item.localPath
+        }))
+      });
+
+      process.exit(10);
+    }
+
     for (const item of groupRows) {
       const rowNumber = item.rowNumber;
       const row = item.values;
