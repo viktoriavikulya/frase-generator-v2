@@ -1,56 +1,79 @@
 require("dotenv").config();
 
-const { buildGraphUrl, buildGraphErrorMessage, graphPost } = require("./graph-client");
+const { buildGraphErrorMessage, graphPost } = require("./graph-client");
+const { logger } = require("../utils/logger");
 
-const FB_PAGE_ID = process.env.FB_PAGE_ID;
+const FB_PAGE_ID           = process.env.FB_PAGE_ID;
 const FB_PAGE_ACCESS_TOKEN = process.env.FB_PAGE_ACCESS_TOKEN;
 
-function ensureEnv() {
-  if (!FB_PAGE_ID) {
-    throw new Error("Falta FB_PAGE_ID en .env");
-  }
+const RETRY_ATTEMPTS = 3;
+const RETRY_DELAY_MS = 5000;
 
-  if (!FB_PAGE_ACCESS_TOKEN) {
-    throw new Error("Falta FB_PAGE_ACCESS_TOKEN en .env");
-  }
+function ensureEnv() {
+  if (!FB_PAGE_ID)           throw new Error("Falta FB_PAGE_ID en .env");
+  if (!FB_PAGE_ACCESS_TOKEN) throw new Error("Falta FB_PAGE_ACCESS_TOKEN en .env");
 }
 
-async function graphPostWithRetry(path, body, retries = 3, delayMs = 5000) {
-  for (let attempt = 1; attempt <= retries; attempt++) {
-    try {
-      return await graphPost(path, body);
-    } catch (error) {
-      const isTransient = error.graphError?.code === 1 || error.status >= 500;
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
 
-      if (isTransient && attempt < retries) {
-        console.log(`Facebook error transitorio (intento ${attempt}/${retries}), reintentando en ${delayMs / 1000}s...`);
-        await new Promise(resolve => setTimeout(resolve, delayMs));
+/**
+ * Determina si un error de la Graph API es transitorio y vale la pena reintentar.
+ * Alineado con el mismo criterio de threads-lib.js:
+ *   - code 1 = error interno de Meta (transitorio)
+ *   - HTTP 5xx = error de servidor (transitorio)
+ * Los errores de auth (190) y validación (4xx) fallan inmediatamente.
+ */
+function isTransientError(error) {
+  return error.graphError?.code === 1 || (error.status >= 500 && error.status < 600);
+}
+
+/**
+ * Ejecuta fn hasta RETRY_ATTEMPTS veces, esperando RETRY_DELAY_MS entre intentos.
+ * Solo reintenta si isTransientError(error) es true.
+ */
+async function withRetry(fn, label) {
+  for (let attempt = 1; attempt <= RETRY_ATTEMPTS; attempt++) {
+    try {
+      return await fn();
+    } catch (error) {
+      if (isTransientError(error) && attempt < RETRY_ATTEMPTS) {
+        logger.warn(`Facebook reintento (${label})`, {
+          attempt,
+          total:   RETRY_ATTEMPTS,
+          error:   error.message
+        });
+        await sleep(RETRY_DELAY_MS);
         continue;
       }
-
       throw error;
     }
   }
 }
 
+// ─── Funciones públicas ───────────────────────────────────────────────────────
+
 async function publishFacebookImagePost({ imageUrl, caption }) {
   ensureEnv();
 
-  if (!imageUrl) {
-    throw new Error("imageUrl es requerido.");
-  }
+  if (!imageUrl) throw new Error("imageUrl es requerido.");
 
   const safeCaption = typeof caption === "string" ? caption.trim() : "";
 
-  console.log("Publicando imagen en Facebook...");
-  console.log("imageUrl:", imageUrl);
-  console.log("caption:", safeCaption || "[sin caption]");
-
-  const published = await graphPostWithRetry(`${FB_PAGE_ID}/photos`, {
-    url: imageUrl,
-    caption: safeCaption,
-    access_token: FB_PAGE_ACCESS_TOKEN
+  logger.info("Publicando imagen en Facebook", {
+    imageUrl,
+    caption: safeCaption || "[sin caption]"
   });
+
+  const published = await withRetry(
+    () => graphPost(`${FB_PAGE_ID}/photos`, {
+      url:          imageUrl,
+      caption:      safeCaption,
+      access_token: FB_PAGE_ACCESS_TOKEN
+    }),
+    "publishFacebookImagePost"
+  );
 
   if (!published.id) {
     throw new Error("No se recibió id de la foto publicada en Facebook.");
@@ -58,27 +81,26 @@ async function publishFacebookImagePost({ imageUrl, caption }) {
 
   return {
     photoId: published.id,
-    postId: published.post_id || ""
+    postId:  published.post_id || ""
   };
 }
 
 async function uploadUnpublishedFacebookPhoto({ imageUrl }) {
   ensureEnv();
 
-  if (!imageUrl) {
-    throw new Error("imageUrl es requerido para un slide de Facebook.");
-  }
+  if (!imageUrl) throw new Error("imageUrl es requerido para un slide de Facebook.");
 
-  const uploaded = await graphPostWithRetry(`${FB_PAGE_ID}/photos`, {
-    url: imageUrl,
-    published: false,
-    access_token: FB_PAGE_ACCESS_TOKEN
-  });
+  const uploaded = await withRetry(
+    () => graphPost(`${FB_PAGE_ID}/photos`, {
+      url:          imageUrl,
+      published:    false,
+      access_token: FB_PAGE_ACCESS_TOKEN
+    }),
+    "uploadUnpublishedFacebookPhoto"
+  );
 
   if (!uploaded.id) {
-    throw new Error(
-      `No se recibió id de foto no publicada para ${imageUrl}`
-    );
+    throw new Error(`No se recibió id de foto no publicada para ${imageUrl}`);
   }
 
   return uploaded.id;
@@ -93,8 +115,10 @@ async function publishFacebookCarouselPost({ imageUrls, caption }) {
 
   const safeCaption = typeof caption === "string" ? caption.trim() : "";
 
-  console.log(`Publicando carrusel en Facebook con ${imageUrls.length} imágenes...`);
-  console.log("caption:", safeCaption || "[sin caption]");
+  logger.info("Publicando carrusel en Facebook", {
+    slides:  imageUrls.length,
+    caption: safeCaption || "[sin caption]"
+  });
 
   const mediaFbids = [];
 
@@ -104,7 +128,7 @@ async function publishFacebookCarouselPost({ imageUrls, caption }) {
   }
 
   const body = {
-    message: safeCaption,
+    message:      safeCaption,
     access_token: FB_PAGE_ACCESS_TOKEN
   };
 
@@ -112,14 +136,17 @@ async function publishFacebookCarouselPost({ imageUrls, caption }) {
     body[`attached_media[${index}]`] = JSON.stringify({ media_fbid: mediaFbid });
   });
 
-  const published = await graphPostWithRetry(`${FB_PAGE_ID}/feed`, body);
+  const published = await withRetry(
+    () => graphPost(`${FB_PAGE_ID}/feed`, body),
+    "publishFacebookCarouselPost"
+  );
 
   if (!published.id) {
     throw new Error("No se recibió id del post del carrusel en Facebook.");
   }
 
   return {
-    postId: published.id,
+    postId:    published.id,
     mediaFbids
   };
 }

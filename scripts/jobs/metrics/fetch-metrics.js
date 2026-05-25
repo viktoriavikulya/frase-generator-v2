@@ -77,12 +77,13 @@ async function fetchFacebookInsights(postId) {
     const shares   = postData.shares?.count                  ?? 0;
 
     // Traer reach y views desde insights
+    // NOTA: post_views_total fue deprecado por Meta. Se usa post_impressions en su lugar.
     let reach  = 0;
     let views  = 0;
 
     try {
       const insightsData = await graphGet(`${postId}/insights`, {
-        metric: "post_impressions_unique,post_views_total",
+        metric: "post_impressions_unique,post_impressions", // ✅ fix: post_views_total → post_impressions
         access_token: FB_PAGE_ACCESS_TOKEN
       });
 
@@ -90,7 +91,7 @@ async function fetchFacebookInsights(postId) {
         const value = item.values?.[0]?.value ?? item.value ?? 0;
         switch (item.name) {
           case "post_impressions_unique": reach = Number(value); break;
-          case "post_views_total":        views = Number(value); break;
+          case "post_impressions":        views = Number(value); break; // ✅ fix
         }
       }
     } catch (insightErr) {
