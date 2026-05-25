@@ -15,7 +15,8 @@ const REQUIRED_FILES = [
   "scripts/libs/threads-lib.js",
   "scripts/utils/render-utils.js",
   "scripts/utils/pipeline-runner.js",
-  "scripts/pipeline/register-from-form.js"
+  "scripts/pipeline/register-from-form.js",
+  "scripts/jobs/inspiration/fetch-inspiration.js"
 ];
 
 const CHECKED_JS_FILES = [
@@ -24,6 +25,7 @@ const CHECKED_JS_FILES = [
   "scripts/utils/render-utils.js",
   "scripts/utils/pipeline-runner.js",
   "scripts/pipeline/register-from-form.js",
+  "scripts/jobs/inspiration/fetch-inspiration.js",
   "scripts/jobs/single/render-single-from-sheet.js",
   "scripts/jobs/single/upload-single-from-sheet.js",
   "scripts/jobs/single/publish-single-from-sheet.js",
@@ -70,7 +72,8 @@ function checkPackageScripts() {
       "sync-palettes",
       "check-palettes-sync",
       "doctor",
-      "doctor:sheet"
+      "doctor:sheet",
+      "fetch:inspiration"
     ]) {
       record(Boolean(scripts[scriptName]), `package script:${scriptName}`);
     }

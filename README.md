@@ -99,6 +99,9 @@ npm run check-palettes-sync  # verificar que están sincronizadas
 # Diagnóstico rápido
 npm run doctor        # valida archivos, exports, sintaxis, docs y paletas
 npm run doctor:sheet  # audita columnas y estados del Google Sheet
+
+# Inspiración viral
+npm run fetch:inspiration  # llena la pestaña "inspiracion" con candidatos para revisar
 ```
 
 ---
@@ -154,3 +157,10 @@ publicar.html          # formulario de publicación (GitHub Pages)
 | `GRAPH_API_VERSION` | Versión de la Graph API de Meta |
 | `GENERATOR_URL` / `GENERATOR_PORT` | URL del servidor de render en Actions |
 | `TELEGRAM_BOT_TOKEN` / `TELEGRAM_CHAT_ID` | Notificaciones de éxito y error |
+| `X_BEARER_TOKEN` | Opcional: búsqueda reciente de posts en X para inspiración. X puede requerir créditos activos |
+| `INSPIRATION_SOURCE` | Opcional: fuentes para inspiración. Ej: `auto`, `x`, `bluesky`, `x,bluesky` |
+| `INSPIRATION_QUALITY_MODE` | Opcional: `viral` exige más señal; `explore` permite más descubrimiento. El radar busca amor/ex, plata, trabajo, U, Bogotá/Colombia, WhatsApp, chisme y vida adulta |
+| `INSPIRATION_MIN_LIKES` / `INSPIRATION_MIN_SCORE` | Opcional: mínimos de engagement. Defaults en `viral`: `20` likes y `30` score |
+| `INSPIRATION_MAX_TEXT_LENGTH` | Opcional: máximo de texto. Default: `150` caracteres |
+| `INSPIRATION_DRY_RUN` | Opcional: `true` prueba la búsqueda sin guardar filas |
+| `BLUESKY_IDENTIFIER` / `BLUESKY_APP_PASSWORD` | Opcional: fallback autenticado para Bluesky si el endpoint público devuelve 403 |

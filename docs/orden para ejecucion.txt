@@ -35,5 +35,27 @@ npm run doctor
 # Auditar columnas y estados del Google Sheet
 npm run doctor:sheet
 
+# Buscar inspiración viral y guardarla en la pestaña "inspiracion"
+npm run fetch:inspiration
+
+# Probar inspiración sin guardar nada
+$env:INSPIRATION_DRY_RUN="true"; npm run fetch:inspiration
+
+# Si X responde sin créditos, usar solo Bluesky en PowerShell
+$env:INSPIRATION_SOURCE="bluesky"; npm run fetch:inspiration
+
+# Modo viral: menos candidatos, más señal de engagement
+$env:INSPIRATION_QUALITY_MODE="viral"; npm run fetch:inspiration
+
+# Modo exploración: más candidatos, menos exigente
+$env:INSPIRATION_QUALITY_MODE="explore"; npm run fetch:inspiration
+
+# Ajustar filtros manualmente si salen pocas o demasiadas frases
+$env:INSPIRATION_MIN_LIKES="20"; $env:INSPIRATION_MIN_SCORE="30"; npm run fetch:inspiration
+
+# Si Bluesky público responde 403, configurar en .env:
+# BLUESKY_IDENTIFIER=tu_usuario.bsky.social
+# BLUESKY_APP_PASSWORD=xxxx-xxxx-xxxx-xxxx
+
 # Generar resumen del repo
 npx repomix@latest

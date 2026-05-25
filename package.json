@@ -14,7 +14,8 @@
     "sync-palettes": "node scripts/dev/sync-palettes.js",
     "check-palettes-sync": "node scripts/dev/check-palettes-sync.js",
     "doctor": "node scripts/dev/doctor.js",
-    "doctor:sheet": "node scripts/dev/doctor-sheet.js"
+    "doctor:sheet": "node scripts/dev/doctor-sheet.js",
+    "fetch:inspiration": "node scripts/jobs/inspiration/fetch-inspiration.js"
   },
   "repository": {
     "type": "git",
