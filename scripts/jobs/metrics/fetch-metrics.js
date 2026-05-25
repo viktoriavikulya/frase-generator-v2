@@ -63,9 +63,8 @@ async function fetchInstagramInsights(mediaId) {
 }
 
 // ── Facebook ───────────────────────────────────────────────────────────────
-async function fetchFacebookInsights(postId, igMediaId) {
+async function fetchFacebookInsights(postId) {
   try {
-    // 1) Likes, comments y shares sí se pueden obtener desde el post de Facebook.
     const postData = await graphGet(`${postId}`, {
       fields: "likes.summary(true),comments.summary(true),shares",
       access_token: FB_PAGE_ACCESS_TOKEN
@@ -75,50 +74,22 @@ async function fetchFacebookInsights(postId, igMediaId) {
     const comments = postData.comments?.summary?.total_count ?? 0;
     const shares   = postData.shares?.count                  ?? 0;
 
-    // 2) No consultamos más /{fbPostId}/insights porque está causando:
-    // (#100) The value must be a valid insights metric.
-    //
-    // Para posts cruzados desde Instagram hacia Facebook, la vista útil se intenta
-    // consultar desde el media de Instagram con la métrica facebook_views.
-    let views = 0;
-
-    try {
-      const fbViewsData = await graphGet(`${igMediaId}/insights`, {
-        metric: "facebook_views",
-        access_token: IG_ACCESS_TOKEN
-      });
-
-      for (const item of (fbViewsData.data || [])) {
-        const value = item.values?.[0]?.value ?? item.value ?? 0;
-
-        if (item.name === "facebook_views") {
-          views = Number(value) || 0;
-        }
-      }
-    } catch (fbViewsErr) {
-      logger.warn("No se pudieron obtener facebook_views desde IG Media Insights", {
-        postId,
-        igMediaId,
-        error: fbViewsErr.message
-      });
-    }
-
-    // No usamos más post_impressions_unique ni post_impressions desde FB insights.
-    // Para este flujo dejamos reach en 0 y calculamos engagement con views como fallback.
-    const reach = 0;
-
-    return { likes, comments, shares, reach, views };
+    return {
+      likes,
+      comments,
+      shares,
+      reach: "",
+      views: ""
+    };
   } catch (err) {
     logger.warn("Error obteniendo métricas de Facebook", {
       postId,
-      igMediaId,
       error: err.message
     });
 
     return null;
   }
 }
-
 
 
 
@@ -164,7 +135,7 @@ function calcIgPerformanceScore({ likes, comments, saves, reach }) {
 }
 
 function calcFbEngagementRate({ likes, comments, shares, reach, views }) {
-  const denominator = reach || views;
+  const denominator = Number(reach || views || 0);
 
   if (!denominator) return "";
 
@@ -281,7 +252,7 @@ async function main() {
 
     // ── Facebook
     if (fbPostId) {
-      const fbMetrics = await fetchFacebookInsights(fbPostId, igMediaId);
+      const fbMetrics = await fetchFacebookInsights(fbPostId);
       await sleep(API_DELAY_MS);
 
       if (fbMetrics) {
