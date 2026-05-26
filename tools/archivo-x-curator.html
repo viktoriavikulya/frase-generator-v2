@@ -175,6 +175,11 @@
       color: var(--ink);
     }
 
+    /* chip de decisión con color según estado */
+    .chip.decision-pendiente  { border-color: var(--warning); color: var(--warning); }
+    .chip.decision-aprobada   { border-color: var(--success); color: var(--success); }
+    .chip.decision-descartada { border-color: var(--danger);  color: var(--danger);  }
+
     .phrase-box {
       padding: 20px;
       font-size: clamp(22px, 3.5vw, 48px);
@@ -548,11 +553,10 @@
     </header>
 
     <section class="filters">
+      <!-- Opciones alineadas con decision_editorial del nuevo flujo manual -->
       <select id="filterSelect" aria-label="Filtro">
         <option value="pending">Pendientes</option>
-        <option value="usable">Usables</option>
-        <option value="rewrite">Reescribir</option>
-        <option value="manual">Clasificadas</option>
+        <option value="approved">Aprobadas</option>
         <option value="rejected">Descartadas</option>
         <option value="all">Todas</option>
       </select>
@@ -569,11 +573,7 @@
       </section>
 
       <aside class="side">
-        <section class="panel side-section">
-          <p class="side-title">Decisión</p>
-          <div class="use-grid" id="useGrid"></div>
-        </section>
-
+        <!-- Sidebar de grupo: asignar grupo NO aprueba automáticamente -->
         <section class="panel side-section">
           <p class="side-title">Grupo carrusel</p>
           <div class="group-grid" id="groupGrid"></div>
@@ -583,13 +583,19 @@
   </div>
 
   <script>
-    const useOptions = [
-      { value: "si", label: "Sirve" },
-      { value: "reescribir", label: "Reescribir" },
-      { value: "revisar", label: "Revisar" },
-      { value: "fecha", label: "Fecha" },
-      { value: "no", label: "No sirve" }
-    ];
+    /**
+     * Curador archivo_x — Flujo 100% manual
+     *
+     * Modelo de decisiones:
+     *   decision_editorial: "pendiente" | "aprobada" | "descartada"
+     *
+     * Reglas estrictas:
+     *   - Solo el botón "Aprobar"   pone decision_editorial = aprobada
+     *   - Solo el botón "Descartar" pone decision_editorial = descartada
+     *   - Solo el botón "Pendiente" pone decision_editorial = pendiente
+     *   - Cambiar grupo NO cambia decision_editorial
+     *   - Editar frase_final NO cambia decision_editorial
+     */
 
     const state = {
       items: [],
@@ -597,7 +603,7 @@
       taxonomy: [],
       index: 0,
       selectedGroup: "",
-      selectedUse: "si",
+      selectedDecision: "pendiente",   // "pendiente" | "aprobada" | "descartada"
       saving: false,
       worksheet: ""
     };
@@ -610,70 +616,48 @@
       groupFilter: document.getElementById("groupFilter"),
       searchInput: document.getElementById("searchInput"),
       reloadBtn: document.getElementById("reloadBtn"),
-      useGrid: document.getElementById("useGrid"),
       groupGrid: document.getElementById("groupGrid")
     };
+
+    // ─── utilidades ────────────────────────────────────────────────────────────
 
     function clean(value) {
       return String(value || "").trim();
     }
 
-    function isManual(item) {
-      return clean(item.clasificado_manual).toLowerCase() === "si";
-    }
-
-    function statusFromUse(value) {
-      const map = {
-        si: "listo",
-        no: "descartada",
-        reescribir: "reescribir",
-        revisar: "revisar",
-        fecha: "fecha"
-      };
-      return map[value] || "pendiente";
+    function escapeHtml(value) {
+      return clean(value)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;");
     }
 
     function currentItem() {
       return state.filtered[state.index] || null;
     }
 
-    function getItemText(item) {
-      return clean(item.frase_final) || clean(item.frase_original);
+    function setStatus(message) {
+      const line = document.getElementById("statusLine");
+      if (line) line.textContent = message || "";
     }
+
+    // ─── stats ─────────────────────────────────────────────────────────────────
 
     function renderStats(summary) {
-      const total = summary?.total || state.items.length;
-      const manual = summary?.manual || state.items.filter(isManual).length;
-      const pending = summary?.pending || Math.max(0, total - manual);
-      const visible = state.filtered.length;
-
+      // El servidor devuelve summary.pendiente / .aprobada / .descartada
       els.stats.innerHTML = [
-        ["Total", total],
-        ["Pendientes", pending],
-        ["Clasificadas", manual],
-        ["Vista", visible]
-      ].map(([label, value]) => `<span class="chip"><strong>${value}</strong>&nbsp;${label}</span>`).join("");
+        ["Total",       summary?.total      ?? state.items.length],
+        ["Pendientes",  summary?.pendiente  ?? 0],
+        ["Aprobadas",   summary?.aprobada   ?? 0],
+        ["Descartadas", summary?.descartada ?? 0],
+        ["Vista",       state.filtered.length]
+      ].map(([label, value]) =>
+        `<span class="chip"><strong>${value}</strong>&nbsp;${label}</span>`
+      ).join("");
     }
 
-    function renderUseButtons() {
-      els.useGrid.innerHTML = "";
-
-      for (const option of useOptions) {
-        const button = document.createElement("button");
-        button.type = "button";
-        button.className = `btn ${option.value === "no" ? "no" : ""} ${state.selectedUse === option.value ? "active" : ""}`;
-        button.textContent = option.label;
-        button.disabled = state.saving;
-        button.addEventListener("click", () => {
-          state.selectedUse = option.value;
-          renderUseButtons();
-          if (option.value === "no") {
-            saveCurrent({ sirve: "no", estado: "descartada" }, true);
-          }
-        });
-        els.useGrid.appendChild(button);
-      }
-    }
+    // ─── grupo (sidebar) ───────────────────────────────────────────────────────
 
     function renderGroupButtons() {
       els.groupGrid.innerHTML = "";
@@ -684,14 +668,18 @@
         button.className = `group-btn ${state.selectedGroup === group.name ? "active" : ""}`;
         button.title = group.hint || group.name;
         button.disabled = state.saving;
-        button.innerHTML = `<strong>${group.name}</strong><span>${group.hint || ""}</span>`;
+        button.innerHTML = `<strong>${escapeHtml(group.name)}</strong><span>${escapeHtml(group.hint || "")}</span>`;
         button.addEventListener("click", () => {
           state.selectedGroup = group.name;
-          saveCurrent({ grupo_carrusel: group.name }, true);
+          renderGroupButtons();
+          // Guardar solo el grupo — NO toca decision_editorial
+          saveCurrent({ grupo_carrusel: group.name }, false);
         });
         els.groupGrid.appendChild(button);
       }
     }
+
+    // ─── panel principal ───────────────────────────────────────────────────────
 
     function renderPhrase() {
       const item = currentItem();
@@ -699,34 +687,51 @@
       if (!item) {
         els.phrasePanel.innerHTML = '<div class="empty">No hay frases en esta vista.</div>';
         state.selectedGroup = "";
-        state.selectedUse = "si";
-        renderUseButtons();
+        state.selectedDecision = "pendiente";
         renderGroupButtons();
         renderStats();
         return;
       }
 
-      state.selectedGroup = clean(item.grupo_carrusel);
-      state.selectedUse = clean(item.sirve).toLowerCase() || "si";
+      // Sincronizar state con el item actual
+      state.selectedGroup    = clean(item.grupo_carrusel);
+      state.selectedDecision = clean(item.decision_editorial).toLowerCase() || "pendiente";
 
-      const phrase = clean(item.frase_original);
+      const phrase      = clean(item.frase_original);
       const finalPhrase = clean(item.frase_final);
-      const notes = clean(item.notas);
+      const notes       = clean(item.notas);
+      const temporalidad = clean(item.temporalidad) || "atemporal";
+      const decision    = state.selectedDecision;
+
+      // Chips del nuevo modelo — sin campos legacy (calidad, riesgo, sirve, estado)
+      const decisionLabel = { pendiente: "pendiente", aprobada: "✓ aprobada", descartada: "✗ descartada" }[decision] || decision;
       const rowMeta = [
-        `Fila ${item.rowNumber}`,
-        item.sirve || "sin decisión",
-        item.estado || "sin estado",
-        item.recomendacion_auto || "",
-        item.calidad ? `calidad ${item.calidad}` : "",
-        item.riesgo ? `riesgo ${item.riesgo}` : ""
+        { text: `Fila ${item.rowNumber}` },
+        { text: decisionLabel, cls: `decision-${decision}` },
+        item.grupo_carrusel ? { text: item.grupo_carrusel } : null,
+        { text: temporalidad }
       ].filter(Boolean);
 
       els.phrasePanel.innerHTML = `
         <div class="panel-head">
-          <div class="meta">${rowMeta.map(value => `<span class="chip">${value}</span>`).join("")}</div>
+          <div class="meta">
+            ${rowMeta.map(m => `<span class="chip ${m.cls || ""}">${escapeHtml(m.text)}</span>`).join("")}
+          </div>
           <div class="chip"><strong>${state.index + 1}</strong>&nbsp;/&nbsp;${state.filtered.length}</div>
         </div>
-        <div class="phrase">${escapeHtml(phrase)}</div>
+
+        <div class="phrase-box">${escapeHtml(phrase)}</div>
+
+        <!-- Botones de decisión editorial — cada uno es la única fuente de verdad -->
+        <div class="decision-buttons">
+          <button type="button" class="decision-btn pending ${decision === "pendiente" ? "active" : ""}"
+                  id="btnPendiente">Pendiente</button>
+          <button type="button" class="decision-btn approved ${decision === "aprobada" ? "active" : ""}"
+                  id="btnAprobar">Aprobar</button>
+          <button type="button" class="decision-btn rejected ${decision === "descartada" ? "active" : ""}"
+                  id="btnDescartar">Descartar</button>
+        </div>
+
         <div class="editor">
           <label>
             frase_final
@@ -737,6 +742,7 @@
             <textarea id="notes">${escapeHtml(notes)}</textarea>
           </label>
         </div>
+
         <div class="actions">
           <div class="action-group">
             <button class="btn ghost" id="prevBtn" type="button">Anterior</button>
@@ -750,51 +756,46 @@
         </div>
       `;
 
+      // Botones de decisión: solo cambian decision_editorial, nada más
+      document.getElementById("btnPendiente").addEventListener("click", () => {
+        state.selectedDecision = "pendiente";
+        saveDecision("pendiente", false);
+      });
+      document.getElementById("btnAprobar").addEventListener("click", () => {
+        state.selectedDecision = "aprobada";
+        saveDecision("aprobada", false);
+      });
+      document.getElementById("btnDescartar").addEventListener("click", () => {
+        state.selectedDecision = "descartada";
+        saveDecision("descartada", false);
+      });
+
+      // Navegación y guardado de campos editables (frase_final + notas)
       document.getElementById("prevBtn").addEventListener("click", () => move(-1));
       document.getElementById("nextBtn").addEventListener("click", () => move(1));
       document.getElementById("saveBtn").addEventListener("click", () => saveCurrent({}, false));
       document.getElementById("saveNextBtn").addEventListener("click", () => saveCurrent({}, true));
 
-      renderUseButtons();
       renderGroupButtons();
       renderStats();
     }
 
-    function escapeHtml(value) {
-      return clean(value)
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;")
-        .replace(/"/g, "&quot;");
-    }
-
-    function setStatus(message) {
-      const line = document.getElementById("statusLine");
-      if (line) line.textContent = message || "";
-    }
-
-    function move(delta) {
-      if (!state.filtered.length) return;
-      state.index = Math.max(0, Math.min(state.filtered.length - 1, state.index + delta));
-      renderPhrase();
-    }
+    // ─── filtros ───────────────────────────────────────────────────────────────
 
     function applyFilters(keepCurrent = true) {
       const previousRow = keepCurrent ? currentItem()?.rowNumber : null;
       const filter = els.filterSelect.value;
-      const group = els.groupFilter.value;
+      const group  = els.groupFilter.value;
       const search = clean(els.searchInput.value).toLowerCase();
 
       state.filtered = state.items.filter(item => {
-        const manual = isManual(item);
-        const sirve = clean(item.sirve).toLowerCase();
-        const estado = clean(item.estado).toLowerCase();
+        // Filtrar por decision_editorial (único campo de decisión válido)
+        const decision = clean(item.decision_editorial).toLowerCase() || "pendiente";
 
-        if (filter === "pending" && manual) return false;
-        if (filter === "manual" && !manual) return false;
-        if (filter === "usable" && (sirve === "no" || estado === "descartada")) return false;
-        if (filter === "rewrite" && sirve !== "reescribir" && estado !== "reescribir") return false;
-        if (filter === "rejected" && sirve !== "no" && estado !== "descartada") return false;
+        if (filter === "pending"  && decision !== "pendiente")  return false;
+        if (filter === "approved" && decision !== "aprobada")   return false;
+        if (filter === "rejected" && decision !== "descartada") return false;
+
         if (group && item.grupo_carrusel !== group) return false;
 
         if (search) {
@@ -815,24 +816,41 @@
       renderPhrase();
     }
 
+    // ─── guardado ──────────────────────────────────────────────────────────────
+
+    /**
+     * saveDecision — guarda SOLO decision_editorial.
+     * No toca frase_final ni notas ni grupo_carrusel.
+     */
+    async function saveDecision(decision, advance) {
+      await saveCurrent({ decision_editorial: decision }, advance);
+    }
+
+    /**
+     * saveCurrent — guarda frase_final + notas + cualquier campo en `extra`.
+     * Si `extra` no incluye decision_editorial, el servidor NO la cambia.
+     * Si `extra` incluye decision_editorial, el servidor la valida y actualiza.
+     *
+     * Nunca envía sirve, estado, clasificado_manual ni campos legacy.
+     */
     async function saveCurrent(extra, advance) {
       const item = currentItem();
       if (!item || state.saving) return;
 
       state.saving = true;
       setStatus("Guardando...");
-      renderUseButtons();
       renderGroupButtons();
 
-      const finalPhrase = document.getElementById("finalPhrase")?.value || "";
-      const notes = document.getElementById("notes")?.value || "";
+      const finalPhrase = document.getElementById("finalPhrase")?.value ?? "";
+      const notes       = document.getElementById("notes")?.value ?? "";
+
+      // Payload limpio: solo campos del nuevo modelo
+      // decision_editorial solo llega si `extra` lo incluye explícitamente
       const payload = {
-        sirve: state.selectedUse,
-        estado: statusFromUse(state.selectedUse),
         grupo_carrusel: state.selectedGroup,
-        frase_final: finalPhrase,
-        notas: notes,
-        ...extra
+        frase_final:    finalPhrase,
+        notas:          notes,
+        ...extra   // puede traer { decision_editorial } o { grupo_carrusel } solos
       };
 
       try {
@@ -845,10 +863,12 @@
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || "No se pudo guardar");
 
+        // Actualizar item en memoria con la respuesta del servidor
         const itemIndex = state.items.findIndex(row => row.rowNumber === item.rowNumber);
         if (itemIndex >= 0) state.items[itemIndex] = data.item;
 
         state.saving = false;
+
         if (advance) {
           applyFilters(false);
         } else {
@@ -858,10 +878,19 @@
       } catch (err) {
         state.saving = false;
         setStatus(err.message || String(err));
-        renderUseButtons();
         renderGroupButtons();
       }
     }
+
+    // ─── navegación ────────────────────────────────────────────────────────────
+
+    function move(delta) {
+      if (!state.filtered.length) return;
+      state.index = Math.max(0, Math.min(state.filtered.length - 1, state.index + delta));
+      renderPhrase();
+    }
+
+    // ─── filtro de grupo ───────────────────────────────────────────────────────
 
     function renderGroupFilter() {
       const current = els.groupFilter.value;
@@ -875,6 +904,8 @@
       els.groupFilter.value = current;
     }
 
+    // ─── carga inicial ─────────────────────────────────────────────────────────
+
     async function load() {
       els.phrasePanel.innerHTML = '<div class="empty">Cargando frases...</div>';
 
@@ -882,23 +913,26 @@
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "No se pudo cargar archivo_x");
 
-      state.items = data.items || [];
-      state.taxonomy = data.taxonomy || [];
+      state.items     = data.items    || [];
+      state.taxonomy  = data.taxonomy || [];
       state.worksheet = data.worksheet || "archivo_x";
+
       els.worksheetLabel.textContent = `Pestaña: ${state.worksheet}`;
       renderGroupFilter();
       renderStats(data.summary);
       applyFilters(false);
     }
 
-    els.filterSelect.addEventListener("change", () => applyFilters(false));
-    els.groupFilter.addEventListener("change", () => applyFilters(false));
-    els.searchInput.addEventListener("input", () => applyFilters(false));
-    els.reloadBtn.addEventListener("click", () => load().catch(showFatal));
-
     function showFatal(err) {
       els.phrasePanel.innerHTML = `<div class="empty">${escapeHtml(err.message || String(err))}</div>`;
     }
+
+    // ─── event listeners ───────────────────────────────────────────────────────
+
+    els.filterSelect.addEventListener("change", () => applyFilters(false));
+    els.groupFilter.addEventListener("change",  () => applyFilters(false));
+    els.searchInput.addEventListener("input",   () => applyFilters(false));
+    els.reloadBtn.addEventListener("click",     () => load().catch(showFatal));
 
     load().catch(showFatal);
   </script>

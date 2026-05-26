@@ -46,6 +46,7 @@ const EDITABLE_FIELDS = new Set([
   "grupo_carrusel",
   "notas",
   "temporalidad",
+  "temporada",       // CORRECCIÓN: faltaba este campo
   "actualizado_en"
 ]);
 
@@ -128,9 +129,7 @@ function cell(row, headerMap, key) {
 }
 
 function rowToPhrase(row, headerMap, rowNumber) {
-  const phrase = {
-    rowNumber
-  };
+  const phrase = { rowNumber };
 
   for (const header of Object.keys(headerMap)) {
     phrase[header] = cell(row, headerMap, header);
@@ -153,11 +152,11 @@ function getSummary(items) {
   for (const item of items) {
     const decision = item.decision_editorial?.toLowerCase() || "pendiente";
     const group = item.grupo_carrusel || "Sin grupo";
-    
+
     if (decision === "aprobada") summary.aprobada += 1;
     else if (decision === "descartada") summary.descartada += 1;
     else summary.pendiente += 1;
-    
+
     summary.byGroup[group] = (summary.byGroup[group] || 0) + 1;
     summary.byDecision[decision] = (summary.byDecision[decision] || 0) + 1;
   }
@@ -177,26 +176,6 @@ async function loadArchive(sheets) {
   }
 
   return { headerMap, items };
-}
-
-function normalizeUse(value) {
-  const normalized = normalizeValue(value).toLowerCase();
-  const allowed = new Set(["si", "no", "reescribir", "revisar", "fecha"]);
-  return allowed.has(normalized) ? normalized : "";
-}
-
-function normalizeStatus(value, sirve) {
-  const normalized = normalizeValue(value).toLowerCase();
-  const allowed = new Set(["pendiente", "reescribir", "revisar", "listo", "descartada", "fecha"]);
-  if (allowed.has(normalized)) return normalized;
-
-  const use = normalizeUse(sirve);
-  if (use === "si") return "listo";
-  if (use === "no") return "descartada";
-  if (use === "fecha") return "fecha";
-  if (use === "reescribir") return "reescribir";
-  if (use === "revisar") return "revisar";
-  return "pendiente";
 }
 
 function buildUpdates(rowNumber, headerMap, patch) {
@@ -221,18 +200,16 @@ function buildUpdates(rowNumber, headerMap, patch) {
     nextPatch.grupo_carrusel = normalizeGroupName(nextPatch.grupo_carrusel);
   }
 
-  // IMPORTANTE: NO cambiar automáticamente decision_editorial
-  // El usuario debe hacer clic en "Aprobar", "Descartar" o "Pendiente"
+  // IMPORTANTE: NO cambiar automáticamente decision_editorial.
+  // El usuario debe hacer clic en "Aprobar", "Descartar" o "Pendiente".
 
   for (const [field, rawValue] of Object.entries(nextPatch)) {
     if (!EDITABLE_FIELDS.has(field)) continue;
     if (headerMap[field] === undefined) continue;
 
-    let value = rawValue;
-    
     updates.push({
       range: `${WORKSHEET_NAME}!${colToLetter(headerMap[field] + 1)}${rowNumber}`,
-      values: [[value ?? ""]]
+      values: [[rawValue ?? ""]]
     });
   }
 
@@ -271,11 +248,9 @@ async function main() {
   // Middleware de protección con token (solo para API /api/*)
   app.use("/api/", (req, res, next) => {
     if (!CURATOR_TOKEN) {
-      // Sin token definido, modo desarrollo - permitir acceso
       return next();
     }
 
-    // Token está definido, requerir autenticación
     const token = req.headers["x-curator-token"] || req.query.token;
     if (token !== CURATOR_TOKEN) {
       return res.status(403).json({ error: "Token de curador inválido o faltante" });
@@ -326,8 +301,8 @@ async function main() {
         const allowedDecisions = ["pendiente", "aprobada", "descartada"];
         const normalized = patch.decision_editorial.toLowerCase();
         if (!allowedDecisions.includes(normalized)) {
-          res.status(400).json({ 
-            error: `decision_editorial debe ser uno de: ${allowedDecisions.join(", ")}` 
+          res.status(400).json({
+            error: `decision_editorial debe ser uno de: ${allowedDecisions.join(", ")}`
           });
           return;
         }

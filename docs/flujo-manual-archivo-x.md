@@ -236,9 +236,9 @@ Si tienes datos previos con la estructura automática, puedes hacer migración m
 ✅ **Correcto.** Editar el texto no aprueba. Debes hacer clic en "Aprobar".
 
 ### ¿Cómo restauro datos si me equivoco?
-1. En el curador, cambia `decision_editorial` a `pendiente`
-2. O usa las funciones de deshacer de Google Sheets
-3. Los datos no se eliminen, solo cambian de estado
+1. En el curador, cambia `decision_editorial` a `pendiente` haciendo clic en el botón **Pendiente**.
+2. O usa las funciones de deshacer de Google Sheets.
+3. Los datos no se eliminan, solo cambian de estado.
 
 ---
 
@@ -249,17 +249,17 @@ Si tienes datos previos con la estructura automática, puedes hacer migración m
 | `import-saved-tweets-to-sheet.js` | ✅ Reescrito - solo importa sin scoring |
 | `build-carousel-plan.js` | ✅ Actualizado - lee `decision_editorial = aprobada` |
 | `archive-curator-server.js` | ✅ Actualizado - endpoints para decisiones manuales |
-| `curate-saved-tweets.js` | ⚠️ Deprecado - funciones de scoring no usadas |
-| `archivo-x-curator.html` | ⏳ Pendiente - actualización de interfaz |
+| `curate-saved-tweets.js` | ⚠️ Deprecado - herramienta offline, no escribe al Sheet |
+| `archivo-x-curator.html` | ✅ Actualizado - interfaz 100% manual, usa `decision_editorial` |
 
 ---
 
 ## Próximos Pasos
 
-- [ ] Actualizar interfaz `archivo-x-curator.html` para móvil
-- [ ] Agregar protección robusta de CURATOR_TOKEN
+- [x] Actualizar interfaz `archivo-x-curator.html` ✅ completado
+- [x] Tests con `npm run doctor` ✅ completado (60 OK, 0 FAIL)
 - [ ] Migración de datos históricos (si aplica)
-- [ ] Tests con `npm run doctor`
+- [ ] Agregar protección robusta de `CURATOR_TOKEN` en producción
 - [ ] Documentación de riesgos y límites
 
 ---

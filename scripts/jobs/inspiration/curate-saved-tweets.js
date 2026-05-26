@@ -1,3 +1,22 @@
+/**
+ * @deprecated — Analizador offline de frases. NO forma parte del flujo manual.
+ *
+ * Este script evalúa un archivo .txt localmente y genera CSVs con scoring
+ * (quality_score, risk_score, recommendation). Es una herramienta de referencia,
+ * NO escribe al Sheet, NO asigna decision_editorial, NO afecta archivo_x.
+ *
+ * FLUJO ACTUAL (100% manual):
+ *   1. Importar frases crudas al Sheet:
+ *        npm run import:saved-tweets
+ *   2. Curar frase por frase en la interfaz web:
+ *        npm run curate:archivo-x  →  http://localhost:5177
+ *   3. Generar plan de carruseles (solo frases con decision_editorial=aprobada):
+ *        npm run build:carousel-plan
+ *
+ * Si quieres usar este analizador como referencia personal (no para el pipeline):
+ *   npm run analyze:phrases-offline -- data/tweets-guardados-x.txt
+ */
+
 const fs = require("fs");
 const path = require("path");
 
@@ -106,12 +125,15 @@ const RISK_PATTERNS = [
 
 function usage() {
   console.log("Uso:");
-  console.log("  npm run curate:saved-tweets -- ruta/al/archivo.txt");
+  console.log("  npm run analyze:phrases-offline -- ruta/al/archivo.txt");
   console.log("");
   console.log("Opciones:");
   console.log("  --out ruta/salida.csv      Ruta del CSV de salida");
   console.log("  --one-per-line             Fuerza una frase por linea");
   console.log("  --keep-order               No ordenar por quality_score");
+  console.log("");
+  console.log("NOTA: Este script es solo para análisis offline.");
+  console.log("      NO escribe al Sheet ni afecta decision_editorial.");
 }
 
 function parseArgs(argv) {

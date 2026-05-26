@@ -102,30 +102,66 @@ npm run doctor        # valida archivos, exports, sintaxis, docs y paletas
 npm run doctor:sheet  # audita columnas y estados del Google Sheet
 
 # Inspiración viral
-npm run fetch:inspiration  # llena la pestaña "inspiracion" con candidatos para revisar
-npm run curate:saved-tweets -- archivo.txt  # filtra un archivo local de tweets guardados y genera CSV
+npm run fetch:inspiration    # llena la pestaña "inspiracion" con candidatos para revisar
 npm run import:saved-tweets  # importa data/tweets-guardados-x.txt a la pestaña "archivo_x"
-npm run curate:archivo-x     # abre una interfaz local para clasificar archivo_x
+npm run curate:archivo-x     # abre la interfaz de curaduría manual en http://localhost:5177
+
+# Análisis offline (solo referencia, NO escribe al Sheet)
+npm run analyze:phrases-offline -- archivo.txt  # evalúa un .txt local y genera CSVs con scoring
 ```
 
-### Flujo editorial de X
+### Flujo editorial de archivo_x
 
-En `archivo_x`, empieza filtrando por estas columnas:
+El flujo es **100% manual**. Ver documentación completa en [`docs/flujo-manual-archivo-x.md`](docs/flujo-manual-archivo-x.md).
 
-| Columna | Uso |
+#### 1. Importar frases crudas
+```bash
+npm run import:saved-tweets
+```
+Lee `data/tweets-guardados-x.txt`, deduplica y agrega cada frase al Sheet con:
+- `decision_editorial = pendiente`
+- `grupo_carrusel` vacío
+- `frase_final` vacío
+
+No hay scoring automático, no hay clasificación, no hay recomendaciones.
+
+#### 2. Curar frase por frase
+```bash
+npm run curate:archivo-x
+# → http://localhost:5177
+```
+Interfaz web/móvil para revisar cada frase. Para cada una podés:
+
+| Acción | Efecto |
 |---|---|
-| `sirve` | Decisión rápida: `si`, `reescribir`, `revisar`, `fecha` o `no` |
-| `estado` | Flujo editorial: `pendiente`, `reescribir`, `listo`, `descartada` |
-| `prioridad` | Orden de revisión: `alta`, `media`, `baja`, `descartar` |
-| `grupo_carrusel` | Tema final para agrupar carruseles |
-| `frase_final` | Tu versión lista o reescrita |
-| `notas` | Observaciones para decidir después |
+| Botón **Aprobar** | `decision_editorial = aprobada` |
+| Botón **Descartar** | `decision_editorial = descartada` |
+| Botón **Pendiente** | `decision_editorial = pendiente` |
+| Elegir grupo en sidebar | Asigna `grupo_carrusel` — **no aprueba automáticamente** |
+| Editar `frase_final` | Guarda texto corregido — **no aprueba automáticamente** |
 
-`frase_original` es referencia. `calidad`, `riesgo`, `temporada` y `recomendacion_auto` son apoyo para filtrar, no columnas que tengas que editar primero.
+Solo las frases con `decision_editorial = aprobada` entran al plan de carruseles.
 
-En `plan_carruseles`, revisa principalmente `usar`, `estado`, `revisar`, `grupo`, `orden`, `frase_final` y `notas`.
+#### 3. Generar plan de carruseles
+```bash
+npm run build:carousel-plan
+```
+Lee **solo** las frases aprobadas, agrupa por `grupo_carrusel`, requiere mínimo 8 por grupo y genera `output/carousel-plan.json`. Para cada frase usa `frase_final` si existe, `frase_original` si no.
 
-Para clasificar más rápido, corre `npm run curate:archivo-x` y abre la URL local que imprime la terminal. La interfaz guarda directo en `archivo_x` y marca `clasificado_manual = si`; esas categorías manuales se conservan cuando vuelvas a importar el archivo de X.
+#### Columnas principales de `archivo_x`
+
+| Columna | Descripción |
+|---|---|
+| `decision_editorial` | `pendiente`, `aprobada` o `descartada` — la única decisión que importa |
+| `grupo_carrusel` | Uno de los [20 grupos de taxonomía](docs/taxonomia-grupos.md) |
+| `frase_final` | Texto corregido o reescrito (opcional) |
+| `frase_original` | Texto crudo importado — solo lectura |
+| `notas` | Observaciones del curador |
+| `temporalidad` | `atemporal`, `temporada`, `coyuntural` o `fecha_especial` |
+
+> Las columnas `sirve`, `estado`, `prioridad`, `calidad`, `riesgo`, `recomendacion_auto` y `clasificado_manual` son **legacy**: se conservan en el Sheet por compatibilidad pero el flujo actual no las usa ni las escribe.
+
+En `plan_carruseles`, revisá principalmente `usar`, `estado`, `revisar`, `grupo`, `orden`, `frase_final` y `notas`.
 
 La lista vigente de grupos está en [`docs/taxonomia-grupos.md`](docs/taxonomia-grupos.md).
 
@@ -162,6 +198,8 @@ publicar.html          # formulario de publicación (GitHub Pages)
 | Documento | Contenido |
 |---|---|
 | [`docs/arquitectura-proyecto.md`](docs/arquitectura-proyecto.md) | Mapa completo del sistema: cada archivo, cada capa, el modelo de datos en Sheets |
+| [`docs/flujo-manual-archivo-x.md`](docs/flujo-manual-archivo-x.md) | Flujo de curaduría 100% manual: columnas, decisiones, troubleshooting |
+| [`docs/taxonomia-grupos.md`](docs/taxonomia-grupos.md) | Los 20 grupos válidos para `grupo_carrusel` |
 | [`docs/AI_CONTRACT.md`](docs/AI_CONTRACT.md) | Guía para IAs o devs que trabajen en el repo: reglas críticas, columnas del sheet, checklist |
 | [`docs/orden para ejecucion.txt`](docs/orden%20para%20ejecucion.txt) | Comandos para correr el pipeline localmente en desarrollo |
 | [`docs/Qué hacer en el futuro.txt`](docs/Qué%20hacer%20en%20el%20futuro.txt) | Roadmap e ideas pendientes |
@@ -191,5 +229,5 @@ publicar.html          # formulario de publicación (GitHub Pages)
 | `BLUESKY_IDENTIFIER` / `BLUESKY_APP_PASSWORD` | Opcional: fallback autenticado para Bluesky si el endpoint público devuelve 403 |
 | `SAVED_TWEETS_INPUT` | Opcional: archivo local para importar al Sheet. Default: `data/tweets-guardados-x.txt` |
 | `SAVED_TWEETS_WORKSHEET_NAME` | Opcional: pestaña destino para el archivo de X. Default: `archivo_x` |
-| `SAVED_TWEETS_IMPORT_MODE` | Opcional: `all`, `review` o `priority`. Default: `all`, para que `archivo_x` sea el archivo maestro filtrable |
 | `SAVED_TWEETS_DRY_RUN` | Opcional: `true` evalúa el archivo local sin guardar filas |
+| `SAVED_TWEETS_IMPORT_MODE` | ⚠️ Deprecated: ya no tiene efecto en el flujo manual. Se conserva por compatibilidad |

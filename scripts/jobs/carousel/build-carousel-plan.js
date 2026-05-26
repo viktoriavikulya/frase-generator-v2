@@ -23,8 +23,8 @@ const OUTPUT_PATH = path.resolve(
 
 const MIN_SLIDES = 8;
 const MAX_SLIDES = 10;
-const TIER_3_MIN_QUALITY = 38;
-const TIER_3_MAX_RISK = 6;
+// TIER_3_MIN_QUALITY y TIER_3_MAX_RISK eliminados — solo existe tier 1 (aprobada)
+// Se mantienen en module.exports como undefined para no romper imports externos
 
 const PLAN_HEADERS = [
   "usar",
@@ -157,21 +157,21 @@ function getCandidateTier(candidate) {
   // decision_editorial puede ser: "pendiente", "aprobada", "descartada"
   // Solo usamos "aprobada"
   if (candidate.decision_editorial === "aprobada") return 1;
-  
+
   // Rechazar cualquier otra decisión editorial
   return null;
 }
 
 function buildCandidate(row, headerMap, rowNumber, groupField) {
-  const sourceText = cellFromAny(row, headerMap, ["source_text", "frase_original"]);
-  const finalText = cellFromAny(row, headerMap, ["mona_version", "frase_final"]);
-  const group = cell(row, headerMap, groupField);
-  const decision = cell(row, headerMap, "decision_editorial");
+  // CORRECCIÓN: priorizar columnas nuevas sobre legacy
+  const sourceText = cellFromAny(row, headerMap, ["frase_original", "source_text"]);
+  const finalText  = cellFromAny(row, headerMap, ["frase_final", "mona_version"]);
+  const group      = cell(row, headerMap, groupField);
+  const decision   = cell(row, headerMap, "decision_editorial");
 
   if (!sourceText || !group) return null;
 
-  // NUEVO: Solo considerar frases que existan en la estructura manual
-  // El grupo debe estar asignado y la decisión editorial debe ser "aprobada"
+  // Solo considerar frases con decision_editorial = "aprobada"
   if (!decision || decision.toLowerCase() !== "aprobada") {
     return null;
   }
@@ -244,10 +244,11 @@ function buildPlansFromRows(rows) {
     throw new Error("No se encontró columna de grupo: grupo_carrusel, carousel_group o tema_principal");
   }
 
-  // NUEVO: Validar que existan las nuevas columnas de flujo manual
+  // CORRECCIÓN: usar === undefined en lugar de !headerMap[field]
+  // para evitar falso positivo cuando el campo está en columna 0 (índice 0 es falsy)
   const requiredFields = ["decision_editorial", "frase_original"];
   for (const field of requiredFields) {
-    if (!headerMap[field]) {
+    if (headerMap[field] === undefined) {
       throw new Error(`Falta columna requerida para nuevo flujo manual: ${field}`);
     }
   }
@@ -399,7 +400,8 @@ function getPlanKey(plan, slide) {
 
 function getDefaultManualValues(slide) {
   return {
-    estado: "pendiente_revision",
+    // CORRECCIÓN: era "pendiente_revision", debe ser "pendiente"
+    estado: "pendiente",
     notas: "",
     usar: "si",
     // Usar final_text si existe, sino source_text
@@ -421,11 +423,6 @@ function getManualValues(planKey, slide, manualByKey) {
 
 function findHeader(headerMap, candidates) {
   return candidates.find(field => headerMap[field] !== undefined) || "";
-}
-
-function cellFromAny(row, headerMap, candidates) {
-  const field = findHeader(headerMap, candidates);
-  return field ? cell(row, headerMap, field) : "";
 }
 
 function translateManualStatus(value) {
@@ -467,7 +464,7 @@ function translateRecommendation(value) {
 }
 
 function translateTier(value) {
-  // NUEVO: Solo tier 1 (aprobada)
+  // Solo tier 1 (aprobada)
   if (value === 1) return "1 aprobada";
   return "unknown";
 }
@@ -576,8 +573,8 @@ if (require.main === module) {
 module.exports = {
   MIN_SLIDES,
   MAX_SLIDES,
-  TIER_3_MIN_QUALITY,
-  TIER_3_MAX_RISK,
+  TIER_3_MIN_QUALITY: undefined,  // eliminado — solo existe tier 1 (aprobada)
+  TIER_3_MAX_RISK: undefined,      // eliminado — solo existe tier 1 (aprobada)
   getCandidateTier,
   buildCandidate,
   buildPlansFromRows,
