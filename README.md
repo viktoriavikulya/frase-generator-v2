@@ -165,7 +165,7 @@ Lee **solo** las frases aprobadas, agrupa por `grupo_carrusel`, requiere mínimo
 | `lote_importacion` | Batch de importación |
 | `fuente` | Origen (ej: "tweets-guardados-x") |
 
-> **⚠️ Columnas legacy:** si la pestaña `archivo_x` ya existía con columnas como `sirve`, `estado`, `prioridad`, `calidad`, `riesgo`, `recomendacion_auto`, `accion`, `subtema`, `clasificado_manual` o `fila_txt`, el importador y el servidor emitirán un warning pero **no las borrarán**. Para eliminarlas: borrar la pestaña `archivo_x` y volver a ejecutar `npm run import:saved-tweets`, o ejecutar una migración limpia que preserve solo las 12 columnas válidas.
+> **⚠️ Columnas legacy:** si la pestaña `archivo_x` ya existía con columnas como `sirve`, `estado`, `prioridad`, `calidad`, `riesgo`, `recomendacion_auto`, `accion`, `subtema`, `clasificado_manual` o `fila_txt`, el importador y el servidor las detectan y normalizan la hoja para conservar solo las 12 columnas válidas.
 
 > **Reglas importantes del curador:**
 > - Cambiar `grupo_carrusel`, `frase_final` o `notas` **no aprueba automáticamente**.
@@ -187,6 +187,8 @@ La lista vigente de grupos está en [`docs/taxonomia-grupos.md`](docs/taxonomia-
 
 js/                    # generador visual (frontend / Playwright)
 scripts/
+  archive-x/           # segunda parte: importador, curador manual,
+  |                    # generador de plan_carruseles
   core/                # sheets.js, status.js
   libs/                # graph-client, instagram, facebook, threads,
   |                    # cloudinary, render, telegram

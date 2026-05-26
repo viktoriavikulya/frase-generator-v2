@@ -1,26 +1,48 @@
 <!doctype html>
-<html lang="es">
+<html lang="es" data-theme="dark">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Curador archivo_x</title>
   <style>
-    :root {
+    :root[data-theme="dark"] {
+      color-scheme: dark;
+      --bg: #080808;
+      --text: #d9d3c9;
+      --text-title: #e8e2d9;
+      --text-label: #666;
+      --text-hint: #444;
+      --text-muted: #555;
+      --border: #1e1e1e;
+      --border-focus: #666;
+      --placeholder: #333;
+      --btn-main-bg: #e8e2d9;
+      --btn-main-fg: #080808;
+      --status-ok: #4a7a4a;
+      --status-err: #7a3030;
+      --status-warn: #9b8430;
+      --toggle-bg: #222;
+      --toggle-knob: #d9d3c9;
+    }
+
+    :root[data-theme="light"] {
       color-scheme: light;
-      --bg: #f6f3ed;
-      --panel: #fffaf2;
-      --ink: #191714;
-      --muted: #6f665a;
-      --line: #ded4c4;
-      --accent: #0f766e;
-      --accent-soft: #d9f3ef;
-      --danger: #a52828;
-      --danger-soft: #f8dddd;
-      --warning: #b89c00;
-      --warning-soft: #fef5e0;
-      --success: #2d7a4a;
-      --success-soft: #e0f1e6;
-      --shadow: 0 12px 28px rgba(36, 28, 16, 0.08);
+      --bg: #f5f2ee;
+      --text: #2a2520;
+      --text-title: #1a1510;
+      --text-label: #888;
+      --text-hint: #aaa;
+      --text-muted: #999;
+      --border: #ddd;
+      --border-focus: #888;
+      --placeholder: #bbb;
+      --btn-main-bg: #1a1510;
+      --btn-main-fg: #f5f2ee;
+      --status-ok: #2e6e2e;
+      --status-err: #8b2020;
+      --status-warn: #8a6d1d;
+      --toggle-bg: #ddd;
+      --toggle-knob: #1a1510;
     }
 
     * {
@@ -35,8 +57,9 @@
       margin: 0;
       min-height: 100vh;
       background: var(--bg);
-      color: var(--ink);
-      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+      padding: 56px 24px 80px;
     }
 
     button,
@@ -47,11 +70,10 @@
     }
 
     button {
-      border: 1px solid var(--line);
-      background: #fff;
-      color: var(--ink);
+      border: 1px solid var(--border);
+      background: transparent;
+      color: var(--text);
       cursor: pointer;
-      border-radius: 8px;
     }
 
     button:disabled {
@@ -63,94 +85,155 @@
     select,
     textarea {
       width: 100%;
-      border: 1px solid var(--line);
-      border-radius: 8px;
-      background: #fff;
-      color: var(--ink);
-      padding: 12px;
+      border: none;
+      border-bottom: 1px solid var(--border);
+      background: transparent;
+      color: var(--text);
+      padding: 8px 0 10px;
+      outline: none;
+    }
+
+    input::placeholder,
+    textarea::placeholder {
+      color: var(--placeholder);
+    }
+
+    input:focus,
+    select:focus,
+    textarea:focus {
+      border-bottom-color: var(--border-focus);
     }
 
     textarea {
       resize: vertical;
-      line-height: 1.4;
-      min-height: 100px;
+      line-height: 1.7;
+      min-height: 58px;
+      max-height: 140px;
     }
 
     select {
-      padding: 12px;
-      min-height: 42px;
+      min-height: 38px;
+    }
+
+    option {
+      background: var(--bg);
+      color: var(--text);
     }
 
     .shell {
-      width: min(1420px, calc(100vw - 32px));
+      width: min(920px, 100%);
       margin: 0 auto;
-      padding: 20px 0 28px;
     }
 
     header {
-      display: grid;
-      grid-template-columns: 1fr auto;
-      gap: 16px;
-      align-items: end;
-      margin-bottom: 20px;
+      margin-bottom: 36px;
+    }
+
+    .topbar {
+      display: flex;
+      justify-content: flex-end;
+      margin-bottom: 36px;
+    }
+
+    .theme-toggle {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      cursor: pointer;
+      background: none;
+      border: none;
+      padding: 4px;
+    }
+
+    .toggle-icon {
+      font-size: 13px;
+      color: var(--text-label);
+      width: 16px;
+      text-align: center;
+      transition: color 0.25s;
+    }
+
+    .toggle-track {
+      width: 40px;
+      height: 22px;
+      background: var(--toggle-bg);
+      border-radius: 999px;
+      position: relative;
+      transition: background 0.25s;
+    }
+
+    .toggle-knob {
+      width: 16px;
+      height: 16px;
+      background: var(--toggle-knob);
+      border-radius: 50%;
+      position: absolute;
+      top: 3px;
+      left: 3px;
+      transition: transform 0.25s, background 0.25s;
+    }
+
+    [data-theme="light"] .toggle-knob {
+      transform: translateX(18px);
     }
 
     h1 {
       margin: 0;
-      font-size: 28px;
-      line-height: 1.1;
-      letter-spacing: 0;
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: 34px;
+      font-weight: 400;
+      line-height: 1.15;
+      color: var(--text-title);
     }
 
     .subtitle {
-      margin-top: 6px;
-      color: var(--muted);
-      font-size: 14px;
+      margin-top: 12px;
+      color: var(--text-muted);
+      font-size: 12px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
     }
 
     .stats {
       display: flex;
       gap: 8px;
       flex-wrap: wrap;
-      justify-content: flex-end;
+      margin-top: 28px;
     }
 
     .chip {
-      min-height: 32px;
+      min-height: 30px;
       display: inline-flex;
       align-items: center;
-      border: 1px solid var(--line);
+      border: 1px solid var(--border);
       border-radius: 999px;
-      background: #fff;
       padding: 0 12px;
-      font-size: 13px;
-      color: var(--muted);
+      font-size: 11px;
+      color: var(--text-muted);
       white-space: nowrap;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
     }
 
     .filters {
       display: grid;
-      grid-template-columns: 140px 200px 1fr 100px;
-      gap: 12px;
-      margin-bottom: 20px;
+      grid-template-columns: 150px 220px minmax(0, 1fr) 120px;
+      gap: 18px;
+      align-items: end;
+      margin-bottom: 32px;
     }
 
     .main {
-      display: grid;
-      grid-template-columns: minmax(0, 1fr) 380px;
-      gap: 16px;
-      align-items: start;
+      display: block;
     }
 
     .panel {
-      background: var(--panel);
-      border: 1px solid var(--line);
-      border-radius: 8px;
-      box-shadow: var(--shadow);
+      border-top: 1px solid var(--border);
+      border-bottom: 1px solid var(--border);
     }
 
     .phrase-panel {
-      min-height: 700px;
+      min-height: 620px;
       display: grid;
       grid-template-rows: auto auto 1fr auto auto;
     }
@@ -160,8 +243,8 @@
       align-items: center;
       justify-content: space-between;
       gap: 12px;
-      border-bottom: 1px solid var(--line);
-      padding: 14px 16px;
+      border-bottom: 1px solid var(--border);
+      padding: 16px 0;
     }
 
     .meta {
@@ -172,100 +255,151 @@
     }
 
     .meta strong {
-      color: var(--ink);
+      color: var(--text-title);
     }
 
     /* chip de decisión con color según estado */
-    .chip.decision-pendiente  { border-color: var(--warning); color: var(--warning); }
-    .chip.decision-aprobada   { border-color: var(--success); color: var(--success); }
-    .chip.decision-descartada { border-color: var(--danger);  color: var(--danger);  }
+    .chip.decision-pendiente  { color: var(--status-warn); }
+    .chip.decision-aprobada   { color: var(--status-ok); }
+    .chip.decision-descartada { color: var(--status-err); }
 
     .phrase-box {
-      padding: 20px;
-      font-size: clamp(22px, 3.5vw, 48px);
-      line-height: 1.1;
+      padding: 36px 0;
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: clamp(28px, 5vw, 56px);
+      line-height: 1.08;
       letter-spacing: 0;
-      min-height: 200px;
+      min-height: 220px;
       display: flex;
       align-items: center;
-      border-bottom: 1px solid var(--line);
+      border-bottom: 1px solid var(--border);
       word-wrap: break-word;
+      color: var(--text-title);
     }
 
     .decision-buttons {
       display: grid;
       grid-template-columns: repeat(3, 1fr);
       gap: 10px;
-      padding: 14px 16px;
-      border-bottom: 1px solid var(--line);
+      padding: 18px 0;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .group-buttons {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      padding-top: 2px;
+    }
+
+    .group-btn {
+      min-height: 34px;
+      padding: 0 12px;
+      color: var(--text-label);
+      font-size: 10px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      border-color: var(--border);
+    }
+
+    .group-btn:hover {
+      color: var(--text);
+      border-color: var(--border-focus);
+    }
+
+    .group-btn.active {
+      background: var(--btn-main-bg);
+      border-color: var(--btn-main-bg);
+      color: var(--btn-main-fg);
+    }
+
+    .temporalidad-buttons {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 8px;
+    }
+
+    .temporalidad-btn {
+      min-height: 34px;
+      padding: 0 10px;
+      color: var(--text-label);
+      font-size: 10px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      border-color: var(--border);
+    }
+
+    .temporalidad-btn.active {
+      background: var(--btn-main-bg);
+      border-color: var(--btn-main-bg);
+      color: var(--btn-main-fg);
     }
 
     .decision-btn {
       min-height: 48px;
-      border-radius: 8px;
       padding: 0 12px;
-      font-weight: 650;
+      font-size: 11px;
+      font-weight: 500;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
       cursor: pointer;
     }
 
     .decision-btn.pending {
-      border-color: var(--warning);
-      background: var(--warning-soft);
-      color: var(--ink);
+      color: var(--status-warn);
     }
 
     .decision-btn.pending.active {
-      border-color: var(--warning);
-      background: var(--warning);
-      color: #fff;
+      background: var(--status-warn);
+      color: var(--bg);
     }
 
     .decision-btn.approved {
-      border-color: var(--success);
-      background: var(--success-soft);
-      color: var(--ink);
+      color: var(--status-ok);
     }
 
     .decision-btn.approved.active {
-      border-color: var(--success);
-      background: var(--success);
-      color: #fff;
+      background: var(--status-ok);
+      color: var(--bg);
     }
 
     .decision-btn.rejected {
-      border-color: var(--danger);
-      background: var(--danger-soft);
-      color: var(--ink);
+      color: var(--status-err);
     }
 
     .decision-btn.rejected.active {
-      border-color: var(--danger);
-      background: var(--danger);
-      color: #fff;
+      background: var(--status-err);
+      color: var(--text-title);
     }
 
     .editor {
       display: grid;
       grid-template-columns: 1fr 1fr;
-      gap: 12px;
-      padding: 0 16px 16px;
+      gap: 18px 28px;
+      padding: 22px 0;
+    }
+
+    .field-wide {
+      grid-column: 1 / -1;
     }
 
     label {
       display: grid;
-      gap: 6px;
-      color: var(--muted);
-      font-size: 13px;
-      font-weight: 600;
+      gap: 10px;
+      color: var(--text-label);
+      font-size: 10px;
+      font-weight: 500;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
     }
 
     .actions {
       display: flex;
-      gap: 8px;
+      gap: 12px;
       justify-content: space-between;
       align-items: center;
-      border-top: 1px solid var(--line);
-      padding: 12px 16px;
+      border-top: 1px solid var(--border);
+      padding: 20px 0 0;
       flex-wrap: wrap;
     }
 
@@ -276,16 +410,18 @@
     }
 
     .btn {
-      min-height: 40px;
-      border-radius: 8px;
-      padding: 0 14px;
-      font-weight: 650;
+      min-height: 46px;
+      padding: 0 18px;
+      font-size: 11px;
+      font-weight: 500;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
     }
 
     .btn.primary {
-      border-color: var(--accent);
-      background: var(--accent);
-      color: #fff;
+      border-color: var(--btn-main-bg);
+      background: var(--btn-main-bg);
+      color: var(--btn-main-fg);
     }
 
     .btn.primary:disabled {
@@ -294,6 +430,7 @@
 
     .btn.ghost {
       background: transparent;
+      color: var(--text-label);
     }
 
     .btn.sm {
@@ -304,78 +441,17 @@
 
     .status-line {
       min-height: 20px;
-      color: var(--muted);
-      font-size: 13px;
+      color: var(--text-muted);
+      font-size: 12px;
       text-align: center;
-    }
-
-    .side {
-      display: grid;
-      gap: 16px;
-    }
-
-    .side-section {
-      padding: 14px;
-    }
-
-    .side-title {
-      margin: 0 0 10px;
-      font-size: 13px;
-      color: var(--muted);
-      font-weight: 750;
-      text-transform: uppercase;
       letter-spacing: 0.04em;
-    }
-
-    .group-grid {
-      display: grid;
-      grid-template-columns: 1fr;
-      gap: 8px;
-      max-height: 400px;
-      overflow-y: auto;
-    }
-
-    .group-btn {
-      min-height: 42px;
-      border-radius: 8px;
-      padding: 10px 12px;
-      text-align: left;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      gap: 10px;
-      line-height: 1.2;
-      border: 1px solid var(--line);
-      background: #fff;
-      cursor: pointer;
-    }
-
-    .group-btn.active {
-      border-color: var(--accent);
-      background: var(--accent-soft);
-    }
-
-    .group-btn:hover {
-      border-color: var(--accent);
-      background: var(--accent-soft);
-    }
-
-    .group-btn strong {
-      display: block;
-      color: var(--ink);
-      font-size: 13px;
-    }
-
-    .group-btn span {
-      color: var(--muted);
-      font-size: 11px;
     }
 
     .empty {
       min-height: 400px;
       display: grid;
       place-items: center;
-      color: var(--muted);
+      color: var(--text-muted);
       text-align: center;
       padding: 28px;
     }
@@ -405,7 +481,6 @@
     }
 
     @media (max-width: 1100px) {
-      .main,
       .filters {
         grid-template-columns: 1fr;
       }
@@ -427,17 +502,11 @@
 
     @media (max-width: 640px) {
       .shell {
-        width: calc(100vw - 16px);
-        padding: 16px 0 24px;
-      }
-
-      header {
-        grid-template-columns: 1fr;
-        gap: 12px;
+        width: 100%;
       }
 
       h1 {
-        font-size: 22px;
+        font-size: 28px;
       }
 
       .stats {
@@ -457,18 +526,18 @@
       }
 
       .panel-head {
-        padding: 10px 12px;
+        padding: 12px 0;
       }
 
       .phrase-box {
-        padding: 16px 12px;
-        font-size: 20px;
+        padding: 24px 0;
+        font-size: 28px;
         min-height: 140px;
       }
 
       .decision-buttons {
         grid-template-columns: 1fr;
-        padding: 10px;
+        padding: 14px 0;
         gap: 8px;
       }
 
@@ -478,8 +547,8 @@
 
       .editor {
         grid-template-columns: 1fr;
-        gap: 10px;
-        padding: 0 12px 12px;
+        gap: 22px;
+        padding: 24px 0;
       }
 
       label {
@@ -494,13 +563,13 @@
       }
 
       textarea {
-        min-height: 80px;
+        min-height: 58px;
       }
 
       .actions {
         flex-direction: column;
         gap: 10px;
-        padding: 10px;
+        padding: 18px 0 0;
       }
 
       .action-group {
@@ -509,25 +578,6 @@
 
       .action-group button {
         flex: 1;
-      }
-
-      .side-section {
-        padding: 12px;
-      }
-
-      .side-title {
-        font-size: 12px;
-        margin: 0 0 8px;
-      }
-
-      .group-grid {
-        max-height: 300px;
-      }
-
-      .group-btn {
-        min-height: 40px;
-        padding: 8px 10px;
-        font-size: 13px;
       }
 
       .btn {
@@ -544,6 +594,13 @@
 </head>
 <body>
   <div class="shell">
+    <div class="topbar">
+      <button class="theme-toggle" onclick="toggleTheme()" aria-label="Cambiar modo">
+        <span class="toggle-icon" id="theme-icon">☽</span>
+        <div class="toggle-track"><div class="toggle-knob"></div></div>
+      </button>
+    </div>
+
     <header>
       <div>
         <h1>Curador de archivo_x</h1>
@@ -572,13 +629,6 @@
         <div class="empty">Cargando frases...</div>
       </section>
 
-      <aside class="side">
-        <!-- Sidebar de grupo: asignar grupo NO aprueba automáticamente -->
-        <section class="panel side-section">
-          <p class="side-title">Grupo carrusel</p>
-          <div class="group-grid" id="groupGrid"></div>
-        </section>
-      </aside>
     </main>
   </div>
 
@@ -595,6 +645,7 @@
      *   - Solo el botón "Pendiente" pone decision_editorial = pendiente
      *   - Cambiar grupo NO cambia decision_editorial
      *   - Editar frase_final NO cambia decision_editorial
+     *   - El Sheet solo se actualiza con "Guardar y siguiente"
      */
 
     const state = {
@@ -603,6 +654,7 @@
       taxonomy: [],
       index: 0,
       selectedGroup: "",
+      selectedTemporalidad: "atemporal",
       selectedDecision: "pendiente",   // "pendiente" | "aprobada" | "descartada"
       saving: false,
       worksheet: ""
@@ -615,8 +667,7 @@
       filterSelect: document.getElementById("filterSelect"),
       groupFilter: document.getElementById("groupFilter"),
       searchInput: document.getElementById("searchInput"),
-      reloadBtn: document.getElementById("reloadBtn"),
-      groupGrid: document.getElementById("groupGrid")
+      reloadBtn: document.getElementById("reloadBtn")
     };
 
     // ─── utilidades ────────────────────────────────────────────────────────────
@@ -644,8 +695,25 @@
 
     // ─── stats ─────────────────────────────────────────────────────────────────
 
-    function renderStats(summary) {
-      // El servidor devuelve summary.pendiente / .aprobada / .descartada
+    function getDecisionSummary() {
+      const summary = {
+        total: state.items.length,
+        pendiente: 0,
+        aprobada: 0,
+        descartada: 0
+      };
+
+      for (const item of state.items) {
+        const decision = clean(item.decision_editorial).toLowerCase() || "pendiente";
+        if (decision === "aprobada") summary.aprobada += 1;
+        else if (decision === "descartada") summary.descartada += 1;
+        else summary.pendiente += 1;
+      }
+
+      return summary;
+    }
+
+    function renderStats(summary = getDecisionSummary()) {
       els.stats.innerHTML = [
         ["Total",       summary?.total      ?? state.items.length],
         ["Pendientes",  summary?.pendiente  ?? 0],
@@ -659,24 +727,65 @@
 
     // ─── grupo (sidebar) ───────────────────────────────────────────────────────
 
-    function renderGroupButtons() {
-      els.groupGrid.innerHTML = "";
+    function toggleTheme() {
+      const html = document.documentElement;
+      const next = html.getAttribute("data-theme") === "dark" ? "light" : "dark";
+      html.setAttribute("data-theme", next);
+      document.getElementById("theme-icon").textContent = next === "dark" ? "☽" : "○";
+      localStorage.setItem("archive-x-theme", next);
+    }
 
-      for (const group of state.taxonomy) {
-        const button = document.createElement("button");
-        button.type = "button";
-        button.className = `group-btn ${state.selectedGroup === group.name ? "active" : ""}`;
-        button.title = group.hint || group.name;
-        button.disabled = state.saving;
-        button.innerHTML = `<strong>${escapeHtml(group.name)}</strong><span>${escapeHtml(group.hint || "")}</span>`;
-        button.addEventListener("click", () => {
-          state.selectedGroup = group.name;
-          renderGroupButtons();
-          // Guardar solo el grupo — NO toca decision_editorial
-          saveCurrent({ grupo_carrusel: group.name }, false);
-        });
-        els.groupGrid.appendChild(button);
+    function initTheme() {
+      const saved = localStorage.getItem("archive-x-theme");
+      if (saved && saved !== "dark") {
+        document.documentElement.setAttribute("data-theme", saved);
+        document.getElementById("theme-icon").textContent = "○";
       }
+    }
+
+    function renderGroupButtons() {
+      const container = document.getElementById("groupButtons");
+      if (!container) return;
+
+      const buttons = [{ name: "", hint: "Sin grupo" }, ...state.taxonomy];
+      container.innerHTML = buttons.map(group => {
+        const active = state.selectedGroup === group.name ? " active" : "";
+        const label = group.name || group.hint;
+        return `<button type="button" class="group-btn${active}" data-group="${escapeHtml(group.name)}">${escapeHtml(label)}</button>`;
+      }).join("");
+
+      container.querySelectorAll(".group-btn").forEach(button => {
+        button.addEventListener("click", () => {
+          state.selectedGroup = button.dataset.group || "";
+          renderGroupButtons();
+          setStatus("Cambio pendiente");
+        });
+      });
+    }
+
+    function renderTemporalidadButtons() {
+      const container = document.getElementById("temporalidadButtons");
+      if (!container) return;
+
+      const options = [
+        ["atemporal", "Atemporal"],
+        ["temporada", "Temporada"],
+        ["coyuntural", "Coyuntural"],
+        ["fecha_especial", "Fecha especial"]
+      ];
+
+      container.innerHTML = options.map(([value, label]) => {
+        const active = state.selectedTemporalidad === value ? " active" : "";
+        return `<button type="button" class="temporalidad-btn${active}" data-temporalidad="${value}">${label}</button>`;
+      }).join("");
+
+      container.querySelectorAll(".temporalidad-btn").forEach(button => {
+        button.addEventListener("click", () => {
+          state.selectedTemporalidad = button.dataset.temporalidad || "atemporal";
+          renderTemporalidadButtons();
+          setStatus("Cambio pendiente");
+        });
+      });
     }
 
     // ─── panel principal ───────────────────────────────────────────────────────
@@ -687,20 +796,22 @@
       if (!item) {
         els.phrasePanel.innerHTML = '<div class="empty">No hay frases en esta vista.</div>';
         state.selectedGroup = "";
+        state.selectedTemporalidad = "atemporal";
         state.selectedDecision = "pendiente";
-        renderGroupButtons();
         renderStats();
         return;
       }
 
       // Sincronizar state con el item actual
       state.selectedGroup    = clean(item.grupo_carrusel);
+      state.selectedTemporalidad = clean(item.temporalidad) || "atemporal";
       state.selectedDecision = clean(item.decision_editorial).toLowerCase() || "pendiente";
 
       const phrase      = clean(item.frase_original);
       const finalPhrase = clean(item.frase_final);
       const notes       = clean(item.notas);
-      const temporalidad = clean(item.temporalidad) || "atemporal";
+      const temporada   = clean(item.temporada);
+      const temporalidad = state.selectedTemporalidad;
       const decision    = state.selectedDecision;
 
       // Chips del nuevo modelo — sin campos legacy (calidad, riesgo, sirve, estado)
@@ -733,13 +844,25 @@
         </div>
 
         <div class="editor">
+          <label class="field-wide">
+            grupo_carrusel
+            <div class="group-buttons" id="groupButtons"></div>
+          </label>
+          <label class="field-wide">
+            temporalidad
+            <div class="temporalidad-buttons" id="temporalidadButtons"></div>
+          </label>
+          <label class="field-wide">
+            temporada
+            <input id="temporada" type="text" value="${escapeHtml(temporada)}" placeholder="Ej: Navidad, San Valentín, elecciones">
+          </label>
           <label>
             frase_final
-            <textarea id="finalPhrase">${escapeHtml(finalPhrase)}</textarea>
+            <textarea id="finalPhrase" rows="2">${escapeHtml(finalPhrase)}</textarea>
           </label>
           <label>
             notas
-            <textarea id="notes">${escapeHtml(notes)}</textarea>
+            <textarea id="notes" rows="2">${escapeHtml(notes)}</textarea>
           </label>
         </div>
 
@@ -750,7 +873,6 @@
           </div>
           <div class="status-line" id="statusLine"></div>
           <div class="action-group">
-            <button class="btn" id="saveBtn" type="button">Guardar</button>
             <button class="btn primary" id="saveNextBtn" type="button">Guardar y siguiente</button>
           </div>
         </div>
@@ -758,25 +880,25 @@
 
       // Botones de decisión: solo cambian decision_editorial, nada más
       document.getElementById("btnPendiente").addEventListener("click", () => {
-        state.selectedDecision = "pendiente";
-        saveDecision("pendiente", false);
+        setDraftDecision("pendiente");
       });
       document.getElementById("btnAprobar").addEventListener("click", () => {
-        state.selectedDecision = "aprobada";
-        saveDecision("aprobada", false);
+        setDraftDecision("aprobada");
       });
       document.getElementById("btnDescartar").addEventListener("click", () => {
-        state.selectedDecision = "descartada";
-        saveDecision("descartada", false);
+        setDraftDecision("descartada");
       });
 
       // Navegación y guardado de campos editables (frase_final + notas)
       document.getElementById("prevBtn").addEventListener("click", () => move(-1));
       document.getElementById("nextBtn").addEventListener("click", () => move(1));
-      document.getElementById("saveBtn").addEventListener("click", () => saveCurrent({}, false));
-      document.getElementById("saveNextBtn").addEventListener("click", () => saveCurrent({}, true));
+      document.getElementById("saveNextBtn").addEventListener("click", () => saveCurrentAndAdvance());
+      document.getElementById("finalPhrase").addEventListener("input", () => setStatus("Cambio pendiente"));
+      document.getElementById("notes").addEventListener("input", () => setStatus("Cambio pendiente"));
+      document.getElementById("temporada").addEventListener("input", () => setStatus("Cambio pendiente"));
 
       renderGroupButtons();
+      renderTemporalidadButtons();
       renderStats();
     }
 
@@ -819,14 +941,20 @@
     // ─── guardado ──────────────────────────────────────────────────────────────
 
     /**
-     * saveDecision — guarda decision_editorial junto con los campos editables
-     * actuales (frase_final, notas, grupo_carrusel) a través de saveCurrent().
-     * Si solo quisieras guardar decision_editorial en aislamiento, tendrías
-     * que llamar al endpoint directamente; este helper es conveniente para el
-     * flujo normal de curaduría donde el curador ya editó otros campos.
+     * Actualiza solo el borrador local.
+     * El Sheet se escribe con "Guardar y siguiente".
      */
-    async function saveDecision(decision, advance) {
-      await saveCurrent({ decision_editorial: decision }, advance);
+    function setDraftDecision(decision) {
+      state.selectedDecision = decision;
+
+      document.getElementById("btnPendiente")?.classList.toggle("active", decision === "pendiente");
+      document.getElementById("btnAprobar")?.classList.toggle("active", decision === "aprobada");
+      document.getElementById("btnDescartar")?.classList.toggle("active", decision === "descartada");
+      setStatus("Cambio pendiente");
+    }
+
+    async function saveCurrentAndAdvance() {
+      await saveCurrent({ decision_editorial: state.selectedDecision }, true);
     }
 
     /**
@@ -842,15 +970,17 @@
 
       state.saving = true;
       setStatus("Guardando...");
-      renderGroupButtons();
 
       const finalPhrase = document.getElementById("finalPhrase")?.value ?? "";
       const notes       = document.getElementById("notes")?.value ?? "";
+      const temporada   = document.getElementById("temporada")?.value ?? "";
 
       // Payload limpio: solo campos del nuevo modelo
       // decision_editorial solo llega si `extra` lo incluye explícitamente
       const payload = {
         grupo_carrusel: state.selectedGroup,
+        temporalidad:   state.selectedTemporalidad,
+        temporada,
         frase_final:    finalPhrase,
         notas:          notes,
         ...extra   // puede traer { decision_editorial } o { grupo_carrusel } solos
@@ -905,7 +1035,6 @@
       } catch (err) {
         state.saving = false;
         setStatus(err.message || String(err));
-        renderGroupButtons();
       }
     }
 
@@ -961,6 +1090,7 @@
     els.searchInput.addEventListener("input",   () => applyFilters(false));
     els.reloadBtn.addEventListener("click",     () => load().catch(showFatal));
 
+    initTheme();
     load().catch(showFatal);
   </script>
 </body>

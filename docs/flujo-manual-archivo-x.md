@@ -59,13 +59,7 @@ Estas columnas **NO pertenecen al contrato `archivo_x`** y no deben existir en l
 
 **Si la pestaña `archivo_x` ya existe con estas columnas:**
 
-> ⚠️ El importador (`import:saved-tweets`) y el servidor (`curate:archivo-x`) detectarán las columnas legacy al arrancar y emitirán un warning con la lista de columnas encontradas. No borrarán nada automáticamente.
-
-**Opciones para limpiar:**
-
-1. **Opción simple (recomendada):** Borrar la pestaña `archivo_x` completa en el Google Sheet y volver a ejecutar `npm run import:saved-tweets`. Las frases se reimportan con las 12 columnas limpias.
-
-2. **Opción manual en el Sheet:** Seleccionar y eliminar manualmente las columnas legacy en Google Sheets, conservando solo las 12 columnas del contrato.
+> ⚠️ El importador (`import:saved-tweets`) y el servidor (`curate:archivo-x`) detectan las columnas legacy al arrancar y normalizan la hoja para conservar solo las 12 columnas válidas.
 
 El importador y el servidor **nunca crean ni escriben** columnas legacy.
 
@@ -265,9 +259,10 @@ Si tienes datos previos con la estructura automática, puedes hacer migración m
 
 | Script | Cambio |
 |--------|--------|
-| `import-saved-tweets-to-sheet.js` | ✅ Reescrito - solo importa sin scoring |
-| `build-carousel-plan.js` | ✅ Actualizado - lee `decision_editorial = aprobada` |
-| `archive-curator-server.js` | ✅ Actualizado - endpoints para decisiones manuales |
+| `scripts/archive-x/import-saved-tweets-to-sheet.js` | ✅ Segunda parte - solo importa sin scoring |
+| `scripts/archive-x/build-carousel-plan.js` | ✅ Segunda parte - lee `decision_editorial = aprobada` |
+| `scripts/archive-x/curator-server.js` | ✅ Segunda parte - endpoints para decisiones manuales |
+| Rutas legacy en `scripts/jobs/*` y `scripts/dev/*` | Compatibilidad: delegan a `scripts/archive-x/*` |
 | `curate-saved-tweets.js` | ⚠️ Deprecado - herramienta offline, no escribe al Sheet |
 | `archivo-x-curator.html` | ✅ Actualizado - interfaz 100% manual, usa `decision_editorial` |
 

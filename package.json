@@ -11,7 +11,7 @@
     "upload:carousel": "node scripts/jobs/carousel/upload-carousel-from-sheet.js",
     "publish:single": "node scripts/jobs/single/publish-single-from-sheet.js",
     "publish:carousel": "node scripts/jobs/carousel/publish-carousel-from-sheet.js",
-    "build:carousel-plan": "node scripts/jobs/carousel/build-carousel-plan.js",
+    "build:carousel-plan": "node scripts/archive-x/build-carousel-plan.js",
     "sync-palettes": "node scripts/dev/sync-palettes.js",
     "check-palettes-sync": "node scripts/dev/check-palettes-sync.js",
     "doctor": "node scripts/dev/doctor.js",
@@ -19,8 +19,8 @@
     "fetch:inspiration": "node scripts/jobs/inspiration/fetch-inspiration.js",
     "analyze:phrases-offline": "node scripts/jobs/inspiration/curate-saved-tweets.js",
     "curate:saved-tweets": "node scripts/jobs/inspiration/curate-saved-tweets.js",
-    "import:saved-tweets": "node scripts/jobs/inspiration/import-saved-tweets-to-sheet.js",
-    "curate:archivo-x": "node scripts/dev/archive-curator-server.js"
+    "import:saved-tweets": "node scripts/archive-x/import-saved-tweets-to-sheet.js",
+    "curate:archivo-x": "node scripts/archive-x/curator-server.js"
   },
   "repository": {
     "type": "git",
