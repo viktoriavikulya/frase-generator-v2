@@ -12,34 +12,40 @@ const ROOT = path.resolve(__dirname, "..", "..");
 const SHEET_ID = process.env.SHEET_ID;
 const WORKSHEET_NAME = process.env.SAVED_TWEETS_WORKSHEET_NAME || "archivo_x";
 const PORT = Number(process.env.CURATOR_PORT || 5177);
+const CURATOR_TOKEN = process.env.CURATOR_TOKEN;
 
 const REQUIRED_HEADERS = [
+  // Nueva estructura (flujo manual 100%)
+  "id",
+  "frase_original",
+  "frase_final",
+  "decision_editorial",
+  "grupo_carrusel",
+  "notas",
+  "temporalidad",
+  "temporada",
+  "capturado_en",
+  "actualizado_en",
+  "lote_importacion",
+  "fuente",
+  // Legacy headers (deprecated, kept for compatibility)
   "sirve",
   "estado",
   "prioridad",
-  "grupo_carrusel",
-  "frase_final",
-  "frase_original",
-  "notas",
   "accion",
   "recomendacion_auto",
   "calidad",
   "riesgo",
-  "temporada",
   "subtema",
-  "clasificado_manual",
-  "actualizado_en",
-  "id",
-  "fila_txt"
+  "clasificado_manual"
 ];
 
 const EDITABLE_FIELDS = new Set([
-  "sirve",
-  "estado",
-  "grupo_carrusel",
   "frase_final",
+  "decision_editorial",
+  "grupo_carrusel",
   "notas",
-  "clasificado_manual",
+  "temporalidad",
   "actualizado_en"
 ]);
 
@@ -137,21 +143,23 @@ function rowToPhrase(row, headerMap, rowNumber) {
 function getSummary(items) {
   const summary = {
     total: items.length,
-    manual: 0,
-    pending: 0,
+    pendiente: 0,
+    aprobada: 0,
+    descartada: 0,
     byGroup: {},
-    bySirve: {}
+    byDecision: {}
   };
 
   for (const item of items) {
-    const manual = item.clasificado_manual.toLowerCase() === "si";
-    if (manual) summary.manual += 1;
-    else summary.pending += 1;
-
+    const decision = item.decision_editorial?.toLowerCase() || "pendiente";
     const group = item.grupo_carrusel || "Sin grupo";
-    const sirve = item.sirve || "sin valor";
+    
+    if (decision === "aprobada") summary.aprobada += 1;
+    else if (decision === "descartada") summary.descartada += 1;
+    else summary.pendiente += 1;
+    
     summary.byGroup[group] = (summary.byGroup[group] || 0) + 1;
-    summary.bySirve[sirve] = (summary.bySirve[sirve] || 0) + 1;
+    summary.byDecision[decision] = (summary.byDecision[decision] || 0) + 1;
   }
 
   return summary;
@@ -198,22 +206,30 @@ function buildUpdates(rowNumber, headerMap, patch) {
     actualizado_en: nowIsoLocal()
   };
 
-  if (patch.grupo_carrusel || patch.sirve || patch.estado) {
-    nextPatch.clasificado_manual = "si";
+  // Validar decision_editorial si se intenta cambiar
+  if (nextPatch.decision_editorial) {
+    const allowedDecisions = ["pendiente", "aprobada", "descartada"];
+    const normalized = nextPatch.decision_editorial.toLowerCase();
+    if (!allowedDecisions.includes(normalized)) {
+      throw new Error(`decision_editorial debe ser uno de: ${allowedDecisions.join(", ")}`);
+    }
+    nextPatch.decision_editorial = normalized;
   }
 
-  if (patch.sirve && !patch.estado) {
-    nextPatch.estado = normalizeStatus("", patch.sirve);
+  // Validar grupo_carrusel si se asigna
+  if (nextPatch.grupo_carrusel) {
+    nextPatch.grupo_carrusel = normalizeGroupName(nextPatch.grupo_carrusel);
   }
+
+  // IMPORTANTE: NO cambiar automáticamente decision_editorial
+  // El usuario debe hacer clic en "Aprobar", "Descartar" o "Pendiente"
 
   for (const [field, rawValue] of Object.entries(nextPatch)) {
     if (!EDITABLE_FIELDS.has(field)) continue;
     if (headerMap[field] === undefined) continue;
 
     let value = rawValue;
-    if (field === "sirve") value = normalizeUse(rawValue) || rawValue;
-    if (field === "estado") value = normalizeStatus(rawValue, nextPatch.sirve);
-
+    
     updates.push({
       range: `${WORKSHEET_NAME}!${colToLetter(headerMap[field] + 1)}${rowNumber}`,
       values: [[value ?? ""]]
@@ -252,6 +268,21 @@ async function main() {
   app.use(express.json({ limit: "256kb" }));
   app.use(express.static(path.join(ROOT, "tools")));
 
+  // Middleware de protección con token (solo para API /api/*)
+  app.use("/api/", (req, res, next) => {
+    if (!CURATOR_TOKEN) {
+      // Sin token definido, modo desarrollo - permitir acceso
+      return next();
+    }
+
+    // Token está definido, requerir autenticación
+    const token = req.headers["x-curator-token"] || req.query.token;
+    if (token !== CURATOR_TOKEN) {
+      return res.status(403).json({ error: "Token de curador inválido o faltante" });
+    }
+    next();
+  });
+
   app.get("/api/taxonomy", (_req, res) => {
     res.json({ taxonomy: getPublicTaxonomy() });
   });
@@ -278,19 +309,31 @@ async function main() {
         return;
       }
 
-      if (req.body.grupo_carrusel) {
-        req.body.grupo_carrusel = normalizeGroupName(req.body.grupo_carrusel);
+      const patch = req.body || {};
+
+      // Validar grupo_carrusel si se proporciona
+      if (patch.grupo_carrusel) {
+        const normalized = normalizeGroupName(patch.grupo_carrusel);
+        if (!TAXONOMY.some(item => item.name === normalized)) {
+          res.status(400).json({ error: "grupo_carrusel no pertenece a la taxonomía" });
+          return;
+        }
+        patch.grupo_carrusel = normalized;
       }
 
-      if (
-        req.body.grupo_carrusel &&
-        !TAXONOMY.some(item => item.name === req.body.grupo_carrusel)
-      ) {
-        res.status(400).json({ error: "grupo_carrusel no pertenece a la taxonomía" });
-        return;
+      // Validar decision_editorial si se proporciona
+      if (patch.decision_editorial) {
+        const allowedDecisions = ["pendiente", "aprobada", "descartada"];
+        const normalized = patch.decision_editorial.toLowerCase();
+        if (!allowedDecisions.includes(normalized)) {
+          res.status(400).json({ 
+            error: `decision_editorial debe ser uno de: ${allowedDecisions.join(", ")}` 
+          });
+          return;
+        }
       }
 
-      const item = await updateRow(sheets, rowNumber, req.body || {});
+      const item = await updateRow(sheets, rowNumber, patch);
       res.json({ ok: true, item });
     } catch (err) {
       next(err);
@@ -309,6 +352,13 @@ async function main() {
   app.listen(PORT, () => {
     console.log(`Curador archivo_x: http://localhost:${PORT}`);
     console.log(`Pestaña: ${WORKSHEET_NAME}`);
+    console.log("Flujo: Curaduría 100% manual");
+    console.log("Decisiones editoriales: pendiente, aprobada, descartada");
+    if (process.env.CURATOR_TOKEN) {
+      console.log("⚠️  CURATOR_TOKEN está establecido - protección habilitada");
+    } else {
+      console.log("⚠️  CURATOR_TOKEN no está establecido - modo desarrollo sin protección");
+    }
   });
 }
 

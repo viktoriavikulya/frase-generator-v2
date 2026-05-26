@@ -153,27 +153,28 @@ function getGroupField(headerMap) {
 }
 
 function getCandidateTier(candidate) {
-  if (candidate.recommendation === "approved") return 1;
-  if (candidate.recommendation === "rewrite_needed") return 2;
-
-  if (
-    candidate.recommendation === "reject" &&
-    candidate.quality_score >= TIER_3_MIN_QUALITY &&
-    candidate.risk_score < TIER_3_MAX_RISK &&
-    candidate.seasonality !== "expired_or_contextual"
-  ) {
-    return 3;
-  }
-
+  // NUEVO FLUJO: Solo usar frases aprobadas manualmente
+  // decision_editorial puede ser: "pendiente", "aprobada", "descartada"
+  // Solo usamos "aprobada"
+  if (candidate.decision_editorial === "aprobada") return 1;
+  
+  // Rechazar cualquier otra decisión editorial
   return null;
 }
 
 function buildCandidate(row, headerMap, rowNumber, groupField) {
   const sourceText = cellFromAny(row, headerMap, ["source_text", "frase_original"]);
-  const monaVersion = cellFromAny(row, headerMap, ["mona_version", "frase_final"]);
+  const finalText = cellFromAny(row, headerMap, ["mona_version", "frase_final"]);
   const group = cell(row, headerMap, groupField);
+  const decision = cell(row, headerMap, "decision_editorial");
 
   if (!sourceText || !group) return null;
+
+  // NUEVO: Solo considerar frases que existan en la estructura manual
+  // El grupo debe estar asignado y la decisión editorial debe ser "aprobada"
+  if (!decision || decision.toLowerCase() !== "aprobada") {
+    return null;
+  }
 
   const candidate = {
     row_number: rowNumber,
@@ -185,12 +186,15 @@ function buildCandidate(row, headerMap, rowNumber, groupField) {
       String(rowNumber),
     group,
     source_text: sourceText,
-    phrase: monaVersion || sourceText,
-    mona_version: monaVersion,
-    recommendation: normalizeRecommendation(cellFromAny(row, headerMap, ["recommendation", "recomendacion_auto"])),
-    quality_score: numberCellFromAny(row, headerMap, ["quality_score", "calidad"]),
-    risk_score: numberCellFromAny(row, headerMap, ["risk_score", "riesgo"]),
-    seasonality: normalizeSeasonality(cellFromAny(row, headerMap, ["seasonality", "temporada"])),
+    // Usar frase_final si existe, sino usar frase_original
+    phrase: finalText || sourceText,
+    final_text: finalText,
+    decision_editorial: decision,
+    // Legacy fields (for compatibility, can be empty or ignored)
+    recommendation: "approved",
+    quality_score: 0,
+    risk_score: 0,
+    seasonality: "evergreen",
     original_index: numberCellFromAny(row, headerMap, ["original_index", "fila_txt"])
   };
 
@@ -200,7 +204,7 @@ function buildCandidate(row, headerMap, rowNumber, groupField) {
   return {
     ...candidate,
     tier,
-    needs_review: tier === 3
+    needs_review: false  // Sin revisión automática, todo es decisión manual
   };
 }
 
@@ -237,20 +241,14 @@ function buildPlansFromRows(rows) {
   const groupField = getGroupField(headerMap);
 
   if (!groupField) {
-    throw new Error("No se encontro columna de grupo: grupo_carrusel, carousel_group o tema_principal");
+    throw new Error("No se encontró columna de grupo: grupo_carrusel, carousel_group o tema_principal");
   }
 
-  const requiredGroups = [
-    ["source_text", "frase_original"],
-    ["recommendation", "recomendacion_auto"],
-    ["quality_score", "calidad"],
-    ["risk_score", "riesgo"],
-    ["seasonality", "temporada"]
-  ];
-
-  for (const fields of requiredGroups) {
-    if (!fields.some(field => headerMap[field] !== undefined)) {
-      throw new Error(`Falta una de estas columnas requeridas: ${fields.join(" o ")}`);
+  // NUEVO: Validar que existan las nuevas columnas de flujo manual
+  const requiredFields = ["decision_editorial", "frase_original"];
+  for (const field of requiredFields) {
+    if (!headerMap[field]) {
+      throw new Error(`Falta columna requerida para nuevo flujo manual: ${field}`);
     }
   }
 
@@ -271,13 +269,16 @@ function buildPlansFromRows(rows) {
   const skipped = [];
 
   for (const [groupName, candidates] of groups.entries()) {
-    const ordered = candidates.sort(compareCandidates);
+    // Sin ordenamiento de tiers, todos son tier 1 (aprobados)
+    // Solo ordenar por fila en el sheet
+    const ordered = candidates.sort((a, b) => a.row_number - b.row_number);
 
     if (ordered.length < MIN_SLIDES) {
       skipped.push({
         group: groupName,
         candidates: ordered.length,
-        reason: "fewer_than_8_candidates"
+        reason: "fewer_than_8_candidates",
+        min_required: MIN_SLIDES
       });
       continue;
     }
@@ -288,13 +289,10 @@ function buildPlansFromRows(rows) {
       row_number: candidate.row_number,
       phrase: candidate.phrase,
       source_text: candidate.source_text,
-      mona_version: candidate.mona_version,
-      recommendation: candidate.recommendation,
-      quality_score: candidate.quality_score,
-      risk_score: candidate.risk_score,
-      seasonality: candidate.seasonality,
+      final_text: candidate.final_text,
+      decision_editorial: candidate.decision_editorial,
       tier: candidate.tier,
-      needs_review: candidate.needs_review
+      needs_review: false
     }));
 
     plans.push({
@@ -304,12 +302,12 @@ function buildPlansFromRows(rows) {
       max_slides: MAX_SLIDES,
       candidate_count: ordered.length,
       slide_count: slides.length,
-      needs_review_count: slides.filter(slide => slide.needs_review).length,
       slides
     });
   }
 
-  plans.sort((a, b) => b.slide_count - a.slide_count || b.candidate_count - a.candidate_count || a.group.localeCompare(b.group));
+  // Ordenar por cantidad de slides descendente
+  plans.sort((a, b) => b.slide_count - a.slide_count || a.group.localeCompare(b.group));
   skipped.sort((a, b) => b.candidates - a.candidates || a.group.localeCompare(b.group));
 
   return { plans, skipped, groupField };
@@ -401,10 +399,11 @@ function getPlanKey(plan, slide) {
 
 function getDefaultManualValues(slide) {
   return {
-    estado: slide.needs_review ? "revisar" : "pendiente",
+    estado: "pendiente_revision",
     notas: "",
-    usar: slide.needs_review ? "revisar" : "si",
-    frase_final: slide.mona_version || slide.phrase
+    usar: "si",
+    // Usar final_text si existe, sino source_text
+    frase_final: slide.final_text || slide.source_text
   };
 }
 
@@ -468,10 +467,9 @@ function translateRecommendation(value) {
 }
 
 function translateTier(value) {
+  // NUEVO: Solo tier 1 (aprobada)
   if (value === 1) return "1 aprobada";
-  if (value === 2) return "2 reescribir";
-  if (value === 3) return "3 rescate";
-  return String(value || "");
+  return "unknown";
 }
 
 function planToSheetValues(payload, manualByKey) {
@@ -542,13 +540,8 @@ async function main() {
     group_field: groupField,
     min_slides: MIN_SLIDES,
     max_slides: MAX_SLIDES,
-    tier_3_rule: {
-      recommendation: "reject",
-      quality_score_min: TIER_3_MIN_QUALITY,
-      risk_score_lt: TIER_3_MAX_RISK,
-      seasonality_not: "expired_or_contextual",
-      needs_review: true
-    },
+    workflow: "manual_curation_only",
+    note: "Solo frases con decision_editorial=aprobada son incluidas",
     generated_at: new Date().toISOString(),
     plan_count: plans.length,
     skipped_count: skipped.length,
@@ -569,6 +562,7 @@ async function main() {
   console.log(`Carruseles generados: ${plans.length}`);
   console.log(`Grupos omitidos: ${skipped.length}`);
   console.log(`Columna de grupo: ${groupField}`);
+  console.log("Flujo: 100% manual - solo frases aprobadas");
 }
 
 if (require.main === module) {
