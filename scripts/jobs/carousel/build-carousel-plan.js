@@ -142,14 +142,14 @@ function buildCandidate(row, headerMap, rowNumber, groupField) {
       cell(row, headerMap, "archive_id") ||
       cell(row, headerMap, "id") ||
       cell(row, headerMap, "source_id") ||
-      cellFromAny(row, headerMap, ["original_index", "fila_txt"]) ||
+      cell(row, headerMap, "original_index") ||
       String(rowNumber),
     group,
     source_text: sourceText,
     phrase: finalText || sourceText,
     final_text: finalText,
     decision_editorial: decision,
-    original_index: numberCellFromAny(row, headerMap, ["original_index", "fila_txt"])
+    original_index: numberCellFromAny(row, headerMap, ["original_index"])
   };
 
   const tier = getCandidateTier(candidate);

@@ -148,18 +148,29 @@ npm run build:carousel-plan
 ```
 Lee **solo** las frases aprobadas, agrupa por `grupo_carrusel`, requiere mínimo 8 por grupo y genera `output/carousel-plan.json`. Para cada frase usa `frase_final` si existe, `frase_original` si no.
 
-#### Columnas principales de `archivo_x`
+#### Columnas de `archivo_x` (contrato limpio — 12 exactas)
 
 | Columna | Descripción |
 |---|---|
-| `decision_editorial` | `pendiente`, `aprobada` o `descartada` — la única decisión que importa |
-| `grupo_carrusel` | Uno de los [20 grupos de taxonomía](docs/taxonomia-grupos.md) |
-| `frase_final` | Texto corregido o reescrito (opcional) |
+| `id` | SHA1 del texto normalizado |
 | `frase_original` | Texto crudo importado — solo lectura |
+| `frase_final` | Texto corregido o reescrito (opcional) |
+| `decision_editorial` | `pendiente`, `aprobada` o `descartada` — **la única decisión que importa** |
+| `grupo_carrusel` | Uno de los [20 grupos de taxonomía](docs/taxonomia-grupos.md) |
 | `notas` | Observaciones del curador |
 | `temporalidad` | `atemporal`, `temporada`, `coyuntural` o `fecha_especial` |
+| `temporada` | Ej: "San Valentín", "Navidad" |
+| `capturado_en` | Timestamp de importación |
+| `actualizado_en` | Última modificación |
+| `lote_importacion` | Batch de importación |
+| `fuente` | Origen (ej: "tweets-guardados-x") |
 
-> Las columnas `sirve`, `estado`, `prioridad`, `calidad`, `riesgo`, `recomendacion_auto` y `clasificado_manual` son **legacy**: se conservan en el Sheet por compatibilidad pero el flujo actual no las usa ni las escribe.
+> **⚠️ Columnas legacy:** si la pestaña `archivo_x` ya existía con columnas como `sirve`, `estado`, `prioridad`, `calidad`, `riesgo`, `recomendacion_auto`, `accion`, `subtema`, `clasificado_manual` o `fila_txt`, el importador y el servidor emitirán un warning pero **no las borrarán**. Para eliminarlas: borrar la pestaña `archivo_x` y volver a ejecutar `npm run import:saved-tweets`, o ejecutar una migración limpia que preserve solo las 12 columnas válidas.
+
+> **Reglas importantes del curador:**
+> - Cambiar `grupo_carrusel`, `frase_final` o `notas` **no aprueba automáticamente**.
+> - Solo el botón **Aprobar** cambia `decision_editorial` a `aprobada`.
+> - `plan_carruseles` se genera **solo** desde frases con `decision_editorial = aprobada`.
 
 En `plan_carruseles`, revisá principalmente `usar`, `estado`, `revisar`, `grupo`, `orden`, `frase_final` y `notas`.
 

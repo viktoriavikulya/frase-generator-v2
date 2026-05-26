@@ -40,17 +40,34 @@ El proyecto ha sido migrado de un **flujo de clasificación automática** a un *
 | `lote_importacion` | ID | Batch de importación |
 | `fuente` | Texto | Origen (ej: "tweets-guardados-x") |
 
-### Columnas Legacy (Deprecated)
-Estas columnas se mantienen por compatibilidad pero **NO se usan más**:
-- `sirve` - ~~Recomendación automática~~ (deprecated)
-- `estado` - ~~Estado editorial automático~~ (deprecated)
-- `prioridad` - ~~Prioridad calculada~~ (deprecated)
-- `accion` - ~~Acción sugerida~~ (deprecated)
-- `recomendacion_auto` - ~~Recomendación automática~~ (deprecated)
-- `calidad` - ~~Score de calidad~~ (deprecated)
-- `riesgo` - ~~Score de riesgo~~ (deprecated)
-- `subtema` - ~~Subtema clasificado~~ (deprecated)
-- `clasificado_manual` - ~~Bandera de clasificación manual~~ (deprecated)
+### Columnas Legacy (Eliminadas del contrato)
+
+Estas columnas **NO pertenecen al contrato `archivo_x`** y no deben existir en la hoja:
+
+| Columna | Razón |
+|---------|-------|
+| `sirve` | ~~Recomendación automática~~ — eliminada |
+| `estado` | ~~Estado editorial automático~~ — eliminada |
+| `prioridad` | ~~Prioridad calculada~~ — eliminada |
+| `accion` | ~~Acción sugerida~~ — eliminada |
+| `recomendacion_auto` | ~~Recomendación automática~~ — eliminada |
+| `calidad` | ~~Score de calidad~~ — eliminada |
+| `riesgo` | ~~Score de riesgo~~ — eliminada |
+| `subtema` | ~~Subtema clasificado~~ — eliminada |
+| `clasificado_manual` | ~~Bandera de clasificación manual~~ — eliminada |
+| `fila_txt` | ~~Índice legacy de archivo de texto~~ — eliminada |
+
+**Si la pestaña `archivo_x` ya existe con estas columnas:**
+
+> ⚠️ El importador (`import:saved-tweets`) y el servidor (`curate:archivo-x`) detectarán las columnas legacy al arrancar y emitirán un warning con la lista de columnas encontradas. No borrarán nada automáticamente.
+
+**Opciones para limpiar:**
+
+1. **Opción simple (recomendada):** Borrar la pestaña `archivo_x` completa en el Google Sheet y volver a ejecutar `npm run import:saved-tweets`. Las frases se reimportan con las 12 columnas limpias.
+
+2. **Opción manual en el Sheet:** Seleccionar y eliminar manualmente las columnas legacy en Google Sheets, conservando solo las 12 columnas del contrato.
+
+El importador y el servidor **nunca crean ni escriben** columnas legacy.
 
 ---
 
@@ -91,9 +108,11 @@ Interfaz de curador con:
 - ✅ Contador de avance
 
 **Importante:**
-- Cambiar grupo ≠ aprobar automáticamente
-- Editar `frase_final` ≠ aprobar automáticamente
-- Solo el botón "Aprobar" establece `decision_editorial = aprobada`
+- Cambiar `grupo_carrusel` **no aprueba automáticamente**.
+- Editar `frase_final` o `notas` **no aprueba automáticamente**.
+- Solo el botón **Aprobar** cambia `decision_editorial = aprobada`.
+- El botón **Guardar y siguiente** guarda los campos editables y avanza a la siguiente frase visible sin modificar `decision_editorial`.
+- `plan_carruseles` se genera **exclusivamente** desde frases con `decision_editorial = aprobada`.
 
 ### 3. Generar Plan de Carruseles
 ```bash

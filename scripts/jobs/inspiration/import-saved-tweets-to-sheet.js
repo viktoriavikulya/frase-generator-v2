@@ -154,9 +154,39 @@ async function readArchiveRows(sheets) {
   return res.data.values || [];
 }
 
+/**
+ * Columnas legacy que NO pertenecen al contrato archivo_x.
+ * Si la hoja ya existía con ellas, se emite un warning claro.
+ * El importador nunca las crea ni las escribe.
+ */
+const LEGACY_COLUMNS = [
+  "sirve",
+  "estado",
+  "prioridad",
+  "accion",
+  "recomendacion_auto",
+  "calidad",
+  "riesgo",
+  "subtema",
+  "clasificado_manual",
+  "fila_txt"
+];
+
 async function ensureHeaders(sheets, rows) {
   const currentHeaders = (rows[0] || []).map(header => String(header || "").trim());
   const existing = new Set(currentHeaders.filter(Boolean));
+
+  // ── Detectar columnas legacy y advertir ─────────────────────────────────────
+  const legacyFound = currentHeaders.filter(h => LEGACY_COLUMNS.includes(h));
+  if (legacyFound.length > 0) {
+    logger.warn(
+      `archivo_x contiene columnas legacy: ${legacyFound.join(", ")}. ` +
+      `El importador NO las escribirá, pero siguen presentes en la hoja. ` +
+      `Para eliminarlas borra la pestaña archivo_x y vuelve a importar, ` +
+      `o ejecuta una migración limpia que preserve solo las 12 columnas válidas.`
+    );
+  }
+
   const mergedHeaders = [...currentHeaders];
 
   for (const header of HEADERS) {

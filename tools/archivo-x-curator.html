@@ -819,8 +819,11 @@
     // ─── guardado ──────────────────────────────────────────────────────────────
 
     /**
-     * saveDecision — guarda SOLO decision_editorial.
-     * No toca frase_final ni notas ni grupo_carrusel.
+     * saveDecision — guarda decision_editorial junto con los campos editables
+     * actuales (frase_final, notas, grupo_carrusel) a través de saveCurrent().
+     * Si solo quisieras guardar decision_editorial en aislamiento, tendrías
+     * que llamar al endpoint directamente; este helper es conveniente para el
+     * flujo normal de curaduría donde el curador ya editó otros campos.
      */
     async function saveDecision(decision, advance) {
       await saveCurrent({ decision_editorial: decision }, advance);
@@ -870,7 +873,31 @@
         state.saving = false;
 
         if (advance) {
+          // Guardar el rowNumber de la frase que acabamos de guardar
+          const currentRowNumber = item.rowNumber;
+
+          // Re-aplicar filtros sin preservar posición (el item ya fue actualizado)
           applyFilters(false);
+
+          // Buscar si la frase guardada sigue visible en el filtro
+          const sameIndex = state.filtered.findIndex(row => row.rowNumber === currentRowNumber);
+
+          if (sameIndex >= 0 && sameIndex < state.filtered.length - 1) {
+            // La frase sigue visible y no es la última — avanzar al siguiente
+            state.index = sameIndex + 1;
+            renderPhrase();
+          } else if (sameIndex >= 0 && state.filtered.length > 1) {
+            // Era la última visible — volver a la primera
+            state.index = 0;
+            renderPhrase();
+          } else if (sameIndex < 0 && state.filtered.length > 0) {
+            // La frase desapareció del filtro — mantener posición válida
+            state.index = Math.min(state.index, state.filtered.length - 1);
+            renderPhrase();
+          } else {
+            // No quedan frases (lista vacía o era la única)
+            renderPhrase();
+          }
         } else {
           applyFilters(true);
           setStatus("Guardado");
