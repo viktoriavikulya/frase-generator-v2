@@ -18,10 +18,10 @@ const DRY_RUN = parseBool(process.env.SAVED_TWEETS_DRY_RUN, false);
 const IMPORT_LIMIT = clampNumber(Number(process.env.SAVED_TWEETS_IMPORT_LIMIT || 0), 0, 10000);
 
 /**
- * NUEVA ESTRUCTURA DE COLUMNAS (Flujo 100% manual)
+ * ESTRUCTURA DE COLUMNAS — Flujo 100% manual
  * El importador SOLO agrega frases crudas sin clasificación automática.
  * Todas las decisiones editoriales son hechas manualmente en el curador.
- * 
+ *
  * decision_editorial puede ser: "pendiente", "aprobada", "descartada"
  * temporalidad puede ser: "atemporal", "temporada", "coyuntural", "fecha_especial"
  */
@@ -37,17 +37,7 @@ const HEADERS = [
   "capturado_en",
   "actualizado_en",
   "lote_importacion",
-  "fuente",
-  // Columnas legacy (deprecadas, mantenidas por compatibilidad)
-  "sirve",
-  "estado",
-  "prioridad",
-  "accion",
-  "recomendacion_auto",
-  "calidad",
-  "riesgo",
-  "subtema",
-  "clasificado_manual"
+  "fuente"
 ];
 
 function parseBool(value, fallback) {
@@ -61,7 +51,7 @@ function clampNumber(value, min, max) {
 }
 
 /**
- * Utilidades de normalización simplificadas (SIN lógica de scoring)
+ * Utilidades de normalización (SIN lógica de scoring)
  */
 function normalizeText(value) {
   return String(value || "")
@@ -219,30 +209,18 @@ function buildRowEntry(originalText, headerMap, importBatch, capturedAt) {
     }
   };
 
-  // Nuevas columnas (flujo manual)
   set("id", archiveId);
   set("frase_original", originalText);
-  set("frase_final", "");  // Vacío hasta curaduría
-  set("decision_editorial", "pendiente");  // SIEMPRE pendiente al importar
-  set("grupo_carrusel", "");  // Vacío hasta curaduría
+  set("frase_final", "");
+  set("decision_editorial", "pendiente");
+  set("grupo_carrusel", "");
   set("notas", "");
-  set("temporalidad", "atemporal");  // Default, puede cambiar en curador
+  set("temporalidad", "atemporal");
   set("temporada", "");
   set("capturado_en", capturedAt);
   set("actualizado_en", "");
   set("lote_importacion", importBatch);
   set("fuente", "tweets-guardados-x");
-
-  // Columnas legacy (para compatibilidad, vacías)
-  set("sirve", "");
-  set("estado", "");
-  set("prioridad", "");
-  set("accion", "");
-  set("recomendacion_auto", "");
-  set("calidad", "");
-  set("riesgo", "");
-  set("subtema", "");
-  set("clasificado_manual", "");
 
   return values;
 }
@@ -277,7 +255,7 @@ function readAndProcessInput() {
   const toImport = [];
   let duplicateInFile = 0;
 
-  entries.forEach((entry, index) => {
+  entries.forEach((entry) => {
     const key = normalizeForDedup(entry);
     if (!key) return;
 
@@ -325,7 +303,6 @@ async function main() {
   const headerMap = buildHeaderMap(rows[0]);
   const { archiveIds, textKeys } = buildExistingIndexes(rows, headerMap);
 
-  // Filtrar duplicados que ya existen en el sheet
   const newEntries = selected.filter(entry => {
     const archiveId = buildArchiveId(entry);
     const textKey = normalizeForDedup(entry);

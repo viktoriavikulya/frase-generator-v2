@@ -14,8 +14,11 @@ const WORKSHEET_NAME = process.env.SAVED_TWEETS_WORKSHEET_NAME || "archivo_x";
 const PORT = Number(process.env.CURATOR_PORT || 5177);
 const CURATOR_TOKEN = process.env.CURATOR_TOKEN;
 
+/**
+ * Contrato de datos limpio — Flujo 100% manual
+ * 12 columnas exactas, sin columnas legacy.
+ */
 const REQUIRED_HEADERS = [
-  // Nueva estructura (flujo manual 100%)
   "id",
   "frase_original",
   "frase_final",
@@ -27,28 +30,28 @@ const REQUIRED_HEADERS = [
   "capturado_en",
   "actualizado_en",
   "lote_importacion",
-  "fuente",
-  // Legacy headers (deprecated, kept for compatibility)
-  "sirve",
-  "estado",
-  "prioridad",
-  "accion",
-  "recomendacion_auto",
-  "calidad",
-  "riesgo",
-  "subtema",
-  "clasificado_manual"
+  "fuente"
 ];
 
+/**
+ * Campos editables por el curador.
+ * Cambiar grupo_carrusel, frase_final, notas, temporalidad o temporada
+ * NO aprueba automáticamente — la decisión editorial es siempre explícita.
+ */
 const EDITABLE_FIELDS = new Set([
   "frase_final",
   "decision_editorial",
   "grupo_carrusel",
   "notas",
   "temporalidad",
-  "temporada",       // CORRECCIÓN: faltaba este campo
+  "temporada",
   "actualizado_en"
 ]);
+
+/**
+ * Únicos valores válidos para decision_editorial.
+ */
+const ALLOWED_DECISIONS = ["pendiente", "aprobada", "descartada"];
 
 function getPublicTaxonomy() {
   return TAXONOMY
@@ -186,11 +189,10 @@ function buildUpdates(rowNumber, headerMap, patch) {
   };
 
   // Validar decision_editorial si se intenta cambiar
-  if (nextPatch.decision_editorial) {
-    const allowedDecisions = ["pendiente", "aprobada", "descartada"];
+  if (nextPatch.decision_editorial !== undefined) {
     const normalized = nextPatch.decision_editorial.toLowerCase();
-    if (!allowedDecisions.includes(normalized)) {
-      throw new Error(`decision_editorial debe ser uno de: ${allowedDecisions.join(", ")}`);
+    if (!ALLOWED_DECISIONS.includes(normalized)) {
+      throw new Error(`decision_editorial debe ser uno de: ${ALLOWED_DECISIONS.join(", ")}`);
     }
     nextPatch.decision_editorial = normalized;
   }
@@ -202,6 +204,8 @@ function buildUpdates(rowNumber, headerMap, patch) {
 
   // IMPORTANTE: NO cambiar automáticamente decision_editorial.
   // El usuario debe hacer clic en "Aprobar", "Descartar" o "Pendiente".
+  // Cambiar grupo_carrusel, frase_final, notas, temporalidad o temporada
+  // no modifica decision_editorial.
 
   for (const [field, rawValue] of Object.entries(nextPatch)) {
     if (!EDITABLE_FIELDS.has(field)) continue;
@@ -297,12 +301,11 @@ async function main() {
       }
 
       // Validar decision_editorial si se proporciona
-      if (patch.decision_editorial) {
-        const allowedDecisions = ["pendiente", "aprobada", "descartada"];
+      if (patch.decision_editorial !== undefined) {
         const normalized = patch.decision_editorial.toLowerCase();
-        if (!allowedDecisions.includes(normalized)) {
+        if (!ALLOWED_DECISIONS.includes(normalized)) {
           res.status(400).json({
-            error: `decision_editorial debe ser uno de: ${allowedDecisions.join(", ")}`
+            error: `decision_editorial debe ser uno de: ${ALLOWED_DECISIONS.join(", ")}`
           });
           return;
         }

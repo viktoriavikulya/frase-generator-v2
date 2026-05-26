@@ -23,9 +23,11 @@ const OUTPUT_PATH = path.resolve(
 
 const MIN_SLIDES = 8;
 const MAX_SLIDES = 10;
-// TIER_3_MIN_QUALITY y TIER_3_MAX_RISK eliminados — solo existe tier 1 (aprobada)
-// Se mantienen en module.exports como undefined para no romper imports externos
 
+/**
+ * Columnas del plan de carruseles.
+ * Solo columnas necesarias para publicar — sin calidad, riesgo, nivel ni recomendacion_auto.
+ */
 const PLAN_HEADERS = [
   "usar",
   "estado",
@@ -35,10 +37,6 @@ const PLAN_HEADERS = [
   "frase_final",
   "frase_original",
   "notas",
-  "calidad",
-  "riesgo",
-  "nivel",
-  "recomendacion_auto",
   "carrusel_id",
   "clave_plan",
   "fila_archivo_x",
@@ -102,43 +100,9 @@ function cellFromAny(row, headerMap, keys) {
   return "";
 }
 
-function numberCell(row, headerMap, key) {
-  const value = Number(cell(row, headerMap, key));
-  return Number.isFinite(value) ? value : 0;
-}
-
 function numberCellFromAny(row, headerMap, keys) {
   const value = Number(cellFromAny(row, headerMap, keys));
   return Number.isFinite(value) ? value : 0;
-}
-
-function normalizeRecommendation(value) {
-  const normalized = normalizeKey(value);
-  const map = {
-    aprobada: "approved",
-    aprobado: "approved",
-    reescribir: "rewrite_needed",
-    fecha: "seasonal",
-    riesgo: "risky",
-    rechazada: "reject",
-    rechazado: "reject",
-    rescatada: "reject",
-    rescatado: "reject"
-  };
-
-  return map[normalized] || normalized;
-}
-
-function normalizeSeasonality(value) {
-  const normalized = normalizeKey(value);
-  const map = {
-    vigente: "evergreen",
-    fecha: "seasonal",
-    evento: "seasonal_event",
-    caducada: "expired_or_contextual"
-  };
-
-  return map[normalized] || normalized;
 }
 
 function getGroupField(headerMap) {
@@ -153,17 +117,13 @@ function getGroupField(headerMap) {
 }
 
 function getCandidateTier(candidate) {
-  // NUEVO FLUJO: Solo usar frases aprobadas manualmente
+  // Solo usar frases aprobadas manualmente.
   // decision_editorial puede ser: "pendiente", "aprobada", "descartada"
-  // Solo usamos "aprobada"
   if (candidate.decision_editorial === "aprobada") return 1;
-
-  // Rechazar cualquier otra decisión editorial
   return null;
 }
 
 function buildCandidate(row, headerMap, rowNumber, groupField) {
-  // CORRECCIÓN: priorizar columnas nuevas sobre legacy
   const sourceText = cellFromAny(row, headerMap, ["frase_original", "source_text"]);
   const finalText  = cellFromAny(row, headerMap, ["frase_final", "mona_version"]);
   const group      = cell(row, headerMap, groupField);
@@ -186,15 +146,9 @@ function buildCandidate(row, headerMap, rowNumber, groupField) {
       String(rowNumber),
     group,
     source_text: sourceText,
-    // Usar frase_final si existe, sino usar frase_original
     phrase: finalText || sourceText,
     final_text: finalText,
     decision_editorial: decision,
-    // Legacy fields (for compatibility, can be empty or ignored)
-    recommendation: "approved",
-    quality_score: 0,
-    risk_score: 0,
-    seasonality: "evergreen",
     original_index: numberCellFromAny(row, headerMap, ["original_index", "fila_txt"])
   };
 
@@ -204,18 +158,8 @@ function buildCandidate(row, headerMap, rowNumber, groupField) {
   return {
     ...candidate,
     tier,
-    needs_review: false  // Sin revisión automática, todo es decisión manual
+    needs_review: false
   };
-}
-
-function compareCandidates(a, b) {
-  return (
-    a.tier - b.tier ||
-    b.quality_score - a.quality_score ||
-    a.risk_score - b.risk_score ||
-    a.original_index - b.original_index ||
-    a.row_number - b.row_number
-  );
 }
 
 function slugify(value) {
@@ -244,8 +188,6 @@ function buildPlansFromRows(rows) {
     throw new Error("No se encontró columna de grupo: grupo_carrusel, carousel_group o tema_principal");
   }
 
-  // CORRECCIÓN: usar === undefined en lugar de !headerMap[field]
-  // para evitar falso positivo cuando el campo está en columna 0 (índice 0 es falsy)
   const requiredFields = ["decision_editorial", "frase_original"];
   for (const field of requiredFields) {
     if (headerMap[field] === undefined) {
@@ -270,8 +212,7 @@ function buildPlansFromRows(rows) {
   const skipped = [];
 
   for (const [groupName, candidates] of groups.entries()) {
-    // Sin ordenamiento de tiers, todos son tier 1 (aprobados)
-    // Solo ordenar por fila en el sheet
+    // Todos son tier 1 (aprobados) — ordenar por fila en el sheet
     const ordered = candidates.sort((a, b) => a.row_number - b.row_number);
 
     if (ordered.length < MIN_SLIDES) {
@@ -307,7 +248,6 @@ function buildPlansFromRows(rows) {
     });
   }
 
-  // Ordenar por cantidad de slides descendente
   plans.sort((a, b) => b.slide_count - a.slide_count || a.group.localeCompare(b.group));
   skipped.sort((a, b) => b.candidates - a.candidates || a.group.localeCompare(b.group));
 
@@ -400,11 +340,9 @@ function getPlanKey(plan, slide) {
 
 function getDefaultManualValues(slide) {
   return {
-    // CORRECCIÓN: era "pendiente_revision", debe ser "pendiente"
     estado: "pendiente",
     notas: "",
     usar: "si",
-    // Usar final_text si existe, sino source_text
     frase_final: slide.final_text || slide.source_text
   };
 }
@@ -451,24 +389,6 @@ function translateManualUse(value) {
   return map[normalized] || value;
 }
 
-function translateRecommendation(value) {
-  const map = {
-    approved: "aprobada",
-    rewrite_needed: "reescribir",
-    reject: "rescatada",
-    risky: "riesgo",
-    seasonal: "fecha"
-  };
-
-  return map[value] || value;
-}
-
-function translateTier(value) {
-  // Solo tier 1 (aprobada)
-  if (value === 1) return "1 aprobada";
-  return "unknown";
-}
-
 function planToSheetValues(payload, manualByKey) {
   const rows = [];
 
@@ -486,10 +406,6 @@ function planToSheetValues(payload, manualByKey) {
         manual.frase_final,
         slide.source_text,
         manual.notas,
-        slide.quality_score,
-        slide.risk_score,
-        translateTier(slide.tier),
-        translateRecommendation(slide.recommendation),
         plan.carousel_id,
         planKey,
         slide.row_number,
@@ -573,8 +489,8 @@ if (require.main === module) {
 module.exports = {
   MIN_SLIDES,
   MAX_SLIDES,
-  TIER_3_MIN_QUALITY: undefined,  // eliminado — solo existe tier 1 (aprobada)
-  TIER_3_MAX_RISK: undefined,      // eliminado — solo existe tier 1 (aprobada)
+  TIER_3_MIN_QUALITY: undefined,
+  TIER_3_MAX_RISK: undefined,
   getCandidateTier,
   buildCandidate,
   buildPlansFromRows,
