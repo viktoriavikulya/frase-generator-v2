@@ -47,6 +47,7 @@ concurrency:
 jobs:
   publish:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
 
     env:
       SHEET_ID: ${{ secrets.SHEET_ID }}
@@ -87,9 +88,11 @@ jobs:
           echo '${{ secrets.SERVICE_ACCOUNT_JSON }}' > config/service_account.json
 
       - name: Install dependencies
+        timeout-minutes: 5
         run: npm ci
 
       - name: Install Playwright browsers
+        timeout-minutes: 8
         run: npx playwright install --with-deps chromium
 
       - name: Desbloquear fila manualmente
