@@ -98,8 +98,65 @@ async function readSheetRows(sheets) {
   return res.data.values || [];
 }
 
+async function getWorksheetId(sheets) {
+  const res = await sheets.spreadsheets.get({
+    spreadsheetId: SHEET_ID,
+    fields: "sheets.properties"
+  });
+
+  const sheet = (res.data.sheets || []).find((item) => (
+    item.properties?.title === WORKSHEET_NAME
+  ));
+
+  if (!sheet) {
+    throw new Error(`No existe la pestaña "${WORKSHEET_NAME}"`);
+  }
+
+  return sheet.properties.sheetId;
+}
+
+function hasExpectedHeaderRow(headers) {
+  return headers[0] === "id" && headers[1] === "frase_original";
+}
+
+async function insertHeaderRow(sheets) {
+  const sheetId = await getWorksheetId(sheets);
+
+  await sheets.spreadsheets.batchUpdate({
+    spreadsheetId: SHEET_ID,
+    requestBody: {
+      requests: [
+        {
+          insertDimension: {
+            range: {
+              sheetId,
+              dimension: "ROWS",
+              startIndex: 0,
+              endIndex: 1
+            },
+            inheritFromBefore: false
+          }
+        }
+      ]
+    }
+  });
+}
+
 async function ensureHeaders(sheets, rows) {
   const currentHeaders = (rows[0] || []).map(normalizeValue);
+
+  if (rows.length > 0 && !hasExpectedHeaderRow(currentHeaders)) {
+    await insertHeaderRow(sheets);
+    await sheets.spreadsheets.values.update({
+      spreadsheetId: SHEET_ID,
+      range: `${WORKSHEET_NAME}!A1:${colToLetter(REQUIRED_HEADERS.length)}1`,
+      valueInputOption: "USER_ENTERED",
+      requestBody: { values: [REQUIRED_HEADERS] }
+    });
+
+    return [REQUIRED_HEADERS, ...rows];
+  }
+
   const seen = new Set(currentHeaders.filter(Boolean));
   const headers = [...currentHeaders];
 
@@ -139,6 +196,12 @@ function rowToPhrase(row, headerMap, rowNumber) {
   return phrase;
 }
 
+function isHeaderLikeItem(item) {
+  return item.id === "id" &&
+    item.frase_original === "frase_original" &&
+    item.decision_editorial === "decision_editorial";
+}
+
 function getSummary(items) {
   const summary = {
     total: items.length,
@@ -172,6 +235,7 @@ async function loadArchive(sheets) {
   for (let i = 1; i < rows.length; i++) {
     const item = rowToPhrase(rows[i], headerMap, i + 1);
     if (!item.frase_original) continue;
+    if (isHeaderLikeItem(item)) continue;
     items.push(item);
   }
 

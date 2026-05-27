@@ -164,8 +164,67 @@ async function readArchiveRows(sheets) {
   return res.data.values || [];
 }
 
+async function getWorksheetId(sheets) {
+  const res = await sheets.spreadsheets.get({
+    spreadsheetId: SHEET_ID,
+    fields: "sheets.properties"
+  });
+
+  const sheet = (res.data.sheets || []).find((item) => (
+    item.properties?.title === WORKSHEET_NAME
+  ));
+
+  if (!sheet) {
+    throw new Error(`No existe la pestaña "${WORKSHEET_NAME}"`);
+  }
+
+  return sheet.properties.sheetId;
+}
+
+function hasExpectedHeaderRow(headers) {
+  return headers[0] === "id" && headers[1] === "frase_original";
+}
+
+async function insertHeaderRow(sheets) {
+  const sheetId = await getWorksheetId(sheets);
+
+  await sheets.spreadsheets.batchUpdate({
+    spreadsheetId: SHEET_ID,
+    requestBody: {
+      requests: [
+        {
+          insertDimension: {
+            range: {
+              sheetId,
+              dimension: "ROWS",
+              startIndex: 0,
+              endIndex: 1
+            },
+            inheritFromBefore: false
+          }
+        }
+      ]
+    }
+  });
+}
+
 async function ensureHeaders(sheets, rows) {
   const currentHeaders = (rows[0] || []).map(header => String(header || "").trim());
+
+  if (rows.length > 0 && !hasExpectedHeaderRow(currentHeaders)) {
+    await insertHeaderRow(sheets);
+    await sheets.spreadsheets.values.update({
+      spreadsheetId: SHEET_ID,
+      range: `${WORKSHEET_NAME}!A1:${colToLetter(HEADERS.length)}1`,
+      valueInputOption: "USER_ENTERED",
+      requestBody: {
+        values: [HEADERS]
+      }
+    });
+
+    return [HEADERS, ...rows];
+  }
+
   const existing = new Set(currentHeaders.filter(Boolean));
   const mergedHeaders = [...currentHeaders];
 
