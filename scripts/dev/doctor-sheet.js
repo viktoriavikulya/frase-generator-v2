@@ -103,8 +103,13 @@ async function main() {
     );
 
     if (!rowId && phrase) {
-      printFinding("FAIL", "Fila con frase pero sin row_id", { rowNumber });
-      errors++;
+      if (estadoGeneral === "published") {
+        printFinding("WARN", "Fila publicada legacy sin row_id", { rowNumber });
+        warnings++;
+      } else {
+        printFinding("FAIL", "Fila activa con frase pero sin row_id", { rowNumber, estadoGeneral });
+        errors++;
+      }
     }
 
     if (lockStatus === "locked" && estadoGeneral !== "processing") {

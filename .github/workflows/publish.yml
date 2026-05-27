@@ -91,10 +91,6 @@ jobs:
         timeout-minutes: 5
         run: npm ci
 
-      - name: Install Playwright browsers
-        timeout-minutes: 8
-        run: npx playwright install --with-deps chromium
-
       - name: Desbloquear fila manualmente
         if: ${{ github.event_name == 'workflow_dispatch' && inputs.unlock_id != '' }}
         env:
@@ -109,6 +105,11 @@ jobs:
           TIPO_INPUT: ${{ inputs.tipo }}
           COLOR_INPUT: ${{ inputs.color }}
         run: node scripts/pipeline/register-from-form.js
+
+      - name: Install Playwright browsers
+        if: ${{ github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.unlock_id == '' && inputs.publish_only == '' && inputs.solo_registrar != 'true') }}
+        timeout-minutes: 8
+        run: npx playwright install --with-deps chromium
 
       - name: Run pipeline formulario
         if: ${{ github.event_name == 'workflow_dispatch' && inputs.frases != '' && inputs.solo_registrar != 'true' && inputs.unlock_id == '' }}
