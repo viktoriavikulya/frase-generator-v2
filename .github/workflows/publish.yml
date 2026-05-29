@@ -47,7 +47,7 @@ concurrency:
 jobs:
   publish:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 30
 
     env:
       SHEET_ID: ${{ secrets.SHEET_ID }}
@@ -92,21 +92,20 @@ jobs:
         run: npm ci
 
       - name: Cache Playwright browsers
-        # Solo cachear cuando el pipeline va a necesitar render.
-        # cache-hit=true → se salta el install. cache-hit=false → instala y guarda.
         if: ${{ github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.unlock_id == '' && inputs.publish_only == '' && inputs.solo_registrar != 'true') }}
         id: playwright-cache
         uses: actions/cache@v4
         with:
           path: ~/.cache/ms-playwright
-          # La clave incluye la versión de playwright del package-lock para
-          # invalidar automáticamente cuando se actualice el paquete.
           key: playwright-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
 
       - name: Install Playwright browsers
         if: ${{ (github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.unlock_id == '' && inputs.publish_only == '' && inputs.solo_registrar != 'true')) && steps.playwright-cache.outputs.cache-hit != 'true' }}
-        timeout-minutes: 8
-        run: npx playwright install --with-deps chromium
+        run: npx playwright install chromium
+
+      - name: Install Playwright system deps
+        if: ${{ (github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.unlock_id == '' && inputs.publish_only == '' && inputs.solo_registrar != 'true')) && steps.playwright-cache.outputs.cache-hit != 'true' }}
+        run: sudo npx playwright install-deps chromium
 
       - name: Desbloquear fila manualmente
         if: ${{ github.event_name == 'workflow_dispatch' && inputs.unlock_id != '' }}
@@ -125,9 +124,6 @@ jobs:
 
       - name: Run pipeline formulario
         if: ${{ github.event_name == 'workflow_dispatch' && inputs.frases != '' && inputs.solo_registrar != 'true' && inputs.unlock_id == '' }}
-        # TARGET_CAROUSEL_ID y TARGET_ROW_NUMBER son exportadas por register-from-form.js
-        # vía $GITHUB_ENV y llegan automáticamente al entorno de este step.
-        # NO se redeclaran aquí — hacerlo pisaría el valor exportado con string vacío.
         env:
           FORM_MODE: "true"
           TIPO_INPUT: ${{ inputs.tipo }}
