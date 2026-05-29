@@ -91,6 +91,13 @@ jobs:
         timeout-minutes: 5
         run: npm ci
 
+      - name: Cache Playwright browsers
+        id: playwright-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-chromium-${{ hashFiles('package-lock.json') }}
+
       - name: Desbloquear fila manualmente
         if: ${{ github.event_name == 'workflow_dispatch' && inputs.unlock_id != '' }}
         env:
@@ -107,7 +114,7 @@ jobs:
         run: node scripts/pipeline/register-from-form.js
 
       - name: Install Playwright browsers
-        if: ${{ github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.unlock_id == '' && inputs.publish_only == '' && inputs.solo_registrar != 'true') }}
+        if: ${{ (github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.unlock_id == '' && inputs.publish_only == '' && inputs.solo_registrar != 'true')) && steps.playwright-cache.outputs.cache-hit != 'true' }}
         timeout-minutes: 8
         run: npx playwright install --with-deps chromium
 
