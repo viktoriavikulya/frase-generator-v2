@@ -190,9 +190,19 @@ async function renderPhrase({ text, mode = "normal", bg = "#ffffff" }) {
   // FIX: console.log → logger.info para consistencia con el resto del proyecto
   logger.info("Abriendo generador de render", { url });
 
-  const browser = await chromium.launch({
+  const launchOptions = {
     headless: true
-  });
+  };
+
+  if (process.env.PLAYWRIGHT_USE_SYSTEM_CHROMIUM === 'true') {
+    launchOptions.channel = 'chromium';
+
+    if (process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH) {
+      launchOptions.executablePath = process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH;
+    }
+  }
+
+  const browser = await chromium.launch(launchOptions);
 
   try {
     const page = await browser.newPage({

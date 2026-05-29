@@ -143,6 +143,10 @@ async function runAuto({ cycleId, branch, targetCarouselId }) {
  * Usa TARGET_ROW_NUMBER (single) o TARGET_CAROUSEL_ID (carousel) para apuntar
  * a la fila exacta. El publish-from-sheet ya tiene la lógica de skip si la
  * plataforma ya estaba publicada, así que es idempotente.
+ *
+ * Nota: runStep usa spawnSync internamente (síncrono), pero se llama con await
+ * para que la firma sea compatible con una futura migración a spawn async.
+ * Ver comentario en pipeline-utils.js → runStep.
  */
 async function runPublishOnly({ cycleId, tipo, publishOnlyId }) {
   const log = logger.child({ cycleId, mode: "publish-only", tipo, publishOnlyId });
@@ -236,7 +240,9 @@ async function runPublishOnly({ cycleId, tipo, publishOnlyId }) {
     ...(targetCarouselId ? { targetCarouselId: targetCarouselId        } : {})
   };
 
-  const result = runStep("PUBLISH ONLY", publishScript, stepContext);
+  // FIX: await agregado para consistencia con el resto del pipeline y
+  // compatibilidad con futura migración de runStep a spawn async.
+  const result = await runStep("PUBLISH ONLY", publishScript, stepContext);
 
   if (!result.ok) {
     log.error("publish-only falló", { publishOnlyId, resolvedTipo });
@@ -320,7 +326,7 @@ async function main() {
         cycleId,
         failedStep:     result.failedStep || "publish-only",
         durationMs,
-        platformErrors: result.platformErrors  // FIX: plataforma exacta que falló
+        platformErrors: result.platformErrors
       });
       process.exit(1);
     }
@@ -351,7 +357,6 @@ async function main() {
 
   // ── Notificaciones Telegram ──────────────────────────────────────────────
   if (!result.ok) {
-    // FIX: leer errores por plataforma del sheet para enriquecer la alerta
     const platformErrors = await readPlatformErrors({
       tipo:       tipoFinal,
       rowId:      result.failedRowId      || null,
@@ -363,7 +368,7 @@ async function main() {
       cycleId,
       failedStep: result.failedStep || result.failedBranch || "desconocido",
       durationMs,
-      platformErrors  // FIX: plataforma exacta que falló
+      platformErrors
     });
 
     logger.error("Pipeline falló", result);
