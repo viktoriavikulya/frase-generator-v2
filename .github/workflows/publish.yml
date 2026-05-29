@@ -105,7 +105,9 @@ jobs:
 
       - name: Install Playwright system deps
         if: ${{ (github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.unlock_id == '' && inputs.publish_only == '' && inputs.solo_registrar != 'true')) && steps.playwright-cache.outputs.cache-hit != 'true' }}
-        run: sudo npx playwright install-deps chromium
+        run: |
+          sudo npx playwright install-deps chromium 2>&1 | tee /tmp/pw-deps.log
+          echo "EXIT: $?"
 
       - name: Desbloquear fila manualmente
         if: ${{ github.event_name == 'workflow_dispatch' && inputs.unlock_id != '' }}
