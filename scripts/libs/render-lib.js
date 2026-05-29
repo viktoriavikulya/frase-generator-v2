@@ -191,16 +191,9 @@ async function renderPhrase({ text, mode = "normal", bg = "#ffffff" }) {
   logger.info("Abriendo generador de render", { url });
 
   const launchOptions = {
-    headless: true
+    headless: true,
+    executablePath: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH || '/usr/bin/chromium-browser'
   };
-
-  if (process.env.PLAYWRIGHT_USE_SYSTEM_CHROMIUM === 'true') {
-    launchOptions.channel = 'chromium';
-
-    if (process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH) {
-      launchOptions.executablePath = process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH;
-    }
-  }
 
   const browser = await chromium.launch(launchOptions);
 

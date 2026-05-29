@@ -101,7 +101,11 @@ jobs:
 
       - name: Verify Chromium path
         if: ${{ github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.unlock_id == '' && inputs.publish_only == '' && inputs.solo_registrar != 'true') }}
-        run: which chromium-browser || which chromium
+        run: |
+          CHROMIUM_PATH="$(which chromium-browser || which chromium || true)"
+          echo "CHROMIUM_PATH=$CHROMIUM_PATH" >> "$GITHUB_ENV"
+          echo "PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=$CHROMIUM_PATH" >> "$GITHUB_ENV"
+          echo "Detected Chromium path: $CHROMIUM_PATH"
 
       - name: Desbloquear fila manualmente
         if: ${{ github.event_name == 'workflow_dispatch' && inputs.unlock_id != '' }}
