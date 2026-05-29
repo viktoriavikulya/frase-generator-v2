@@ -91,13 +91,22 @@ jobs:
         timeout-minutes: 5
         run: npm ci
 
-      - name: Install Playwright browsers
-        # Solo se instala cuando el pipeline va a necesitar renderizar imágenes.
-        # Se salta en: unlock_id, publish_only, solo_registrar y métricas.
+      - name: Cache Playwright browsers
+        # Solo cachear cuando el pipeline va a necesitar render.
+        # cache-hit=true → se salta el install. cache-hit=false → instala y guarda.
         if: ${{ github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.unlock_id == '' && inputs.publish_only == '' && inputs.solo_registrar != 'true') }}
-        uses: microsoft/playwright-github-action@v1
-        # Esta action maneja caché de Chrome automáticamente — no necesita
-        # npx playwright install manual ni actions/cache separado.
+        id: playwright-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          # La clave incluye la versión de playwright del package-lock para
+          # invalidar automáticamente cuando se actualice el paquete.
+          key: playwright-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+
+      - name: Install Playwright browsers
+        if: ${{ (github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.unlock_id == '' && inputs.publish_only == '' && inputs.solo_registrar != 'true')) && steps.playwright-cache.outputs.cache-hit != 'true' }}
+        timeout-minutes: 8
+        run: npx playwright install --with-deps chromium
 
       - name: Desbloquear fila manualmente
         if: ${{ github.event_name == 'workflow_dispatch' && inputs.unlock_id != '' }}
