@@ -126,8 +126,7 @@ async function handleShutdown(signal) {
   } catch (err) {
     logger.warn("Error al cerrar servidor durante shutdown", { signal, error: err.message });
   }
-  // Salida con código 1 para que el proceso reporta terminación forzada
-  process.exit(1);
+  process.exit(process.exitCode ?? 0);
 }
 
 process.once("SIGTERM", () => handleShutdown("SIGTERM"));

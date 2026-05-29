@@ -22,10 +22,6 @@ const {
   MAX_INTENTOS
 } = require("../../core/status");
 
-// Columnas de error por plataforma — opcionales.
-// Si no existen en el sheet se ignoran sin romper nada.
-const PLATFORM_ERROR_COLS = ["instagram_error", "facebook_error", "threads_error"];
-
 /**
  * Genera updates para las columnas de error por plataforma solo si existen en el headerMap.
  * @param {number} rowNumber
@@ -275,6 +271,7 @@ async function main() {
       { row: rowNumber, col: headerMap["estado_general"]        + 1, value: GENERAL_STATUS.ERROR },
       { row: rowNumber, col: headerMap["estado_publish"]        + 1, value: STATUS.ERROR },
       { row: rowNumber, col: headerMap["lock_status"]           + 1, value: LOCK_STATUS.FREE },
+      { row: rowNumber, col: headerMap["intentos"]              + 1, value: currentAttempts + 1 },
       { row: rowNumber, col: headerMap["error_step"]            + 1, value: "publish" },
       { row: rowNumber, col: headerMap["error_message"]         + 1, value: error.message || String(error) },
       { row: rowNumber, col: headerMap["updated_at"]            + 1, value: errorTs }
