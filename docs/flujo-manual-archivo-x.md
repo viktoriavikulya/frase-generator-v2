@@ -60,6 +60,8 @@ Estas columnas se mantienen por compatibilidad pero **NO se usan más**:
 ```bash
 npm run import:saved-tweets
 ```
+**Implementación activa:** `scripts/jobs/inspiration/import-saved-tweets-to-sheet.js`
+
 **Qué hace:**
 - Lee `data/tweets-guardados-x.txt`
 - Normaliza y deduplica
@@ -79,6 +81,8 @@ npm run import:saved-tweets
 ```bash
 npm run curate:archivo-x
 ```
+**Implementación activa:** `scripts/dev/archive-curator-server.js`
+
 **URL:** `http://localhost:5177`
 
 Interfaz de curador con:

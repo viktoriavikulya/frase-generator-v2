@@ -103,8 +103,8 @@ npm run doctor:sheet  # audita columnas y estados del Google Sheet
 
 # Inspiración viral
 npm run fetch:inspiration    # llena la pestaña "inspiracion" con candidatos para revisar
-npm run import:saved-tweets  # importa data/tweets-guardados-x.txt a la pestaña "archivo_x"
-npm run curate:archivo-x     # abre la interfaz de curaduría manual en http://localhost:5177
+npm run import:saved-tweets  # importa data/tweets-guardados-x.txt a la pestaña "archivo_x" (script activo: scripts/jobs/inspiration/import-saved-tweets-to-sheet.js)
+npm run curate:archivo-x     # abre la interfaz de curaduría manual en http://localhost:5177 (script activo: scripts/dev/archive-curator-server.js)
 
 # Análisis offline (solo referencia, NO escribe al Sheet)
 npm run analyze:phrases-offline -- archivo.txt  # evalúa un .txt local y genera CSVs con scoring
