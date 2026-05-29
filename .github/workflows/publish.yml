@@ -113,10 +113,11 @@ jobs:
 
       - name: Run pipeline formulario
         if: ${{ github.event_name == 'workflow_dispatch' && inputs.frases != '' && inputs.solo_registrar != 'true' && inputs.unlock_id == '' }}
+        # TARGET_CAROUSEL_ID y TARGET_ROW_NUMBER son exportadas por register-from-form.js
+        # vía $GITHUB_ENV y llegan automáticamente al entorno de este step.
+        # NO se redeclaran aquí — hacerlo pisaría el valor exportado con string vacío.
         env:
           FORM_MODE: "true"
-          TARGET_CAROUSEL_ID: ${{ env.TARGET_CAROUSEL_ID }}
-          TARGET_ROW_NUMBER: ${{ env.TARGET_ROW_NUMBER }}
           TIPO_INPUT: ${{ inputs.tipo }}
         run: node scripts/pipeline/run-once.js
 
