@@ -41,7 +41,7 @@
     "express": "^5.2.1",
     "finalhandler": "^2.1.1",
     "googleapis": "^171.4.0",
-    "playwright": "1.49.1",
+    "playwright": "^1.59.1",
     "serve-static": "^2.2.1"
   },
   "devDependencies": {
