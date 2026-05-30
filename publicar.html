@@ -254,6 +254,7 @@ const ctx = previewCanvas.getContext("2d");
 let colorSeleccionado = null;
 let carouselIndex     = 0;
 let currentFrases     = [];
+let previewTimer      = null;
 
 // ── Logo asset ──
 const retroLogoImage  = new Image();
@@ -745,7 +746,8 @@ function onFrasesInput() {
   detectarTipo();
   currentFrases = parseFrases();
   carouselIndex = 0;
-  updatePreview();
+  clearTimeout(previewTimer);
+  previewTimer = setTimeout(updatePreview, 400);
 }
 function detectarTipo() {
   const frases = parseFrases();
