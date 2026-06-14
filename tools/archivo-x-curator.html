@@ -461,6 +461,177 @@
       gap: 8px;
     }
 
+    /* ─── vistas (Curaduría / Publicar carruseles) ──────────────────────────── */
+
+    .view-tabs {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 32px;
+    }
+
+    .view-tab {
+      min-height: 38px;
+      padding: 0 16px;
+      font-size: 11px;
+      font-weight: 500;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--text-label);
+      border-color: var(--border);
+    }
+
+    .view-tab:hover {
+      color: var(--text);
+      border-color: var(--border-focus);
+    }
+
+    .view-tab.active {
+      background: var(--btn-main-bg);
+      border-color: var(--btn-main-bg);
+      color: var(--btn-main-fg);
+    }
+
+    /* ─── Publicar carruseles ────────────────────────────────────────────────── */
+
+    .plan-tabs {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 28px;
+    }
+
+    .plan-tab {
+      min-height: 36px;
+      padding: 0 14px;
+      font-size: 11px;
+      letter-spacing: 0.06em;
+      color: var(--text-label);
+      border-color: var(--border);
+    }
+
+    .plan-tab:hover {
+      color: var(--text);
+      border-color: var(--border-focus);
+    }
+
+    .plan-tab.active {
+      background: var(--btn-main-bg);
+      border-color: var(--btn-main-bg);
+      color: var(--btn-main-fg);
+    }
+
+    .plan-list {
+      display: grid;
+      border-top: 1px solid var(--border);
+    }
+
+    .plan-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 14px;
+      padding: 16px 0;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .plan-item input[type="checkbox"] {
+      width: 20px;
+      height: 20px;
+      margin: 3px 0 0;
+      cursor: pointer;
+      flex-shrink: 0;
+      accent-color: var(--btn-main-bg);
+    }
+
+    .plan-item .plan-text {
+      flex: 1;
+      line-height: 1.6;
+      font-size: 15px;
+    }
+
+    .plan-item .plan-row {
+      color: var(--text-muted);
+      font-size: 11px;
+      letter-spacing: 0.06em;
+      white-space: nowrap;
+    }
+
+    .plan-toolbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 16px;
+      margin: 24px 0 28px;
+      flex-wrap: wrap;
+    }
+
+    .plan-fields {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 22px;
+      margin-bottom: 24px;
+    }
+
+    .color-grid {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 7px;
+      margin-top: 10px;
+    }
+
+    .swatch {
+      width: 26px;
+      height: 26px;
+      border-radius: 50%;
+      cursor: pointer;
+      border: 1.5px solid transparent;
+      flex-shrink: 0;
+      transition: transform 0.15s, border-color 0.15s;
+    }
+
+    .swatch:hover {
+      transform: scale(1.18);
+    }
+
+    .swatch.selected {
+      border-color: var(--text-title);
+      transform: scale(1.18);
+    }
+
+    .swatch.aleatorio {
+      background: conic-gradient(#ff6b6b 0deg, #f4c400 90deg, #3d5afe 180deg, #e91e63 270deg, #ff6b6b 360deg);
+    }
+
+    .selected-label {
+      font-size: 11px;
+      color: var(--text-muted);
+      min-height: 16px;
+      letter-spacing: 0.04em;
+      margin-top: 8px;
+    }
+
+    .result-box {
+      margin-top: 20px;
+      padding: 14px 16px;
+      border: 1px solid var(--border);
+      font-size: 13px;
+      line-height: 1.6;
+    }
+
+    .result-box.ok {
+      border-color: var(--status-ok);
+      color: var(--status-ok);
+    }
+
+    .result-box.warn {
+      border-color: var(--status-warn);
+      color: var(--status-warn);
+    }
+
+    .result-box.err {
+      border-color: var(--status-err);
+      color: var(--status-err);
+    }
+
     .radio-option {
       display: flex;
       gap: 10px;
@@ -609,27 +780,70 @@
       <div class="stats" id="stats"></div>
     </header>
 
-    <section class="filters">
-      <!-- Opciones alineadas con decision_editorial del nuevo flujo manual -->
-      <select id="filterSelect" aria-label="Filtro">
-        <option value="pending">Pendientes</option>
-        <option value="approved">Aprobadas</option>
-        <option value="rejected">Descartadas</option>
-        <option value="all">Todas</option>
-      </select>
-      <select id="groupFilter" aria-label="Grupo">
-        <option value="">Todos los grupos</option>
-      </select>
-      <input id="searchInput" type="search" placeholder="Buscar frase">
-      <button class="btn ghost" id="reloadBtn" type="button">Actualizar</button>
-    </section>
+    <div class="view-tabs">
+      <button type="button" class="btn view-tab active" data-view="curacion">Curaduría</button>
+      <button type="button" class="btn view-tab" data-view="publicar">Publicar carruseles</button>
+    </div>
 
-    <main class="main">
-      <section class="panel phrase-panel" id="phrasePanel">
-        <div class="empty">Cargando frases...</div>
+    <div id="viewCuracion">
+      <section class="filters">
+        <!-- Opciones alineadas con decision_editorial del nuevo flujo manual -->
+        <select id="filterSelect" aria-label="Filtro">
+          <option value="pending">Pendientes</option>
+          <option value="approved">Aprobadas</option>
+          <option value="rejected">Descartadas</option>
+          <option value="all">Todas</option>
+        </select>
+        <select id="groupFilter" aria-label="Grupo">
+          <option value="">Todos los grupos</option>
+        </select>
+        <input id="searchInput" type="search" placeholder="Buscar frase">
+        <button class="btn ghost" id="reloadBtn" type="button">Actualizar</button>
       </section>
 
-    </main>
+      <main class="main">
+        <section class="panel phrase-panel" id="phrasePanel">
+          <div class="empty">Cargando frases...</div>
+        </section>
+      </main>
+    </div>
+
+    <div id="viewPublicar" style="display: none;">
+      <section class="panel" style="border-top: none; padding-bottom: 28px;">
+        <div class="plan-tabs" id="planTabs"></div>
+
+        <div class="plan-list" id="planList">
+          <div class="empty">Cargando plan_carruseles...</div>
+        </div>
+
+        <div class="plan-toolbar">
+          <span class="chip" id="planCounter"><strong>0</strong>&nbsp;/&nbsp;10 seleccionadas</span>
+          <button class="btn ghost" id="planReloadBtn" type="button">Actualizar</button>
+        </div>
+
+        <div class="plan-fields">
+          <label class="field-wide">
+            caption (obligatorio)
+            <textarea id="planCaption" rows="2" placeholder="🖤 monacastrosa"></textarea>
+          </label>
+          <label class="field-wide">
+            color (opcional)
+            <div class="color-grid" id="planColorGrid"></div>
+            <p class="selected-label" id="planColorLabel">Aleatorio</p>
+          </label>
+        </div>
+
+        <div class="actions" style="border-top: none; padding-top: 0;">
+          <div class="action-group"></div>
+          <div class="status-line" id="planStatusLine"></div>
+          <div class="action-group">
+            <button class="btn primary" id="planRegisterBtn" type="button" disabled>Registrar para publicación</button>
+          </div>
+        </div>
+
+        <div id="planResult"></div>
+      </section>
+    </div>
   </div>
 
   <script>
@@ -1110,6 +1324,224 @@
       els.phrasePanel.innerHTML = `<div class="empty">${escapeHtml(err.message || String(err))}</div>`;
     }
 
+    // ─── Publicar carruseles (plan_carruseles) ────────────────────────────────
+
+    const COLORES = [
+      { hex: null,      label: "Aleatorio" },
+      { hex: "#f6f1e8", label: "retroWhite" },
+      { hex: "#0d0f14", label: "retroBlack" },
+      { hex: "#f4c400", label: "retroYellow" },
+      { hex: "#3d5afe", label: "retroBlue" },
+      { hex: "#e53935", label: "retroRed" },
+      { hex: "#0d0208", label: "retroWine" },
+      { hex: "#1a0033", label: "retroPurple" },
+      { hex: "#0a1628", label: "retroNavy" },
+      { hex: "#1c0a00", label: "retroCoffee" },
+      { hex: "#d9723e", label: "retroOrange" },
+      { hex: "#d4006a", label: "retroPink" },
+      { hex: "#b28c2c", label: "retroMustard" },
+      { hex: "#2e7d32", label: "retroGreen" },
+      { hex: "#2c4a3e", label: "retroForest" },
+      { hex: "#4a2040", label: "retroPlum" },
+      { hex: "#5c3317", label: "retroToasted" },
+      { hex: "#2e3f5c", label: "retroSlate" },
+      { hex: "#7a0020", label: "retroCrimson" },
+      { hex: "#b85c38", label: "retroTerra" },
+      { hex: "#5c3d8f", label: "retroLavender" },
+      { hex: "#4a5c2e", label: "retroOlive" },
+      { hex: "#c8e6c9", label: "retroMint" },
+      { hex: "#b3d9f2", label: "retroSky" },
+      { hex: "#d6cfc4", label: "retroAsh" },
+      { hex: "#0a0f0a", label: "retroNeon" },
+      { hex: "#00695c", label: "retroTeal" },
+      { hex: "#2e2e2e", label: "retroGrayDark" },
+      { hex: "#f8bbd0", label: "retroBabyPink" },
+      { hex: "#76c442", label: "retroLime" },
+      { hex: "#1565c0", label: "retroSkyDeep" }
+    ];
+
+    const planState = {
+      groups: {},
+      activeGroup: "",
+      selected: new Set(),
+      color: null,
+      loaded: false
+    };
+
+    const planEls = {
+      tabs: document.getElementById("planTabs"),
+      list: document.getElementById("planList"),
+      counter: document.getElementById("planCounter"),
+      caption: document.getElementById("planCaption"),
+      colorGrid: document.getElementById("planColorGrid"),
+      colorLabel: document.getElementById("planColorLabel"),
+      registerBtn: document.getElementById("planRegisterBtn"),
+      statusLine: document.getElementById("planStatusLine"),
+      result: document.getElementById("planResult"),
+      reloadBtn: document.getElementById("planReloadBtn")
+    };
+
+    function initPlanColors() {
+      planEls.colorGrid.innerHTML = "";
+      COLORES.forEach(({ hex, label }) => {
+        const swatch = document.createElement("div");
+        swatch.className = "swatch" + (hex === null ? " aleatorio selected" : "");
+        if (hex !== null) swatch.style.background = hex;
+        swatch.title = label;
+        swatch.addEventListener("click", () => selectPlanColor(hex, label, swatch));
+        planEls.colorGrid.appendChild(swatch);
+      });
+    }
+
+    function selectPlanColor(hex, label, el) {
+      planEls.colorGrid.querySelectorAll(".swatch").forEach(s => s.classList.remove("selected"));
+      el.classList.add("selected");
+      planState.color = hex;
+      planEls.colorLabel.textContent = label;
+    }
+
+    function renderPlanTabs() {
+      const groupNames = Object.keys(planState.groups);
+
+      if (!groupNames.length) {
+        planEls.tabs.innerHTML = "";
+        return;
+      }
+
+      if (!groupNames.includes(planState.activeGroup)) {
+        planState.activeGroup = groupNames[0];
+      }
+
+      planEls.tabs.innerHTML = groupNames.map(name => {
+        const active = name === planState.activeGroup ? " active" : "";
+        const count = planState.groups[name].length;
+        return `<button type="button" class="btn plan-tab${active}" data-group="${escapeHtml(name)}">${escapeHtml(name)} (${count})</button>`;
+      }).join("");
+
+      planEls.tabs.querySelectorAll(".plan-tab").forEach(button => {
+        button.addEventListener("click", () => {
+          planState.activeGroup = button.dataset.group;
+          renderPlanTabs();
+          renderPlanList();
+        });
+      });
+    }
+
+    function renderPlanList() {
+      const items = planState.groups[planState.activeGroup] || [];
+
+      if (!items.length) {
+        planEls.list.innerHTML = '<div class="empty">No hay frases disponibles en plan_carruseles.</div>';
+        updatePlanCounter();
+        return;
+      }
+
+      planEls.list.innerHTML = items.map(item => {
+        const text = clean(item.frase_final) || clean(item.frase_original);
+        const checked = planState.selected.has(item.rowNumber) ? " checked" : "";
+        return `
+          <label class="plan-item">
+            <input type="checkbox" data-row="${item.rowNumber}"${checked}>
+            <span class="plan-text">${escapeHtml(text)}</span>
+            <span class="plan-row">Fila ${item.rowNumber}</span>
+          </label>
+        `;
+      }).join("");
+
+      planEls.list.querySelectorAll('input[type="checkbox"]').forEach(checkbox => {
+        checkbox.addEventListener("change", () => {
+          const row = Number(checkbox.dataset.row);
+          if (checkbox.checked) planState.selected.add(row);
+          else planState.selected.delete(row);
+          updatePlanCounter();
+        });
+      });
+
+      updatePlanCounter();
+    }
+
+    function updatePlanCounter() {
+      const count = planState.selected.size;
+      planEls.counter.innerHTML = `<strong>${count}</strong>&nbsp;/&nbsp;10 seleccionadas`;
+
+      const captionFilled = clean(planEls.caption.value).length > 0;
+      planEls.registerBtn.disabled = count !== 10 || !captionFilled;
+    }
+
+    async function loadPlanCarruseles() {
+      planEls.list.innerHTML = '<div class="empty">Cargando plan_carruseles...</div>';
+      planEls.result.innerHTML = "";
+
+      const res = await fetch("/api/plan-carruseles", {
+        headers: apiHeaders()
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "No se pudo cargar plan_carruseles");
+
+      planState.groups = data.groups || {};
+      planState.selected.clear();
+      planState.loaded = true;
+
+      renderPlanTabs();
+      renderPlanList();
+    }
+
+    async function registrarCarrusel() {
+      if (planEls.registerBtn.disabled) return;
+
+      const rowNumbers = [...planState.selected];
+      const caption = clean(planEls.caption.value);
+
+      planEls.registerBtn.disabled = true;
+      planEls.statusLine.textContent = "Registrando...";
+      planEls.result.innerHTML = "";
+
+      try {
+        const res = await fetch("/api/plan-carruseles/registrar", {
+          method: "POST",
+          headers: apiHeaders({ "Content-Type": "application/json" }),
+          body: JSON.stringify({ rowNumbers, caption, color: planState.color || "" })
+        });
+
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || "No se pudo registrar el carrusel");
+
+        planEls.statusLine.textContent = "";
+
+        let html = `<div class="result-box ok">Registrado con éxito — carouselId: <strong>${escapeHtml(data.carouselId)}</strong> (${data.rowIds?.length || 0} frases, desde la fila ${escapeHtml(String(data.nextRow))} de Hoja 2).</div>`;
+        if (data.warning) {
+          html += `<div class="result-box warn">${escapeHtml(data.warning)}</div>`;
+        }
+        planEls.result.innerHTML = html;
+
+        planState.selected.clear();
+        planEls.caption.value = "";
+        await loadPlanCarruseles();
+      } catch (err) {
+        planEls.statusLine.textContent = "";
+        planEls.result.innerHTML = `<div class="result-box err">${escapeHtml(err.message || String(err))}</div>`;
+      } finally {
+        updatePlanCounter();
+      }
+    }
+
+    // ─── vistas ─────────────────────────────────────────────────────────────────
+
+    function switchView(view) {
+      document.getElementById("viewCuracion").style.display = view === "curacion" ? "" : "none";
+      document.getElementById("viewPublicar").style.display = view === "publicar" ? "" : "none";
+
+      document.querySelectorAll(".view-tab").forEach(tab => {
+        tab.classList.toggle("active", tab.dataset.view === view);
+      });
+
+      if (view === "publicar" && !planState.loaded) {
+        loadPlanCarruseles().catch(err => {
+          planEls.list.innerHTML = `<div class="empty">${escapeHtml(err.message || String(err))}</div>`;
+        });
+      }
+    }
+
     // ─── event listeners ───────────────────────────────────────────────────────
 
     els.filterSelect.addEventListener("change", () => applyFilters(false));
@@ -1117,8 +1549,21 @@
     els.searchInput.addEventListener("input",   () => applyFilters(false));
     els.reloadBtn.addEventListener("click",     () => load().catch(showFatal));
 
+    document.querySelectorAll(".view-tab").forEach(tab => {
+      tab.addEventListener("click", () => switchView(tab.dataset.view));
+    });
+
+    planEls.caption.addEventListener("input", () => updatePlanCounter());
+    planEls.reloadBtn.addEventListener("click", () => {
+      loadPlanCarruseles().catch(err => {
+        planEls.list.innerHTML = `<div class="empty">${escapeHtml(err.message || String(err))}</div>`;
+      });
+    });
+    planEls.registerBtn.addEventListener("click", () => registrarCarrusel());
+
     initTheme();
     initToken();
+    initPlanColors();
     load().catch(showFatal);
   </script>
 </body>
