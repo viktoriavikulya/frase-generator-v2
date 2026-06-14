@@ -1,6 +1,13 @@
 require("dotenv").config();
 
 const { logger } = require("../utils/logger");
+const {
+  getSheetsClient,
+  buildHeaderMap,
+  getCellValue,
+  readRows,
+  updateCellsBatch
+} = require("../core/sheets");
 const { runCarouselPipeline } = require("./run-carousel");
 const { runSinglePipeline } = require("./run-single");
 const { releaseStaleLocks } = require("../utils/pipeline-utils");
@@ -37,13 +44,6 @@ function getTipoInput() {
  */
 async function readPlatformErrors({ tipo, rowId = null, carouselId = null }) {
   try {
-    const {
-      getSheetsClient,
-      buildHeaderMap,
-      getCellValue,
-      readRows
-    } = require("../core/sheets");
-
     const sheets    = await getSheetsClient();
     const rows      = await readRows(sheets);
     const headers   = rows[0];
@@ -153,13 +153,6 @@ async function runPublishOnly({ cycleId, tipo, publishOnlyId }) {
 
   log.info("Modo publish-only iniciado — se omite render y upload");
 
-  const {
-    getSheetsClient,
-    buildHeaderMap,
-    getCellValue,
-    readRows,
-    updateCellsBatch
-  } = require("../core/sheets");
   const { STATUS, GENERAL_STATUS, LOCK_STATUS } = require("../core/status");
   const { runStep } = require("../utils/pipeline-utils");
 
