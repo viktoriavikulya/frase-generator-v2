@@ -190,9 +190,16 @@ async function renderPhrase({ text, mode = "normal", bg = "#ffffff" }) {
   // FIX: console.log → logger.info para consistencia con el resto del proyecto
   logger.info("Abriendo generador de render", { url });
 
+  // En CI/Render (Linux) se usa el Chromium del sistema; en local (Windows/Mac,
+  // donde esa ruta no existe) se deja que Playwright use el Chromium que
+  // instaló con `npx playwright install chromium`.
+  const FALLBACK_LINUX_CHROMIUM_PATH = '/usr/bin/chromium-browser';
+  const executablePath = process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH
+    || (fs.existsSync(FALLBACK_LINUX_CHROMIUM_PATH) ? FALLBACK_LINUX_CHROMIUM_PATH : undefined);
+
   const launchOptions = {
     headless: true,
-    executablePath: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH || '/usr/bin/chromium-browser'
+    ...(executablePath ? { executablePath } : {})
   };
 
   const browser = await chromium.launch(launchOptions);
