@@ -12,7 +12,6 @@ const { registerFrases } = require("../pipeline/register-from-form");
 const ROOT = path.resolve(__dirname, "..", "..");
 const SHEET_ID = process.env.SHEET_ID;
 const WORKSHEET_NAME = process.env.SAVED_TWEETS_WORKSHEET_NAME || "archivo_x";
-const CAROUSEL_PLAN_WORKSHEET = process.env.CAROUSEL_PLAN_WORKSHEET || "plan_carruseles";
 const PORT = Number(process.env.CURATOR_PORT || 5177);
 const CURATOR_TOKEN = process.env.CURATOR_TOKEN;
 
@@ -84,20 +83,6 @@ async function readSheetRows(sheets) {
   const res = await sheets.spreadsheets.values.get({
     spreadsheetId: SHEET_ID,
     range: `${WORKSHEET_NAME}!A:BZ`
-  });
-
-  return res.data.values || [];
-}
-
-// Lectura genérica de cualquier pestaña — usada para plan_carruseles.
-// Si la pestaña no existe todavía, devuelve [] en vez de lanzar.
-async function readWorksheetRows(sheets, worksheetName, range = "A:AZ") {
-  const res = await sheets.spreadsheets.values.get({
-    spreadsheetId: SHEET_ID,
-    range: `${worksheetName}!${range}`
-  }).catch((err) => {
-    if (err.code === 400 || err.code === 404) return { data: { values: [] } };
-    throw err;
   });
 
   return res.data.values || [];
@@ -199,39 +184,6 @@ function rowToPhrase(row, headerMap, rowNumber) {
 
   phrase.grupo_carrusel = normalizeGroupName(phrase.grupo_carrusel);
   return phrase;
-}
-
-function rowToPlanItem(row, headerMap, rowNumber) {
-  const item = { rowNumber };
-
-  for (const header of Object.keys(headerMap)) {
-    item[header] = cell(row, headerMap, header);
-  }
-
-  return item;
-}
-
-// Carga la pestaña plan_carruseles (generada por build-carousel-plan.js).
-// Columnas relevantes: "grupo" (= grupo_carrusel), "usar" (si/no/revisar,
-// decide si el slide se incluye), "estado" (pendiente/revisar/listo/...),
-// "frase_final" / "frase_original".
-async function loadPlanCarruseles(sheets) {
-  const rows = await readWorksheetRows(sheets, CAROUSEL_PLAN_WORKSHEET);
-
-  if (rows.length < 2) {
-    return { headerMap: {}, items: [] };
-  }
-
-  const headerMap = buildHeaderMap(rows[0]);
-  const items = [];
-
-  for (let i = 1; i < rows.length; i++) {
-    const row = rows[i];
-    if (!row || !row.length) continue;
-    items.push(rowToPlanItem(row, headerMap, i + 1));
-  }
-
-  return { headerMap, items };
 }
 
 function isHeaderLikeItem(item) {
@@ -419,19 +371,19 @@ async function main() {
 
   app.get("/api/plan-carruseles", async (_req, res, next) => {
     try {
-      const { items } = await loadPlanCarruseles(sheets);
+      const { items } = await loadArchive(sheets);
 
       const groups = {};
 
       for (const item of items) {
-        if (normalizeValue(item.usar).toLowerCase() !== "si") continue;
+        if (item.decision_editorial.toLowerCase() !== "aprobada") continue;
 
-        const grupo = item.grupo || "Sin grupo";
+        const grupo = item.grupo_carrusel || "Sin grupo";
         if (!groups[grupo]) groups[grupo] = [];
         groups[grupo].push(item);
       }
 
-      res.json({ worksheet: CAROUSEL_PLAN_WORKSHEET, groups });
+      res.json({ worksheet: WORKSHEET_NAME, groups });
     } catch (err) {
       next(err);
     }
@@ -453,37 +405,28 @@ async function main() {
         return;
       }
 
-      const planRows = await readWorksheetRows(sheets, CAROUSEL_PLAN_WORKSHEET);
-
-      if (planRows.length < 2) {
-        res.status(400).json({ error: `La pestaña "${CAROUSEL_PLAN_WORKSHEET}" está vacía` });
-        return;
-      }
-
-      const planHeaderMap = buildHeaderMap(planRows[0]);
-      const requiredPlanHeaders = ["grupo", "frase_final", "frase_original", "usar", "estado"];
-
-      for (const header of requiredPlanHeaders) {
-        if (planHeaderMap[header] === undefined) {
-          res.status(500).json({ error: `Falta la columna "${header}" en "${CAROUSEL_PLAN_WORKSHEET}"` });
-          return;
-        }
-      }
+      const { headerMap, items } = await loadArchive(sheets);
+      const itemsByRow = new Map(items.map((item) => [item.rowNumber, item]));
 
       const selected = [];
 
       for (const rowNumber of uniqueRowNumbers) {
-        const row = planRows[rowNumber - 1];
+        const item = itemsByRow.get(rowNumber);
 
-        if (!row) {
-          res.status(400).json({ error: `No existe la fila ${rowNumber} en "${CAROUSEL_PLAN_WORKSHEET}"` });
+        if (!item) {
+          res.status(400).json({ error: `No existe la fila ${rowNumber} en "${WORKSHEET_NAME}"` });
           return;
         }
 
-        selected.push(rowToPlanItem(row, planHeaderMap, rowNumber));
+        if (item.decision_editorial.toLowerCase() !== "aprobada") {
+          res.status(400).json({ error: `La fila ${rowNumber} no tiene decision_editorial = "aprobada"` });
+          return;
+        }
+
+        selected.push(item);
       }
 
-      const grupos = new Set(selected.map((item) => item.grupo));
+      const grupos = new Set(selected.map((item) => item.grupo_carrusel));
 
       if (grupos.size > 1) {
         res.status(400).json({
@@ -509,20 +452,6 @@ async function main() {
         allowDuplicate: false
       });
 
-      // Marcar las filas usadas en plan_carruseles para no reusarlas en un
-      // próximo registro. build-carousel-plan.js preserva estos valores
-      // manuales (usar/estado) entre regeneraciones via clave_plan.
-      const markUpdates = uniqueRowNumbers.flatMap((rowNumber) => [
-        {
-          range: `${CAROUSEL_PLAN_WORKSHEET}!${colToLetter(planHeaderMap["usar"] + 1)}${rowNumber}`,
-          values: [["no"]]
-        },
-        {
-          range: `${CAROUSEL_PLAN_WORKSHEET}!${colToLetter(planHeaderMap["estado"] + 1)}${rowNumber}`,
-          values: [["registrado"]]
-        }
-      ]);
-
       const response = {
         success: true,
         tipo,
@@ -534,7 +463,21 @@ async function main() {
 
       // El registro en Hoja 2 ya ocurrió y es irreversible — si este marcado
       // falla, no lo tratamos como error de la request, solo lo avisamos.
+      // decision_editorial = "publicada" saca la fila de /api/plan-carruseles
+      // (filtra por "aprobada") y de las vistas "Pendientes"/"Aprobadas"/
+      // "Descartadas" del curador (solo "Todas" la mostraría).
       try {
+        const markUpdates = uniqueRowNumbers.flatMap((rowNumber) => [
+          {
+            range: `${WORKSHEET_NAME}!${colToLetter(headerMap["decision_editorial"] + 1)}${rowNumber}`,
+            values: [["publicada"]]
+          },
+          {
+            range: `${WORKSHEET_NAME}!${colToLetter(headerMap["actualizado_en"] + 1)}${rowNumber}`,
+            values: [[nowIsoLocal()]]
+          }
+        ]);
+
         await sheets.spreadsheets.values.batchUpdate({
           spreadsheetId: SHEET_ID,
           requestBody: {
@@ -544,7 +487,7 @@ async function main() {
         });
       } catch (markErr) {
         response.warning =
-          `Registrado en Hoja 2, pero no se pudo marcar "${CAROUSEL_PLAN_WORKSHEET}" como usado ` +
+          `Registrado en Hoja 2, pero no se pudo marcar "${WORKSHEET_NAME}" como publicada ` +
           `(filas ${uniqueRowNumbers[0]}-${uniqueRowNumbers[uniqueRowNumbers.length - 1]} podrían ` +
           `reaparecer en GET /api/plan-carruseles): ${markErr.message || markErr}`;
       }
