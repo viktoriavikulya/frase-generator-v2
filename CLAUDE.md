@@ -183,7 +183,7 @@ data/tweets-guardados-x.txt
                                           "plan_carruseles" sheet tab
 ```
 
-`grupo_carrusel` must be one of the 20 groups in `docs/taxonomia-grupos.md`. Columns `sirve`,
+`grupo_carrusel` must be one of the 20 groups defined in `scripts/jobs/inspiration/taxonomy.js`. Columns `sirve`,
 `estado`, `prioridad`, `calidad`, `riesgo`, `recomendacion_auto`, `accion`, `clasificado_manual`
 are legacy and unused by the current flow.
 

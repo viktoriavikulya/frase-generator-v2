@@ -22,8 +22,7 @@ const REQUIRED_FILES = [
   "scripts/jobs/inspiration/import-saved-tweets-to-sheet.js",
   "scripts/jobs/carousel/build-carousel-plan.js",
   "scripts/dev/archive-curator-server.js",
-  "tools/archivo-x-curator.html",
-  "docs/taxonomia-grupos.md"
+  "tools/archivo-x-curator.html"
 ];
 
 const CHECKED_JS_FILES = [
@@ -48,8 +47,7 @@ const CHECKED_JS_FILES = [
 
 const STALE_DOC_PATTERNS = [
   { file: "README.md", pattern: /cloudinary_url|npm run check-palettes(?!-sync)/ },
-  { file: "docs/AI_CONTRACT.md", pattern: /cloudinary_url|npm run check-palettes(?!-sync)|3 veces al dia|3 veces al día/ },
-  { file: "docs/arquitectura-proyecto.md", pattern: /cloudinary_url|3 veces al dia|3 veces al día/ },
+  { file: "CLAUDE.md", pattern: /cloudinary_url|npm run check-palettes(?!-sync)|3 veces al dia|3 veces al día/ },
   { file: "docs/orden para ejecucion.txt", pattern: /-p 8080/ }
 ];
 

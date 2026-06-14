@@ -112,7 +112,7 @@ npm run analyze:phrases-offline -- archivo.txt  # evalúa un .txt local y genera
 
 ### Flujo editorial de archivo_x
 
-El flujo es **100% manual**. Ver referencia técnica completa en [`docs/arquitectura-proyecto.md`](docs/arquitectura-proyecto.md) — sección "Flujo Archivo X".
+El flujo es **100% manual**. Ver referencia técnica completa en [`CLAUDE.md`](CLAUDE.md) — sección "Archivo X (manual curation flow)".
 
 #### 1. Importar frases crudas
 ```bash
@@ -153,7 +153,7 @@ Lee **solo** las frases aprobadas, agrupa por `grupo_carrusel`, requiere mínimo
 | Columna | Descripción |
 |---|---|
 | `decision_editorial` | `pendiente`, `aprobada` o `descartada` — la única decisión que importa |
-| `grupo_carrusel` | Uno de los [20 grupos de taxonomía](docs/taxonomia-grupos.md) |
+| `grupo_carrusel` | Uno de los 20 grupos definidos en [`scripts/jobs/inspiration/taxonomy.js`](scripts/jobs/inspiration/taxonomy.js) |
 | `frase_final` | Texto corregido o reescrito (opcional) |
 | `frase_original` | Texto crudo importado — solo lectura |
 | `notas` | Observaciones del curador |
@@ -163,7 +163,7 @@ Lee **solo** las frases aprobadas, agrupa por `grupo_carrusel`, requiere mínimo
 
 En `plan_carruseles`, revisá principalmente `usar`, `estado`, `revisar`, `grupo`, `orden`, `frase_final` y `notas`.
 
-La lista vigente de grupos está en [`docs/taxonomia-grupos.md`](docs/taxonomia-grupos.md).
+La lista vigente de grupos está en [`scripts/jobs/inspiration/taxonomy.js`](scripts/jobs/inspiration/taxonomy.js).
 
 ---
 
@@ -186,7 +186,6 @@ scripts/
                        # render-utils, pipeline-runner, pipeline-utils
   dev/                 # herramientas locales (preview, sync-palettes)
 
-docs/                  # arquitectura, ejecución local, roadmap
 index.html             # generador visual (sirve Playwright para los screenshots)
 publicar.html          # formulario de publicación (GitHub Pages)
 ```
@@ -197,9 +196,7 @@ publicar.html          # formulario de publicación (GitHub Pages)
 
 | Documento | Contenido |
 |---|---|
-| [`docs/arquitectura-proyecto.md`](docs/arquitectura-proyecto.md) | Mapa completo del sistema: cada archivo, cada capa, modelo de datos, flujo Archivo X |
-| [`docs/taxonomia-grupos.md`](docs/taxonomia-grupos.md) | Los 20 grupos válidos para `grupo_carrusel` |
-| [`docs/AI_CONTRACT.md`](docs/AI_CONTRACT.md) | Guía para IAs o devs que trabajen en el repo: reglas críticas, columnas del sheet, checklist |
+| [`CLAUDE.md`](CLAUDE.md) | Mapa completo del sistema: arquitectura, cada capa, modelo de datos, reglas críticas, flujo Archivo X |
 
 ---
 
