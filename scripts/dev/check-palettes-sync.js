@@ -2,7 +2,7 @@
 /**
  * check-palettes-sync.js
  *
- * Verifica que js/palettes.js esté sincronizado con scripts/libs/retro-palettes.js.
+ * Verifica que js/palettes.js esté sincronizado con scripts/config/retro-palettes.js.
  * Falla con exit(1) si hay diferencias — úsalo en CI antes de un deploy o merge.
  *
  * Uso:
@@ -17,7 +17,7 @@ const path = require("path");
 const ROOT = path.resolve(__dirname, "../..");
 
 // Fuente de verdad: backend
-const { RETRO_PALETTES: SOURCE } = require("../libs/retro-palettes");
+const { RETRO_PALETTES: SOURCE } = require("../config/retro-palettes");
 
 // Frontend: las paletas viven en el scope global del browser, pero podemos
 // extraerlas del archivo parseando el bloque marcado.

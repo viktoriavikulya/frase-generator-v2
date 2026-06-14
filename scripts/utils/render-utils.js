@@ -1,5 +1,5 @@
 const { STATUS, GENERAL_STATUS } = require("../core/status");
-const { RETRO_PALETTES } = require("../libs/retro-palettes");
+const { RETRO_PALETTES } = require("../config/retro-palettes");
 const { getCellValueSoft } = require("../core/sheets");
 
 const RANDOM_HISTORY_SIZE = 6;

@@ -1,7 +1,7 @@
 const fs = require("fs/promises");
 const path = require("path");
 const { renderPhrase } = require("../libs/render-lib");
-const { RETRO_PALETTES } = require("../libs/retro-palettes");
+const { RETRO_PALETTES } = require("../config/retro-palettes");
 
 async function main() {
   const text =

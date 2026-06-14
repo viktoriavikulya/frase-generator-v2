@@ -2,7 +2,7 @@
 /**
  * sync-palettes.js
  *
- * Fuente de verdad: scripts/libs/retro-palettes.js
+ * Fuente de verdad: scripts/config/retro-palettes.js
  *
  * Sincroniza las paletas a:
  *   1. js/palettes.js    — bloque RETRO_PALETTES (frontend / Playwright)
@@ -24,7 +24,7 @@
 const fs   = require("fs");
 const path = require("path");
 
-const { RETRO_PALETTES } = require("../libs/retro-palettes");
+const { RETRO_PALETTES } = require("../config/retro-palettes");
 
 const ROOT        = path.resolve(__dirname, "../..");
 const PALETTES_JS = path.join(ROOT, "js", "palettes.js");

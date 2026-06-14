@@ -146,7 +146,7 @@ function checkDocs() {
 
 function checkPaletteSync() {
   try {
-    const { RETRO_PALETTES: source } = require(absolute("scripts/libs/retro-palettes.js"));
+    const { RETRO_PALETTES: source } = require(absolute("scripts/config/retro-palettes.js"));
     const frontendSrc = fs.readFileSync(absolute("js/palettes.js"), "utf8");
     const startMarker = "// RETRO_PALETTES_START";
     const endMarker = "// RETRO_PALETTES_END";
