@@ -523,22 +523,33 @@ async function main() {
         }
       ]);
 
-      await sheets.spreadsheets.values.batchUpdate({
-        spreadsheetId: SHEET_ID,
-        requestBody: {
-          valueInputOption: "USER_ENTERED",
-          data: markUpdates
-        }
-      });
-
-      res.json({
+      const response = {
         success: true,
         tipo,
         carouselId: result.carouselId,
         nextRow: result.nextRow,
         rowIds: result.rowIds,
         registeredRows: uniqueRowNumbers
-      });
+      };
+
+      // El registro en Hoja 2 ya ocurrió y es irreversible — si este marcado
+      // falla, no lo tratamos como error de la request, solo lo avisamos.
+      try {
+        await sheets.spreadsheets.values.batchUpdate({
+          spreadsheetId: SHEET_ID,
+          requestBody: {
+            valueInputOption: "USER_ENTERED",
+            data: markUpdates
+          }
+        });
+      } catch (markErr) {
+        response.warning =
+          `Registrado en Hoja 2, pero no se pudo marcar "${CAROUSEL_PLAN_WORKSHEET}" como usado ` +
+          `(filas ${uniqueRowNumbers[0]}-${uniqueRowNumbers[uniqueRowNumbers.length - 1]} podrían ` +
+          `reaparecer en GET /api/plan-carruseles): ${markErr.message || markErr}`;
+      }
+
+      res.json(response);
     } catch (err) {
       next(err);
     }
