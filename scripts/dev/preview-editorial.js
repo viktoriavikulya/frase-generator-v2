@@ -19,7 +19,8 @@ const PHRASES = [
   "Tengo un fetiche por proporcionar momentos inolvidables a las personas antes de desaparecer de sus vidas.",
   "A mí me llegan a embolatar la matrícula cero y armo un mierdero",
   "Mor, diga que va a votar y yo le boto esos bóxer pa' la puta mierda.",
-  "A lo mejor no encuentras el amor porque eres el problema y Dios está cuidando a las otras personas de ti."
+  "A lo mejor no encuentras el amor porque eres el problema y Dios está cuidando a las otras personas de ti.",
+  "Esta es una prueba para saber si el codigo funciona correctamente"
 ];
 
 const BG = "#2e3f5c";

@@ -270,6 +270,15 @@ function layoutEditorial(text, boxWidth, boxHeight, ctxLocal, options = {}) {
   // boxWidth al fontSize dado; si no entra, abre una línea nueva. Las
   // palabras clave (keywordIndices) se miden con emphasisFactor de más,
   // así el wrap ya tiene en cuenta su ancho extra.
+  // Una palabra clave solo se destaca si, incluso sola en su línea, su ancho
+  // con emphasisFactor entra en boxWidth. Si no entra, se dibuja sin
+  // énfasis (scale 1) para evitar que se desborde de la caja de texto.
+  function wordScaleFor(idx, scale) {
+    if (!keywordIndices.has(idx)) return 1;
+    const emphasizedWidth = refWordWidths[idx] * scale * emphasisFactor;
+    return emphasizedWidth <= boxWidth ? emphasisFactor : 1;
+  }
+
   function wrapAt(startIdx, count, fontSize) {
     const scale = fontSize / REF;
     const space = refSpace * scale;
@@ -281,7 +290,7 @@ function layoutEditorial(text, boxWidth, boxHeight, ctxLocal, options = {}) {
     for (let i = 0; i < count; i++) {
       const idx       = startIdx + i;
       const w         = words[idx];
-      const wordScale = keywordIndices.has(idx) ? emphasisFactor : 1;
+      const wordScale = wordScaleFor(idx, scale);
       const ww        = refWordWidths[idx] * scale * wordScale;
 
       if (current.length === 0) {
