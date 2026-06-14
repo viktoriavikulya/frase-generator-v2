@@ -95,7 +95,7 @@ function normalizePhraseForDedupe(value) {
   return (value || "")
     .toString()
     .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[\p{M}]/gu, "")
     .toLowerCase()
     .replace(/[^\p{L}\p{N}]+/gu, " ")
     .trim()
@@ -141,34 +141,23 @@ function findDuplicatePhrases({ rows, headerMap, tipo, frases }) {
   return duplicates;
 }
 
-async function main() {
-  const frasesRaw  = process.env.FRASES_INPUT  || "";
-  const caption    = process.env.CAPTION_INPUT  || "";
-  const tipoRaw    = process.env.TIPO_INPUT     || "carousel";
-  const colorInput = process.env.COLOR_INPUT    || "";
-  const allowDuplicate = process.env.ALLOW_DUPLICATE === "true";
-
-  if (!["single", "carousel"].includes(tipoRaw)) {
-    throw new Error(`TIPO_INPUT inválido: ${tipoRaw}. Usa "single" o "carousel".`);
-  }
-
-  const tipo = tipoRaw;
-
-  const frases = frasesRaw
-    .split("||")
-    .map((f) => f.trim())
-    .filter(Boolean);
-
-  if (frases.length < 1) {
-    logger.info("No hay frases suficientes, nada que registrar.");
-    process.exit(0);
+/**
+ * Registra `frases` como filas "pending" en la hoja, a partir de la primera
+ * fila vacía. No depende de process.env ni de GitHub Actions — puede usarse
+ * desde cualquier contexto (workflow, servidor del curador, etc.).
+ *
+ * @returns {{ carouselId: string, nextRow: number, rowIds: string[] }}
+ * @throws si `tipo` es inválido, la cantidad de frases no corresponde al
+ *         tipo, faltan columnas requeridas en la hoja, o se detectan frases
+ *         duplicadas (a menos que `allowDuplicate` sea true).
+ */
+async function registerFrases(sheets, { tipo, frases, caption, colorInput = "", allowDuplicate = false }) {
+  if (!["single", "carousel"].includes(tipo)) {
+    throw new Error(`tipo inválido: ${tipo}. Usa "single" o "carousel".`);
   }
 
   validateFrasesByTipo(tipo, frases);
 
-  logger.info(`Registrando frases`, { count: frases.length, tipo, caption });
-
-  const sheets    = await getSheetsClient();
   const rows      = await readRows(sheets);
   const headers   = rows[0];
   const headerMap = buildHeaderMap(headers);
@@ -206,22 +195,16 @@ async function main() {
 
   logger.info("Primera fila vacía detectada", { nextRow });
 
-  if (tipo === "carousel" && process.env.GITHUB_ENV) {
-    const fs = require("fs");
-    fs.appendFileSync(process.env.GITHUB_ENV, `TARGET_CAROUSEL_ID=${carouselId}\n`);
-  }
-
-  if (tipo === "single" && process.env.GITHUB_ENV) {
-    const fs = require("fs");
-    fs.appendFileSync(process.env.GITHUB_ENV, `TARGET_ROW_NUMBER=${nextRow}\n`);
-  }
-
   const hashtags = "#monacastrosa #frasesreales #humorcotidiano #vidareal";
   const now      = nowIsoLocal();
   const updates  = [];
+  const rowIds   = [];
 
   frases.forEach((frase, i) => {
     const row = nextRow + i;
+    const rowId = randomUUID();
+    rowIds.push(rowId);
+
     const add = (field, value) => {
       if (headerMap[field] !== undefined) {
         updates.push({ row, col: headerMap[field] + 1, value });
@@ -231,7 +214,7 @@ async function main() {
     // FIX: crypto.randomUUID() garantiza unicidad real por fila.
     // El patrón anterior ${Date.now()}_${i} generaba IDs idénticos si dos
     // registros corrían en el mismo milisegundo (posible en GitHub Actions).
-    add("row_id", randomUUID());
+    add("row_id", rowId);
     add("frase_original", frase);
     add("frase_corregida", frase);
     add("post_tipo", tipo);
@@ -256,6 +239,48 @@ async function main() {
 
   await updateCellsBatch(sheets, updates);
 
+  return { carouselId, nextRow, rowIds };
+}
+
+async function main() {
+  const frasesRaw  = process.env.FRASES_INPUT  || "";
+  const caption    = process.env.CAPTION_INPUT  || "";
+  const tipoRaw    = process.env.TIPO_INPUT     || "carousel";
+  const colorInput = process.env.COLOR_INPUT    || "";
+  const allowDuplicate = process.env.ALLOW_DUPLICATE === "true";
+
+  if (!["single", "carousel"].includes(tipoRaw)) {
+    throw new Error(`TIPO_INPUT inválido: ${tipoRaw}. Usa "single" o "carousel".`);
+  }
+
+  const tipo = tipoRaw;
+
+  const frases = frasesRaw
+    .split("||")
+    .map((f) => f.trim())
+    .filter(Boolean);
+
+  if (frases.length < 1) {
+    logger.info("No hay frases suficientes, nada que registrar.");
+    process.exit(0);
+  }
+
+  logger.info(`Registrando frases`, { count: frases.length, tipo, caption });
+
+  const sheets = await getSheetsClient();
+
+  const { carouselId, nextRow } = await registerFrases(sheets, { tipo, frases, caption, colorInput, allowDuplicate });
+
+  if (tipo === "carousel" && process.env.GITHUB_ENV) {
+    const fs = require("fs");
+    fs.appendFileSync(process.env.GITHUB_ENV, `TARGET_CAROUSEL_ID=${carouselId}\n`);
+  }
+
+  if (tipo === "single" && process.env.GITHUB_ENV) {
+    const fs = require("fs");
+    fs.appendFileSync(process.env.GITHUB_ENV, `TARGET_ROW_NUMBER=${nextRow}\n`);
+  }
+
   if (tipo === "carousel") {
     logger.info("Frases registradas como pending", { count: frases.length, carouselId, nextRow });
   } else {
@@ -263,7 +288,11 @@ async function main() {
   }
 }
 
-main().catch(err => {
-  logger.error("Error registrando frases", {}, err);
-  process.exit(1);
-});
+module.exports = { registerFrases };
+
+if (require.main === module) {
+  main().catch(err => {
+    logger.error("Error registrando frases", {}, err);
+    process.exit(1);
+  });
+}
