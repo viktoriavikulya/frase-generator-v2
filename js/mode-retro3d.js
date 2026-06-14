@@ -175,6 +175,271 @@ function layoutTextBalanced(text, boxWidth, boxHeight, ctxLocal, options = {}) {
 }
 
 
+// ========= EXPERIMENTAL: detectEditorialKeywords =========
+// Elige hasta 2 "palabras clave" para destacar con un tamaño mayor:
+// 1. Groserías / intensificadores de una lista predefinida (hasta 2).
+// 2. Si no hay match, la palabra más larga + (si es distinta y suficiente-
+//    mente significativa) la última palabra de la frase.
+// Devuelve un Set con los índices (globales, sobre el array `words`).
+const EDITORIAL_STRONG_WORDS = new Set([
+  "puta", "puto", "putas", "putos", "mierda", "mierdero", "verga", "carajo",
+  "coño", "joder", "pendejo", "pendeja", "cabron", "cabrón", "perra",
+  "marica", "hijueputa", "chimba", "nunca", "jamás", "jamas", "siempre",
+  "nada", "nadie", "todo", "todos", "matarme", "matar", "muerte", "amor",
+  "odio", "dios"
+]);
+
+function stripEditorialPunctuation(word) {
+  return word.toLowerCase().replace(/^[¿¡"'“‘(]+|["'”’.,;:!?)]+$/g, "");
+}
+
+function detectEditorialKeywords(words) {
+  const indices = [];
+
+  for (let i = 0; i < words.length; i++) {
+    if (EDITORIAL_STRONG_WORDS.has(stripEditorialPunctuation(words[i]))) {
+      indices.push(i);
+      if (indices.length === 2) break;
+    }
+  }
+  if (indices.length > 0) return new Set(indices);
+
+  let longestIdx = -1;
+  let longestLen = 0;
+  for (let i = 0; i < words.length; i++) {
+    const len = stripEditorialPunctuation(words[i]).length;
+    if (len > longestLen) {
+      longestLen = len;
+      longestIdx = i;
+    }
+  }
+  if (longestIdx >= 0) indices.push(longestIdx);
+
+  const lastIdx = words.length - 1;
+  if (lastIdx !== longestIdx && stripEditorialPunctuation(words[lastIdx]).length >= 4) {
+    indices.push(lastIdx);
+  }
+
+  return new Set(indices.slice(0, 2));
+}
+
+
+// ========= EXPERIMENTAL: layoutEditorial =========
+// Rediseño desde cero, sin justify. Dos enfoques posibles según el texto:
+//
+// - "cita": un único fontSize para toda la frase. Se busca el tamaño más
+//   grande tal que el wrap natural (greedy, cada línea <= boxWidth) entre en
+//   boxHeight. Cada línea queda con su ancho natural, centrada (sin estirar
+//   espacios) — estilo cita editorial.
+//
+// - "titular+bajada": si la frase tiene una pausa temprana (coma o punto
+//   dentro de las primeras 3-6 palabras, con texto suficiente después), se
+//   divide en dos bloques. El "titular" (hasta la pausa) y la "bajada"
+//   (resto) se ajustan cada uno a su propio tamaño único (mismo método que
+//   "cita"), repartiendo boxHeight entre ambos. La bajada nunca queda más
+//   grande que el titular (jerarquía tipográfica).
+//
+// Devuelve { blocks: [{ fontSize, lines: [{ text, width }] }, ...], approach, gap }
+function layoutEditorial(text, boxWidth, boxHeight, ctxLocal, options = {}) {
+  const cfg = { ...RETRO_3D_TEXT_CONFIG, ...options };
+
+  const maxFont          = cfg.maxFont;
+  const minFont          = cfg.minFont;
+  const lineHeightFactor = cfg.editorialLineHeightFactor ?? 1.05;
+  const titularRatio     = cfg.editorialTitularRatio ?? 0.55;
+  const gapRatio         = cfg.editorialGapRatio ?? 0.06;
+  const emphasisFactor   = cfg.editorialEmphasisFactor ?? 1.20;
+
+  const words = text.split(/\s+/).filter(Boolean);
+  if (words.length === 0) return { blocks: [], approach: "empty", gap: 0 };
+
+  const keywordIndices = detectEditorialKeywords(words);
+
+  function setFont(size) {
+    ctxLocal.font = `700 ${size}px 'Noto Serif', serif`;
+  }
+
+  // measureText escala linealmente con el tamaño de fuente: medimos cada
+  // palabra y el espacio una sola vez a un tamaño de referencia y escalamos.
+  const REF = 100;
+  setFont(REF);
+  const refWordWidths = words.map(w => ctxLocal.measureText(w).width);
+  const refSpace      = ctxLocal.measureText(" ").width;
+
+  // Wrap "greedy": acumula palabras en la línea actual mientras entren en
+  // boxWidth al fontSize dado; si no entra, abre una línea nueva. Las
+  // palabras clave (keywordIndices) se miden con emphasisFactor de más,
+  // así el wrap ya tiene en cuenta su ancho extra.
+  function wrapAt(startIdx, count, fontSize) {
+    const scale = fontSize / REF;
+    const space = refSpace * scale;
+    const lines = [];
+    let current      = [];
+    let currentWidth = 0;
+    let currentMaxScale = 1;
+
+    for (let i = 0; i < count; i++) {
+      const idx       = startIdx + i;
+      const w         = words[idx];
+      const wordScale = keywordIndices.has(idx) ? emphasisFactor : 1;
+      const ww        = refWordWidths[idx] * scale * wordScale;
+
+      if (current.length === 0) {
+        current         = [{ word: w, scale: wordScale }];
+        currentWidth    = ww;
+        currentMaxScale = wordScale;
+        continue;
+      }
+
+      const candidateWidth = currentWidth + space + ww;
+      if (candidateWidth <= boxWidth) {
+        current.push({ word: w, scale: wordScale });
+        currentWidth    = candidateWidth;
+        currentMaxScale = Math.max(currentMaxScale, wordScale);
+      } else {
+        lines.push({ text: current.map(c => c.word).join(" "), width: currentWidth, words: current, maxScale: currentMaxScale });
+        current         = [{ word: w, scale: wordScale }];
+        currentWidth    = ww;
+        currentMaxScale = wordScale;
+      }
+    }
+    if (current.length) {
+      lines.push({ text: current.map(c => c.word).join(" "), width: currentWidth, words: current, maxScale: currentMaxScale });
+    }
+    return lines;
+  }
+
+  // Busca el fontSize más grande (<=maxF) tal que el wrap entre en
+  // budgetHeight. Las líneas con una palabra clave ocupan más alto
+  // (fontSize * maxScale) y eso se tiene en cuenta en la suma.
+  function fitBlock(startIdx, count, budgetHeight, maxF) {
+    for (let f = maxF; f >= minFont; f--) {
+      const lines       = wrapAt(startIdx, count, f);
+      const totalHeight = lines.reduce((acc, l) => acc + f * l.maxScale * lineHeightFactor, 0);
+      if (totalHeight <= budgetHeight) {
+        return { fontSize: f, lines };
+      }
+    }
+    return { fontSize: minFont, lines: wrapAt(startIdx, count, minFont) };
+  }
+
+  const n = words.length;
+
+  // Detecta una pausa temprana (coma/punto/etc.) dentro de las primeras
+  // 3-6 palabras, dejando al menos 2 palabras de "bajada" después.
+  const PAUSE_CHARS    = [",", ".", ";", ":", "!", "?"];
+  const maxTitularIdx  = Math.min(5, n - 2);
+  let splitIndex = -1;
+  for (let i = 2; i <= maxTitularIdx; i++) {
+    const w = words[i];
+    if (w.length > 0 && PAUSE_CHARS.includes(w[w.length - 1])) {
+      splitIndex = i;
+      break;
+    }
+  }
+
+  if (splitIndex === -1) {
+    const block = fitBlock(0, n, boxHeight, maxFont);
+    return { blocks: [block], approach: "cita", gap: 0 };
+  }
+
+  const titularCount = splitIndex + 1;
+  const bajadaCount  = n - titularCount;
+
+  const gap            = boxHeight * gapRatio;
+  const titularBudget  = boxHeight * titularRatio - gap / 2;
+  const bajadaBudget   = boxHeight * (1 - titularRatio) - gap / 2;
+
+  const titular = fitBlock(0, titularCount, titularBudget, maxFont);
+  let bajada    = fitBlock(titularCount, bajadaCount, bajadaBudget, maxFont);
+
+  // Jerarquía: la bajada nunca debe quedar más grande que el titular.
+  if (bajada.fontSize > titular.fontSize) {
+    bajada = { fontSize: titular.fontSize, lines: wrapAt(titularCount, bajadaCount, titular.fontSize) };
+  }
+
+  return { blocks: [titular, bajada], approach: "titular+bajada", gap };
+}
+
+
+// ========= EXPERIMENTAL: drawRetro3DEditorial =========
+// Variante de drawRetro3D que usa layoutEditorial en vez de
+// layoutTextBalanced, y dibuja cada línea sin justify (centrada con su
+// ancho natural). No toca fondo, líneas decorativas, logo ni la extrusión
+// 3D de drawRetro3DLine.
+function drawRetro3DEditorial(rawText, bg) {
+  const cfg = RETRO_3D_TEXT_CONFIG;
+
+  ctx.save();
+
+  const text = rawText.trim().replace(/([,;:.!?])(\S)/g, "$1 $2");
+  if (!text) { ctx.restore(); return; }
+
+  const normalizedBg = getRetro3DBackground(bg);
+
+  ctx.fillStyle = normalizedBg;
+  ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+
+  const bgCanvas = document.createElement("canvas");
+  bgCanvas.width  = CANVAS_WIDTH;
+  bgCanvas.height = CANVAS_HEIGHT;
+  const bgCtx = bgCanvas.getContext("2d");
+
+  bgCtx.fillStyle = normalizedBg;
+  bgCtx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+  drawRetroPattern(bgCtx, normalizedBg);
+  addGrain(bgCtx, 14);
+
+  ctx.drawImage(bgCanvas, 0, 0);
+  drawRetroLines();
+
+  const boxWidth  = CANVAS_WIDTH  * cfg.boxWidthRatio;
+  const boxHeight = CANVAS_HEIGHT * cfg.boxHeightRatio;
+  const centerX   = CANVAS_WIDTH  / 2;
+  const centerY   = CANVAS_HEIGHT * cfg.centerYRatio;
+
+  const layout = layoutEditorial(text, boxWidth, boxHeight, ctx, {});
+
+  ctx.textAlign    = "center";
+  ctx.textBaseline = "middle";
+
+  const palette          = getRetro3DPalette(normalizedBg);
+  const lineHeightFactor = cfg.editorialLineHeightFactor ?? 1.05;
+
+  let totalHeight = 0;
+  for (const block of layout.blocks) {
+    for (const line of block.lines) {
+      totalHeight += block.fontSize * line.maxScale * lineHeightFactor;
+    }
+  }
+  if (layout.blocks.length > 1) totalHeight += layout.gap;
+
+  let y = centerY - totalHeight / 2;
+
+  for (let b = 0; b < layout.blocks.length; b++) {
+    const block = layout.blocks[b];
+
+    for (const line of block.lines) {
+      const lineHeight = block.fontSize * line.maxScale * lineHeightFactor;
+      y += lineHeight / 2;
+
+      drawRetro3DLineEditorial(line.words, centerX, y, {
+        frontColor:  palette.frontColor,
+        midColor:    palette.midColor,
+        shadowColor: palette.shadowColor,
+        fontSize:    block.fontSize
+      });
+
+      y += lineHeight / 2;
+    }
+
+    if (b < layout.blocks.length - 1) y += layout.gap;
+  }
+
+  ctx.restore();
+}
+
+
 function drawRetro3D(rawText, bg) {
   const cfg = RETRO_3D_TEXT_CONFIG;
 
@@ -238,6 +503,69 @@ function drawRetro3D(rawText, bg) {
     });
 
     y += lineHeight / 2;
+  }
+
+  ctx.restore();
+}
+
+
+// ========= EXPERIMENTAL: drawRetro3DLineEditorial =========
+// Variante de drawRetro3DLine para layoutEditorial: recibe `lineWords`
+// (array de { word, scale }) en vez de un string, y dibuja cada palabra
+// a su propio tamaño (fontSize * scale) — usado para destacar 1-2 palabras
+// clave un 15-25% más grandes. Sin justify; centrado por ancho natural.
+// Reutiliza la misma técnica de extrusión 3D que drawRetro3DLine.
+function drawRetro3DLineEditorial(lineWords, x, y, opts) {
+  const cfg = { ...RETRO_3D_TEXT_CONFIG, ...opts };
+  const { frontColor, midColor, shadowColor, fontSize } = cfg;
+
+  if (!lineWords.length) return;
+
+  ctx.save();
+  ctx.textBaseline = "middle";
+
+  ctx.font = `700 ${fontSize}px 'Noto Serif', serif`;
+  const naturalSpace = ctx.measureText(" ").width;
+
+  const sizes = lineWords.map(({ scale }) => Math.round(fontSize * scale));
+  const wordWidths = lineWords.map(({ word }, i) => {
+    ctx.font = `700 ${sizes[i]}px 'Noto Serif', serif`;
+    return ctx.measureText(word).width;
+  });
+
+  const totalWordsW = wordWidths.reduce((a, b) => a + b, 0);
+  const gaps        = lineWords.length - 1;
+  const actualLineW = totalWordsW + naturalSpace * gaps;
+
+  function getExtrudeColor(depth, i) {
+    const t = i / depth;
+    if (t > 0.70) return shadowColor;
+    if (t > 0.40) return midColor;
+    return shadowColor;
+  }
+
+  function drawWord(word, size, wx, alignCenter) {
+    const depth = Math.max(4, Math.round(size * 0.06));
+    ctx.font = `700 ${size}px 'Noto Serif', serif`;
+    ctx.textAlign = alignCenter ? "center" : "left";
+    for (let i = depth; i >= 1; i--) {
+      ctx.fillStyle = getExtrudeColor(depth, i);
+      ctx.fillText(word, wx + i, y + i);
+    }
+    ctx.fillStyle = frontColor;
+    ctx.fillText(word, wx, y);
+  }
+
+  if (gaps === 0) {
+    drawWord(lineWords[0].word, sizes[0], x, true);
+    ctx.restore();
+    return;
+  }
+
+  let cursorX = x - actualLineW / 2;
+  for (let i = 0; i < lineWords.length; i++) {
+    drawWord(lineWords[i].word, sizes[i], cursorX, false);
+    cursorX += wordWidths[i] + naturalSpace;
   }
 
   ctx.restore();

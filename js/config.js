@@ -97,5 +97,24 @@ const RETRO_3D_TEXT_CONFIG = {
   variationBonusMax: 1.65,
 
   // Bono por tener variación agradable de tamaños (negativo = reduce el score).
-  variationBonus: -35
+  variationBonus: -35,
+
+  // --- EXPERIMENTAL (layoutEditorial / drawRetro3DEditorial, no usado por
+  // layoutTextBalanced / drawRetro3D) ---
+
+  // Interlineado para el layout editorial (sin justify, más aire que el
+  // 0.88 de modo póster).
+  editorialLineHeightFactor: 1.05,
+
+  // Porción de boxHeight asignada al bloque "titular" cuando la frase tiene
+  // una pausa temprana (coma/punto en las primeras 3-6 palabras). El resto
+  // (menos editorialGapRatio) va para la "bajada".
+  editorialTitularRatio: 0.55,
+
+  // Espacio vertical entre titular y bajada, como fracción de boxHeight.
+  editorialGapRatio: 0.06,
+
+  // Cuánto más grande se renderizan las 1-2 "palabras clave" detectadas
+  // (1.20 = 20% más grandes que el resto del bloque).
+  editorialEmphasisFactor: 1.20
 };
