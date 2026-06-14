@@ -123,6 +123,8 @@
     </div>
   </div>
 
+  <iframe id="render-frame" src="index.html" style="display:none;" aria-hidden="true"></iframe>
+
   <hr class="divider">
 
   <div class="field">
@@ -202,54 +204,6 @@ const CANVAS_HEIGHT = 1350;
   ];
 // COLORES_END
 
-// RETRO_PALETTES_START
-const RETRO_PALETTES = [
-  { id: "retroWhite",    bg: "#f6f1e8", frontColor: "#ff2bd6", midColor: "#ff2bd6", shadowColor: "#39ff14", patternColor: "#7f7a72", patternAlpha: 0.20, inCycle: true },
-  { id: "retroBlack",    bg: "#0d0f14", frontColor: "#39ff14", midColor: "#39ff14", shadowColor: "#c600eb", patternColor: "#39ff14", patternAlpha: 0.12, inCycle: true },
-  { id: "retroYellow",   bg: "#f4c400", frontColor: "#3d5afe", midColor: "#3d5afe", shadowColor: "#e53935", patternColor: "#8c2f2f", patternAlpha: 0.20, inCycle: true },
-  { id: "retroBlue",     bg: "#3d5afe", frontColor: "#e53935", midColor: "#e53935", shadowColor: "#f4c400", patternColor: "#f4c400", patternAlpha: 0.22, inCycle: true },
-  { id: "retroRed",      bg: "#e53935", frontColor: "#f4c400", midColor: "#f4c400", shadowColor: "#3d5afe", patternColor: "#f4c400", patternAlpha: 0.32, inCycle: true },
-  { id: "retroWine",     bg: "#0d0208", frontColor: "#c9184a", midColor: "#c9184a", shadowColor: "#6a0572", patternColor: null     , patternAlpha: 0.24, inCycle: true },
-  { id: "retroPurple",   bg: "#1a0033", frontColor: "#e040fb", midColor: "#e040fb", shadowColor: "#00e5ff", patternColor: null     , patternAlpha: 0.18, inCycle: true },
-  { id: "retroNavy",     bg: "#0a1628", frontColor: "#00e5ff", midColor: "#00e5ff", shadowColor: "#e040fb", patternColor: null     , patternAlpha: 0.18, inCycle: true },
-  { id: "retroCoffee",   bg: "#1c0a00", frontColor: "#ff6d00", midColor: "#ff6d00", shadowColor: "#c9184a", patternColor: null     , patternAlpha: 0.18, inCycle: true },
-  { id: "retroOrange",   bg: "#d9723e", frontColor: "#fff1d6", midColor: "#fff1d6", shadowColor: "#183f4a", patternColor: null     , patternAlpha: 0.30, inCycle: true },
-  { id: "retroPink",     bg: "#d4006a", frontColor: "#ffd600", midColor: "#ffd600", shadowColor: "#7a0045", patternColor: "#b8922e", patternAlpha: 0.60, inCycle: true },
-  { id: "retroMustard",  bg: "#b28c2c", frontColor: "#3d1a00", midColor: "#3d1a00", shadowColor: "#7a4800", patternColor: null     , patternAlpha: 0.18, inCycle: true },
-  { id: "retroGreen",    bg: "#2e7d32", frontColor: "#ffd600", midColor: "#ffd600", shadowColor: "#ff4d00", patternColor: null     , patternAlpha: 0.30, inCycle: true },
-  { id: "retroForest",   bg: "#2c4a3e", frontColor: "#e8d5a3", midColor: "#e8d5a3", shadowColor: "#0f1f19", patternColor: null     , patternAlpha: 0.18, inCycle: true },
-  { id: "retroPlum",     bg: "#4a2040", frontColor: "#f5c97a", midColor: "#f5c97a", shadowColor: "#1a0818", patternColor: null     , patternAlpha: 0.20, inCycle: true },
-  { id: "retroToasted",  bg: "#5c3317", frontColor: "#f2c98a", midColor: "#f2c98a", shadowColor: "#1e0a03", patternColor: "#f2c98a", patternAlpha: 0.22, inCycle: true },
-  { id: "retroSlate",    bg: "#2e3f5c", frontColor: "#e8f4f8", midColor: "#e8f4f8", shadowColor: "#0a1628", patternColor: null     , patternAlpha: 0.18, inCycle: true },
-  { id: "retroCrimson",  bg: "#7a0020", frontColor: "#ffd600", midColor: "#ffd600", shadowColor: "#2d000b", patternColor: null     , patternAlpha: 0.22, inCycle: true },
-  { id: "retroTerra",    bg: "#b85c38", frontColor: "#fff1d6", midColor: "#fff1d6", shadowColor: "#3d1200", patternColor: null     , patternAlpha: 0.25, inCycle: true },
-  { id: "retroLavender", bg: "#5c3d8f", frontColor: "#f5e6ff", midColor: "#f5e6ff", shadowColor: "#1a0033", patternColor: null     , patternAlpha: 0.20, inCycle: true },
-  { id: "retroOlive",    bg: "#4a5c2e", frontColor: "#e8d5a3", midColor: "#e8d5a3", shadowColor: "#1a2008", patternColor: null     , patternAlpha: 0.20, inCycle: true },
-  { id: "retroMint",     bg: "#c8e6c9", frontColor: "#0d2600", midColor: "#0d2600", shadowColor: "#ff6d00", patternColor: null     , patternAlpha: 0.18, inCycle: true },
-  { id: "retroSky",      bg: "#b3d9f2", frontColor: "#0a1f40", midColor: "#0a1f40", shadowColor: "#c2185b", patternColor: null     , patternAlpha: 0.18, inCycle: true },
-  { id: "retroAsh",      bg: "#d6cfc4", frontColor: "#1a0f00", midColor: "#1a0f00", shadowColor: "#7b3f00", patternColor: null     , patternAlpha: 0.20, inCycle: true },
-  { id: "retroNeon",     bg: "#0a0f0a", frontColor: "#b5ff00", midColor: "#b5ff00", shadowColor: "#ff2bd6", patternColor: "#b5ff00", patternAlpha: 0.10, inCycle: true },
-  { id: "retroTeal",     bg: "#00695c", frontColor: "#ffd600", midColor: "#ffd600", shadowColor: "#00e5ff", patternColor: null     , patternAlpha: 0.18, inCycle: true },
-  { id: "retroGrayDark", bg: "#2e2e2e", frontColor: "#f5f5f5", midColor: "#f5f5f5", shadowColor: "#ff6d00", patternColor: "#f5f5f5", patternAlpha: 0.10, inCycle: true },
-  { id: "retroBabyPink", bg: "#f8bbd0", frontColor: "#4a0030", midColor: "#4a0030", shadowColor: "#880e4f", patternColor: null     , patternAlpha: 0.20, inCycle: true },
-  { id: "retroLime",     bg: "#76c442", frontColor: "#1a2e00", midColor: "#1a2e00", shadowColor: "#0cbbc4", patternColor: "#1a2e00", patternAlpha: 0.22, inCycle: true },
-  { id: "retroSkyDeep",  bg: "#1565c0", frontColor: "#e3f2fd", midColor: "#e3f2fd", shadowColor: "#ff6d00", patternColor: "#e3f2fd", patternAlpha: 0.16, inCycle: true },
-];
-// RETRO_PALETTES_END
-
-const RETRO_3D_TEXT_CONFIG = {
-  boxWidthRatio: 0.76, boxHeightRatio: 0.62, centerYRatio: 0.50,
-  maxFont: 150, minFont: 58, lineHeightFactor: 0.88,
-  layoutTargetFill: 1, drawTargetFill: 1, justify: true,
-  minSpaceFactor: 0.70, maxSpaceFactor: 3.20,
-  singleWordPenalty: 180, manyWordsPenalty: 90, lastLineShortPenalty: 700,
-  fillPenalty: 260, spacePenalty: 80, minFontPenalty: 20,
-  maxJumpRatio: 1.65, variationBonusMin: 1.15, variationBonusMax: 1.65,
-  variationBonus: -35,
-  editorialLineHeightFactor: 1.05, editorialTitularRatio: 0.55,
-  editorialGapRatio: 0.06, editorialEmphasisFactor: 1.20
-};
-
 const previewCanvas = document.getElementById("preview-canvas");
 const ctx = previewCanvas.getContext("2d");
 
@@ -258,437 +212,78 @@ let carouselIndex     = 0;
 let currentFrases     = [];
 let previewTimer      = null;
 
-// ── Logo asset ──
-const retroLogoImage  = new Image();
-retroLogoImage.crossOrigin = "anonymous";
-retroLogoImage.src    = "https://raw.githubusercontent.com/imgifra/frase-generator-v2/main/assets/marca3.png";
-retroLogoImage.onload = () => { if (currentFrases.length) updatePreview(); };
+// ── Render real vía iframe + postMessage (mismo código que el pipeline) ──
+const renderFrame = document.getElementById("render-frame");
+let renderFrameReady = false;
+renderFrame.addEventListener("load", () => { renderFrameReady = true; });
 
-function hexToRgb(hex) {
-  hex = hex.replace("#", "");
-  return { r: parseInt(hex.slice(0,2),16), g: parseInt(hex.slice(2,4),16), b: parseInt(hex.slice(4,6),16) };
-}
-function hexToRgba(hex, alpha) {
-  const {r,g,b} = hexToRgb(hex);
-  return `rgba(${r},${g},${b},${alpha})`;
-}
-function getBrightness(hex) {
-  const {r,g,b} = hexToRgb(hex);
-  return (r*299 + g*587 + b*114) / 1000;
-}
+let renderRequestSeq = 0;
+const pendingRenderResolvers = new Map();
 
-function getPaletteEntry(bg) {
-  return RETRO_PALETTES.find(p => p.bg === (bg||"").toLowerCase()) ?? null;
-}
-function getRetro3DBackground(hex) {
-  const n = (hex||"").toLowerCase();
-  const exact = RETRO_PALETTES.find(p => p.bg === n);
-  if (exact) return exact.bg;
-  const inp = hexToRgb(n);
-  const whiteDist = Math.pow(inp.r-255,2)+Math.pow(inp.g-255,2)+Math.pow(inp.b-255,2);
-  if (whiteDist < 2000) return "#f6f1e8";
-  const blackDist = Math.pow(inp.r-10,2)+Math.pow(inp.g-10,2)+Math.pow(inp.b-10,2);
-  if (blackDist < 2000) return "#0d0f14";
-  let nearest = RETRO_PALETTES[0].bg, minDist = Infinity;
-  for (const e of RETRO_PALETTES) {
-    const c = hexToRgb(e.bg);
-    const d = Math.pow(inp.r-c.r,2)+Math.pow(inp.g-c.g,2)+Math.pow(inp.b-c.b,2);
-    if (d < minDist) { minDist=d; nearest=e.bg; }
-  }
-  return nearest;
-}
-function getRetro3DPalette(bg) {
-  const e = getPaletteEntry(bg);
-  if (!e) return { frontColor: "#f4c400", midColor: "#f4c400", shadowColor: "#3d5afe" };
-  return { frontColor: e.frontColor, midColor: e.midColor, shadowColor: e.shadowColor };
-}
+window.addEventListener("message", (event) => {
+  const data = event.data;
+  if (!data || data.type !== "render-response") return;
+  const resolve = pendingRenderResolvers.get(data.requestId);
+  if (!resolve) return;
+  pendingRenderResolvers.delete(data.requestId);
+  resolve(data.dataUrl);
+});
 
-function drawRetroPattern(targetCtx, bg) {
-  const palette      = getRetro3DPalette(bg);
-  const entry        = getPaletteEntry(bg);
-  const patternColor = entry?.patternColor ?? palette.shadowColor ?? palette.frontColor;
-  const alpha        = entry?.patternAlpha ?? (getBrightness(bg) < 100 ? 0.12 : 0.18);
-
-  targetCtx.save();
-  targetCtx.fillStyle    = hexToRgba(patternColor, alpha);
-  targetCtx.font         = "700 26px 'Noto Serif', serif";
-  targetCtx.textAlign    = "left";
-  targetCtx.textBaseline = "middle";
-
-  const text      = "@monacastrosa";
-  const amplitude = 10;
-
-  const charWidths = [];
-  for (const ch of text) charWidths.push(targetCtx.measureText(ch).width);
-  const totalTextWidth = charWidths.reduce((a,b) => a+b, 0);
-
-  const reps         = Math.round(CANVAS_WIDTH / (totalTextWidth + 10));
-  const stepX        = CANVAS_WIDTH / reps;
-  const scale        = stepX / totalTextWidth;
-  const avgCharWidth = (totalTextWidth / text.length) * scale;
-  const sampleStep   = Math.max(2, avgCharWidth * 0.5);
-  const rowsCount    = Math.round(CANVAS_HEIGHT / 28);
-  const stepY        = CANVAS_HEIGHT / rowsCount;
-  const startY       = -(stepY + amplitude);
-
-  for (let row = 0, baseY = startY; baseY < CANVAS_HEIGHT + stepY + amplitude; row++, baseY += stepY) {
-    const rowShift = (row % 2) * (stepX / 2);
-    const startX   = -stepX / 2 + rowShift;
-    for (let tileX = startX; tileX < CANVAS_WIDTH + stepX; tileX += stepX) {
-      let cursorX = tileX;
-      for (let i = 0; i < text.length; i++) {
-        const ch        = text[i];
-        const cw        = charWidths[i] * scale;
-        const cx        = cursorX + cw / 2;
-        const waveY     = baseY + Math.sin((2*Math.PI*cx) / CANVAS_WIDTH) * amplitude;
-        const waveYNext = baseY + Math.sin((2*Math.PI*(cx+sampleStep)) / CANVAS_WIDTH) * amplitude;
-        const angle     = Math.atan2(waveYNext - waveY, sampleStep);
-        targetCtx.save();
-        targetCtx.translate(cx, waveY);
-        targetCtx.rotate(angle);
-        targetCtx.scale(scale, 1);
-        targetCtx.fillText(ch, -charWidths[i]/2, 0);
-        targetCtx.restore();
-        cursorX += cw;
-      }
+function waitForRenderFrame(timeoutMs = 5000) {
+  if (renderFrameReady) return Promise.resolve();
+  return new Promise((resolve) => {
+    const start = Date.now();
+    function check() {
+      if (renderFrameReady || Date.now() - start > timeoutMs) resolve();
+      else requestAnimationFrame(check);
     }
-  }
-  targetCtx.restore();
-}
-
-function addGrain(targetCtx, amount) {
-  const imageData = targetCtx.getImageData(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
-  const data = imageData.data;
-  for (let i = 0; i < data.length; i += 4) {
-    const noise = (Math.random() - 0.5) * amount;
-    data[i]   += noise; data[i+1] += noise; data[i+2] += noise;
-  }
-  targetCtx.putImageData(imageData, 0, 0);
-}
-
-function drawRetroLines(normalizedBg) {
-  const palette = getRetro3DPalette(normalizedBg);
-  const margin = 38, len = 120, depth = 6;
-  ctx.save();
-  ctx.lineCap   = "square";
-  ctx.lineWidth = 10;
-
-  function drawCornerLines(paths, front, shadow) {
-    for (let i = depth; i >= 1; i--) {
-      const t = i / depth;
-      const extrudeColor = t > 0.7 ? shadow : t > 0.4 ? front : shadow;
-      ctx.strokeStyle = extrudeColor;
-      ctx.beginPath();
-      for (const [mx,my,lx,ly] of paths) { ctx.moveTo(mx+i, my+i); ctx.lineTo(lx+i, ly+i); }
-      ctx.stroke();
-    }
-    ctx.strokeStyle = front;
-    ctx.beginPath();
-    for (const [mx,my,lx,ly] of paths) { ctx.moveTo(mx, my); ctx.lineTo(lx, ly); }
-    ctx.stroke();
-  }
-
-  const front  = palette.frontColor;
-  const shadow = palette.shadowColor;
-
-  drawCornerLines([
-    [CANVAS_WIDTH - margin - len, margin, CANVAS_WIDTH - margin, margin],
-    [CANVAS_WIDTH - margin, margin, CANVAS_WIDTH - margin, margin + len]
-  ], front, shadow);
-
-  drawCornerLines([
-    [margin, CANVAS_HEIGHT - margin - len, margin, CANVAS_HEIGHT - margin],
-    [margin, CANVAS_HEIGHT - margin, margin + len, CANVAS_HEIGHT - margin]
-  ], front, shadow);
-
-  ctx.restore();
-}
-
-function drawCornerTagRetro3D(normalizedBg) {
-  const tag      = "@monacastrosa";
-  const palette  = getRetro3DPalette(normalizedBg);
-  const fontSize = 40, depth = 3;
-
-  ctx.save();
-  ctx.font         = `700 ${fontSize}px 'Noto Serif', serif`;
-  ctx.textAlign    = "center";
-  ctx.textBaseline = "top";
-
-  for (let i = depth; i >= 1; i--) {
-    const t = i / depth;
-    const extrudeColor = t > 2/3 ? palette.shadowColor : t > 1/3 ? palette.frontColor : palette.shadowColor;
-    ctx.fillStyle = extrudeColor;
-    ctx.fillText(tag, CANVAS_WIDTH/2 + i, 35 + i);
-  }
-  ctx.fillStyle = palette.frontColor;
-  ctx.fillText(tag, CANVAS_WIDTH/2, 35);
-  ctx.restore();
-}
-
-function layoutTextBalanced(text, boxWidth, boxHeight, ctxLocal, options) {
-  const cfg   = { ...RETRO_3D_TEXT_CONFIG, ...options };
-  const words = text.split(/\s+/).filter(Boolean);
-  if (!words.length) return [];
-
-  function setFont(size) { ctxLocal.font = `700 ${size}px 'Noto Serif', serif`; }
-
-  function measureWords(lineWords, fontSize) {
-    setFont(fontSize);
-    const naturalSpace = ctxLocal.measureText(" ").width;
-    const wordWidths   = lineWords.map(w => ctxLocal.measureText(w).width);
-    const wordsWidth   = wordWidths.reduce((a,b) => a+b, 0);
-    const gaps         = lineWords.length - 1;
-    return { naturalSpace, wordWidths, wordsWidth, naturalWidth: wordsWidth + naturalSpace*gaps, gaps };
-  }
-
-  function getBestFontForLine(lineWords) {
-    let low = cfg.minFont, high = cfg.maxFont, best = cfg.minFont;
-    while (low <= high) {
-      const mid = Math.floor((low+high)/2);
-      if (measureWords(lineWords, mid).naturalWidth <= boxWidth * cfg.layoutTargetFill) { best=mid; low=mid+1; } else high=mid-1;
-    }
-    return best;
-  }
-
-  function scoreLine(lineWords, isLastLine) {
-    const fontSize     = getBestFontForLine(lineWords);
-    const m            = measureWords(lineWords, fontSize);
-    const fillRatio    = m.naturalWidth / boxWidth;
-    const desiredWidth = boxWidth * cfg.layoutTargetFill;
-    let score = 0;
-    score += Math.pow(cfg.layoutTargetFill - fillRatio, 2) * cfg.fillPenalty;
-    if (lineWords.length === 1 && words.length > 4) score += cfg.singleWordPenalty;
-    if (lineWords.length >= 4) score += Math.pow(lineWords.length-3, 2) * cfg.manyWordsPenalty;
-    if (isLastLine && fillRatio < 0.55 && words.length > 6) score += Math.pow(0.55-fillRatio, 2) * cfg.lastLineShortPenalty;
-    if (m.gaps > 0) {
-      const rawSpace        = (desiredWidth - m.wordsWidth) / m.gaps;
-      const maxAllowedSpace = m.naturalSpace * cfg.maxSpaceFactor;
-      if (rawSpace > maxAllowedSpace) score += Math.pow(rawSpace/m.naturalSpace - cfg.maxSpaceFactor, 2) * cfg.spacePenalty;
-    }
-    if (fontSize <= cfg.minFont + 2) score += cfg.minFontPenalty;
-    return { score, fontSize, fillRatio };
-  }
-
-  const n        = words.length;
-
-  // Para frases muy largas el DP O(n³) congela el browser.
-  // Con >18 palabras usamos greedy simple: llenamos líneas por ancho natural.
-  if (n > 18) {
-    const fontSize = cfg.minFont;
-    const lines = [];
-    let line = [];
-    for (const w of words) {
-      const probe = [...line, w];
-      const m = measureWords(probe, fontSize);
-      if (line.length && m.naturalWidth > boxWidth) {
-        const lm = measureWords(line, fontSize);
-        lines.push({ text: line.join(" "), words: line, fontSize, fillRatio: lm.naturalWidth / boxWidth });
-        line = [w];
-      } else {
-        line = probe;
-      }
-    }
-    if (line.length) {
-      const lm = measureWords(line, fontSize);
-      lines.push({ text: line.join(" "), words: line, fontSize, fillRatio: lm.naturalWidth / boxWidth });
-    }
-    return lines;
-  }
-
-  let bestLayout = null, bestScore = Infinity;
-  const minLines = n <= 2 ? 1 : Math.max(2, Math.ceil(n/5));
-  const maxLines = Math.min(n, Math.max(minLines, Math.ceil(n/2)+2));
-
-  for (let lineCount = minLines; lineCount <= maxLines; lineCount++) {
-    const dp   = Array.from({length: lineCount+1}, () => Array(n+1).fill(Infinity));
-    const prev = Array.from({length: lineCount+1}, () => Array(n+1).fill(-1));
-    const meta = Array.from({length: lineCount+1}, () => Array(n+1).fill(null));
-    dp[0][0] = 0;
-
-    for (let line = 1; line <= lineCount; line++) {
-      for (let end = line; end <= n; end++) {
-        for (let start = line-1; start < end; start++) {
-          const lineWords  = words.slice(start, end);
-          const isLastLine = line === lineCount;
-          const result     = scoreLine(lineWords, isLastLine);
-          const candidate  = dp[line-1][start] + result.score;
-          if (candidate < dp[line][end]) { dp[line][end]=candidate; prev[line][end]=start; meta[line][end]=result; }
-        }
-      }
-    }
-
-    if (dp[lineCount][n] === Infinity) continue;
-    const lines = [];
-    let end = n;
-    for (let line = lineCount; line >= 1; line--) {
-      const start = prev[line][end];
-      if (start < 0) { lines.length=0; break; }
-      lines.unshift({ text: words.slice(start,end).join(" "), words: words.slice(start,end), fontSize: meta[line][end].fontSize, fillRatio: meta[line][end].fillRatio });
-      end = start;
-    }
-    if (!lines.length) continue;
-
-    const totalHeight = lines.reduce((acc,item) => acc + item.fontSize*cfg.lineHeightFactor, 0);
-    if (totalHeight > boxHeight) continue;
-
-    let jumpPenalty = 0;
-    for (let i = 0; i < lines.length-1; i++) {
-      const ratio = Math.max(lines[i].fontSize, lines[i+1].fontSize) / Math.min(lines[i].fontSize, lines[i+1].fontSize);
-      if (ratio > cfg.maxJumpRatio) jumpPenalty += Math.pow(ratio-cfg.maxJumpRatio, 2) * 100;
-    }
-    const sizes     = lines.map(l => l.fontSize);
-    const variation = Math.max(...sizes) / Math.min(...sizes);
-    let variationBonus = 0;
-    if (variation > cfg.variationBonusMin && variation < cfg.variationBonusMax) variationBonus = cfg.variationBonus;
-
-    const finalScore = dp[lineCount][n] + jumpPenalty + variationBonus;
-    if (finalScore < bestScore) { bestScore=finalScore; bestLayout=lines; }
-  }
-
-  if (!bestLayout) return [{ text, words, fontSize: cfg.minFont, fillRatio: 1 }];
-  return bestLayout;
-}
-
-function drawRetro3DLine(line, x, y, opts) {
-  const cfg = { ...RETRO_3D_TEXT_CONFIG, ...opts };
-  const { frontColor, midColor, shadowColor, fontSize, boxWidth, targetFill, justify, minSpaceFactor, maxSpaceFactor } = cfg;
-
-  const depth = Math.max(4, Math.round(fontSize * 0.06));
-  const words = line.split(/\s+/).filter(Boolean);
-  if (!words.length) return;
-
-  const targetW = boxWidth * targetFill;
-  ctx.save();
-  ctx.font         = `700 ${fontSize}px 'Noto Serif', serif`;
-  ctx.textBaseline = "middle";
-
-  const wordWidths   = words.map(w => ctx.measureText(w).width);
-  const totalWordsW  = wordWidths.reduce((a,b) => a+b, 0);
-  const gaps         = words.length - 1;
-  const naturalSpace = ctx.measureText(" ").width;
-  const minSpace     = naturalSpace * minSpaceFactor;
-  const maxSpace     = naturalSpace * maxSpaceFactor;
-  let spaceSize = naturalSpace;
-  if (gaps > 0 && justify) {
-    const rawSpace = (targetW - totalWordsW) / gaps;
-    spaceSize = Math.max(minSpace, Math.min(rawSpace, maxSpace));
-  }
-  const actualLineW = totalWordsW + spaceSize * gaps;
-
-  function getExtrudeColor(i) {
-    const t = i / depth;
-    if (t > 0.70) return shadowColor;
-    if (t > 0.40) return midColor;
-    return shadowColor;
-  }
-
-  function drawWord(word, wx) {
-    ctx.textAlign = "left";
-    for (let i = depth; i >= 1; i--) { ctx.fillStyle = getExtrudeColor(i); ctx.fillText(word, wx+i, y+i); }
-    ctx.fillStyle = frontColor;
-    ctx.fillText(word, wx, y);
-  }
-
-  if (gaps === 0) {
-    ctx.textAlign = "center";
-    for (let i = depth; i >= 1; i--) { ctx.fillStyle = getExtrudeColor(i); ctx.fillText(words[0], x+i, y+i); }
-    ctx.fillStyle = frontColor;
-    ctx.fillText(words[0], x, y);
-    ctx.restore(); return;
-  }
-
-  let cursorX = x - actualLineW / 2;
-  for (let i = 0; i < words.length; i++) {
-    drawWord(words[i], cursorX);
-    cursorX += wordWidths[i] + spaceSize;
-  }
-  ctx.restore();
-}
-
-// ── drawRetroCornerLogo — copia de js/mode-retro3d.js ──
-function drawRetroCornerLogo() {
-  if (!retroLogoImage.complete || retroLogoImage.naturalWidth === 0) return;
-  const logoSize = 260;
-  const margin   = 30;
-  const x = (CANVAS_WIDTH - logoSize) / 2;
-  const y = CANVAS_HEIGHT - logoSize - margin;
-  ctx.save();
-  ctx.globalAlpha = 1;
-  ctx.drawImage(retroLogoImage, x, y, logoSize, logoSize);
-  ctx.restore();
-}
-
-function drawRetro3D(rawText, bg) {
-  const cfg  = RETRO_3D_TEXT_CONFIG;
-  ctx.save();
-
-  const text = rawText.trim().replace(/([,;:.!?])(\S)/g, "$1 $2");
-  if (!text) { ctx.restore(); return; }
-
-  const normalizedBg = getRetro3DBackground(bg);
-
-  ctx.fillStyle = normalizedBg;
-  ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
-
-  const bgCanvas    = document.createElement("canvas");
-  bgCanvas.width    = CANVAS_WIDTH;
-  bgCanvas.height   = CANVAS_HEIGHT;
-  const bgCtx       = bgCanvas.getContext("2d");
-  bgCtx.fillStyle   = normalizedBg;
-  bgCtx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
-  drawRetroPattern(bgCtx, normalizedBg);
-  addGrain(bgCtx, 14);
-
-  ctx.drawImage(bgCanvas, 0, 0);
-  drawRetroLines(normalizedBg);
-  drawCornerTagRetro3D(normalizedBg);
-
-  const boxWidth  = CANVAS_WIDTH  * cfg.boxWidthRatio;
-  const boxHeight = CANVAS_HEIGHT * cfg.boxHeightRatio;
-  const centerX   = CANVAS_WIDTH  / 2;
-  const centerY   = CANVAS_HEIGHT * cfg.centerYRatio;
-
-  const lines = layoutTextBalanced(text, boxWidth, boxHeight, ctx, {
-    maxFont: cfg.maxFont, minFont: cfg.minFont,
-    lineHeightFactor: cfg.lineHeightFactor, layoutTargetFill: cfg.layoutTargetFill
+    check();
   });
-
-  ctx.textAlign    = "center";
-  ctx.textBaseline = "middle";
-
-  const palette     = getRetro3DPalette(normalizedBg);
-  const totalHeight = lines.reduce((acc,item) => acc + item.fontSize*cfg.lineHeightFactor, 0);
-  let y = centerY - totalHeight / 2;
-
-  for (const item of lines) {
-    const lineHeight = item.fontSize * cfg.lineHeightFactor;
-    y += lineHeight / 2;
-    drawRetro3DLine(item.text, centerX, y, {
-      frontColor:     palette.frontColor,
-      midColor:       palette.midColor,
-      shadowColor:    palette.shadowColor,
-      fontSize:       item.fontSize,
-      boxWidth,
-      targetFill:     cfg.drawTargetFill,
-      justify:        cfg.justify,
-      minSpaceFactor: cfg.minSpaceFactor,
-      maxSpaceFactor: cfg.maxSpaceFactor
-    });
-    y += lineHeight / 2;
-  }
-
-  drawRetroCornerLogo();
-  ctx.restore();
 }
 
-function updatePreview() {
+async function requestRender(text, bg) {
+  await waitForRenderFrame();
+  const requestId = ++renderRequestSeq;
+  return new Promise((resolve) => {
+    pendingRenderResolvers.set(requestId, resolve);
+    renderFrame.contentWindow.postMessage({
+      type: "render-request",
+      requestId,
+      text,
+      mode: "retro3d",
+      bg
+    }, "*");
+  });
+}
+
+let latestPreviewRequestId = 0;
+
+async function updatePreview() {
   const wrap = document.getElementById("preview-wrap");
   if (!currentFrases.length) { wrap.classList.remove("visible"); return; }
   wrap.classList.add("visible");
 
   const frase = currentFrases[carouselIndex] || currentFrases[0];
   const bg    = colorSeleccionado || "#f4c400";
-  drawRetro3D(frase, bg);
+
+  const requestId = ++latestPreviewRequestId;
+
+  if (!renderFrameReady) {
+    ctx.fillStyle = bg;
+    ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+    ctx.fillStyle    = "rgba(0,0,0,0.4)";
+    ctx.font         = "48px sans-serif";
+    ctx.textAlign    = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText("Generando preview…", CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2);
+  }
+
+  const dataUrl = await requestRender(frase, bg);
+  if (requestId === latestPreviewRequestId) {
+    const img = new Image();
+    img.onload = () => { ctx.drawImage(img, 0, 0, CANVAS_WIDTH, CANVAS_HEIGHT); };
+    img.src = dataUrl;
+  }
 
   const nav = document.getElementById("carousel-nav");
   if (currentFrases.length > 1) {

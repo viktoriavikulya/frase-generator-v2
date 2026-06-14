@@ -50,15 +50,6 @@ replaceMarkedBlock(
   buildColoresBlock()
 );
 
-// ── 3. publicar.html — RETRO_PALETTES para preview ───────────────────────────
-
-replaceMarkedBlock(
-  PUBLICAR,
-  "RETRO_PALETTES_START",
-  "RETRO_PALETTES_END",
-  buildPalettesBlock()
-);
-
 console.log("✔  publicar.html actualizado");
 console.log(`\n   ${RETRO_PALETTES.length} paletas sincronizadas.`);
 

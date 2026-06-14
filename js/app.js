@@ -135,3 +135,42 @@ function getCanvasBase64() {
 window.getCanvasBase64 = getCanvasBase64;
 window.draw            = draw;
 window.assetsReady     = assetsReady;
+
+
+/* ========= PREVIEW API (postMessage) =========
+   Permite que otra página (ej. publicar.html, vía iframe) pida un render
+   con (text, mode, bg) y reciba el PNG resultante — así el preview usa
+   exactamente el mismo código que el pipeline real, sin copias. */
+
+function waitForAssetsReady(timeoutMs = 3000) {
+  return new Promise((resolve) => {
+    const start = Date.now();
+    function check() {
+      if ((assetsReady.watermark && assetsReady.retroLogo) || Date.now() - start > timeoutMs) {
+        resolve();
+      } else {
+        requestAnimationFrame(check);
+      }
+    }
+    check();
+  });
+}
+
+window.addEventListener("message", async (event) => {
+  const data = event.data;
+  if (!data || data.type !== "render-request") return;
+
+  if (typeof data.text === "string") input.value = data.text;
+  if (data.mode && ["normal", "brat", "retro3d"].includes(data.mode)) modeSelect.value = data.mode;
+  if (typeof data.bg === "string") bgColorInput.value = data.bg;
+
+  await document.fonts.ready;
+  await waitForAssetsReady();
+  draw();
+
+  event.source.postMessage({
+    type:      "render-response",
+    requestId: data.requestId,
+    dataUrl:   canvas.toDataURL("image/png")
+  }, "*");
+});
