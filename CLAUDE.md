@@ -35,7 +35,9 @@ TIPO_INPUT=single   node scripts/pipeline/run-once.js
 npm run render:single / render:carousel
 npm run upload:single / upload:carousel
 npm run publish:single / publish:carousel
-npm run build:carousel-plan   # generates output/carousel-plan.json from approved Archivo X phrases
+npm run build:carousel-plan   # generates output/carousel-plan.json + "plan_carruseles" tab from
+                               # approved Archivo X phrases — legacy, no longer used by the
+                               # curator's "Publicar carruseles" tab (see Archivo X section)
 
 # Dev / preview
 npm run render                                  # quick CLI preview of one phrase -> /output
@@ -107,10 +109,13 @@ scripts/
     common.js          nowIsoLocal(), colToLetter(), normalizeValue()
     logger.js          structured JSON logger
   dev/                 local-only tools (never run in production): render-preview, sync-palettes,
-                       check-palettes-sync, archive-curator-server (port 5177), doctor, doctor-sheet
+                       check-palettes-sync, archive-curator-server (port 5177; serves the
+                       curator UI + /api/phrases, /api/taxonomy, /api/plan-carruseles), doctor,
+                       doctor-sheet
   archive-x/           legacy versions of jobs that have been migrated to scripts/jobs/ — do not use
 
-tools/archivo-x-curator.html   manual curation UI, served by archive-curator-server.js
+tools/archivo-x-curator.html   manual curation UI ("Curaduría" + "Publicar carruseles" tabs),
+                                served by archive-curator-server.js
 data/tweets-guardados-x.txt    input for import:saved-tweets
 .github/workflows/publish.yml  main pipeline (schedule 10am/6pm Bogotá + workflow_dispatch)
 .github/workflows/metrics.yml  Sunday metrics job (+ manual `days` input)
@@ -174,18 +179,51 @@ auto-update the `publicar.html` preview.
 data/tweets-guardados-x.txt
   -> npm run import:saved-tweets        (sheet tab "archivo_x", decision_editorial = pendiente)
   -> npm run curate:archivo-x           (http://localhost:5177)
-       approve/discard/edit frase_final, assign grupo_carrusel
-       only the "Aprobar" button sets decision_editorial = aprobada
-       changing grupo_carrusel or frase_final does NOT approve
-  -> npm run build:carousel-plan        (only decision_editorial = aprobada rows, min 8 per
-                                          grupo_carrusel, uses frase_final or falls back to
-                                          frase_original) -> output/carousel-plan.json +
-                                          "plan_carruseles" sheet tab
+       Tab "Curaduría": approve/discard/edit frase_final, assign grupo_carrusel
+         only the "Aprobar" button sets decision_editorial = aprobada
+         changing grupo_carrusel or frase_final does NOT approve
+       Tab "Publicar carruseles": pick exactly 10 approved phrases from one
+         grupo_carrusel + caption (+ optional color) -> registers them as a
+         new pending carousel directly in Hoja 2, then sets
+         decision_editorial = publicada on those archivo_x rows
 ```
 
 `grupo_carrusel` must be one of the 20 groups defined in `scripts/jobs/inspiration/taxonomy.js`. Columns `sirve`,
 `estado`, `prioridad`, `calidad`, `riesgo`, `recomendacion_auto`, `accion`, `clasificado_manual`
 are legacy and unused by the current flow.
+
+### `decision_editorial` values
+
+`pendiente` (default on import) -> `aprobada` (via curator "Aprobar") -> `publicada` (set
+automatically once registered into Hoja 2 via "Publicar carruseles"). `descartada` means the
+curator rejected the phrase. Only `aprobada` rows are eligible for "Publicar carruseles"; once a
+row is `publicada` it no longer appears there or in the curator's
+Pendientes/Aprobadas/Descartadas filters (only "Todas" shows it).
+
+**Known gap:** `getSummary()` in `archive-curator-server.js` (used by `GET /api/phrases`) only
+buckets rows into `aprobada` / `descartada` / else-`pendiente`, so `publicada` rows are currently
+counted as `pendiente` in that summary. Not fixed yet — low priority, cosmetic only.
+
+### "Publicar carruseles" tab and its API
+
+- `GET /api/plan-carruseles` — reads `archivo_x` directly (same `loadArchive()` as
+  `GET /api/phrases`), filters `decision_editorial === "aprobada"`, groups by normalized
+  `grupo_carrusel`, returns `{ worksheet, groups: { [grupo]: [items...] } }` with **all** approved
+  rows per group (no 10-row cap — the UI enforces picking exactly 10 via checkboxes).
+- `POST /api/plan-carruseles/registrar` — body `{ rowNumbers, caption, color }`. Validates 1-10
+  rows, all `aprobada`, same `grupo_carrusel`, non-empty `frase_final || frase_original`. Calls
+  `registerFrases()` from `scripts/pipeline/register-from-form.js` (tipo `single` for 1 phrase,
+  `carousel` for 2-10) to write new `pending` rows into Hoja 2, then marks the source `archivo_x`
+  rows `decision_editorial = "publicada"` (+ `actualizado_en`). If that marking write fails, the
+  response still has `success: true` (Hoja 2 write is already irreversible) plus a `warning`
+  field telling the curator those rows might reappear in `GET /api/plan-carruseles`.
+
+### `plan_carruseles` / `build:carousel-plan` — currently unused by the curator
+
+`npm run build:carousel-plan` and the `plan_carruseles` sheet tab still exist (and `output/`
+generation may have other consumers) but are **no longer read by the curator's "Publicar
+carruseles" tab**, which now goes straight from `archivo_x` to Hoja 2. Not removed yet — treat as
+legacy until confirmed nothing else depends on them.
 
 ## Operational playbook
 
