@@ -171,6 +171,48 @@ gets published is done by `render-lib.js` via Playwright over `index.html`, whic
 directly. Changes to `js/mode-retro3d.js` change production output immediately but do **not**
 auto-update the `publicar.html` preview.
 
+**Known gap — `publicar.html` preview is out of sync with the real render (since before the
+`drawRetro3DEditorial` switch):** `publicar.html` is a fully self-contained, hand-copied mirror of
+the entire render pipeline (palette helpers from `js/palettes.js`, `RETRO_3D_TEXT_CONFIG` from
+`js/config.js`, and the layout/draw functions from `js/mode-retro3d.js`), pasted into one inline
+`<script>`. Only `RETRO_PALETTES`/`COLORES` are kept in sync automatically, via
+`sync-palettes.js` and `// RETRO_PALETTES_START/END` / `// COLORES_START/END` markers. Everything
+else — including `RETRO_3D_TEXT_CONFIG` and the layout/draw functions — is synced manually or not
+at all.
+
+As of the switch to `drawRetro3DEditorial` as the production renderer (`js/app.js`), the gap is
+concrete: `publicar.html`'s `updatePreview()` still calls the old `drawRetro3D` (V1,
+`layoutTextBalanced` + `drawRetro3DLine`, no keyword emphasis), while the real pipeline now uses
+`layoutEditorial` / `drawRetro3DEditorial` / `drawRetro3DLineEditorial` /
+`detectEditorialKeywords` — none of which exist in `publicar.html`. The 4 new
+`editorial*` keys were manually copied into `publicar.html`'s `RETRO_3D_TEXT_CONFIG`, but are dead
+there since the functions that read them aren't present.
+
+There's also a structural mismatch beyond "copy is stale": in `js/mode-retro3d.js`,
+`drawRetroLines()` and `drawCornerTagRetro3D()` take no `bg` argument and read
+`bgColorInput.value` (a DOM element that only exists in `index.html`), whereas `publicar.html`'s
+copies take `normalizedBg` as a parameter — so even a literal copy-paste of the new functions
+would need signature adjustments.
+
+Options considered for fixing this properly (not yet implemented):
+- **A — Marker-based sync (like `retro-palettes.js`)**: add `// ..._START/END` markers around
+  `RETRO_3D_TEXT_CONFIG` and the layout/draw functions in `js/mode-retro3d.js`, and extend (or add
+  a sibling to) `sync-palettes.js` to copy them into `publicar.html`. Requires first
+  homogenizing signatures (e.g. `drawRetroLines`/`drawCornerTagRetro3D` accepting an optional
+  `bg` param with a `bgColorInput?.value` fallback) so the copied code runs unchanged in both
+  places.
+- **B — Shared ES modules**: convert `js/*.js` into ES modules importable from both
+  `index.html` and `publicar.html`. Removes the duplication at the root but requires pulling the
+  current globals (`ctx`, `canvas`, `bgColorInput`, `CANVAS_WIDTH`, etc.) out into passed
+  parameters/module state — a larger refactor with more risk to the live page.
+- **C — Iframe + postMessage**: `publicar.html` loads `index.html` in a hidden iframe and asks it
+  to render (text/mode/bg), getting back the canvas `dataURL`. Zero code duplication; same-origin
+  under `github.io` so no CORS issues expected, but changes the preview to be async/iframe-based.
+
+**Recommendation:** explore **C** in a dedicated session — it's the only option that eliminates
+the duplication entirely (so this class of drift can't recur) without a large refactor of the
+existing `js/` globals-based code.
+
 ## Archivo X (manual curation flow)
 
 100% manual, no automated scoring/classification:
