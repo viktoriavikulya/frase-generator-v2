@@ -136,7 +136,11 @@ Every row is a post (or one carousel slide). Key columns:
 
 `publish.yml` manual inputs map directly to this model: `publish_only` (row_id/carousel_id, skips
 render+upload), `unlock_id` (row_id/carousel_id, frees a stuck row immediately),
-`reintentar` (retries rows with `estado_general = error`), `solo_registrar` (write-only, no publish).
+`reintentar` (retries rows with `estado_general = error`), `solo_registrar` (write-only, no publish),
+`target_carousel_id` (runs the full render+upload+publish pipeline immediately for one specific
+`carousel_id`, used by panel.html's "Registrar y publicar ahora" button — unlike `publish_only`,
+this does NOT skip render/upload, so it works for a freshly-registered pending carousel with no
+`media_url` yet).
 
 ## Critical rules
 

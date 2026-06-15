@@ -917,7 +917,11 @@
               <div class="color-grid" id="plan-color-grid"></div>
               <p class="selected-label" id="plan-color-label">Aleatorio</p>
             </div>
-            <button class="btn-main" id="plan-register" type="button" disabled>Registrar para publicacion</button>
+            <div class="btns">
+              <button class="btn-main" id="plan-register" type="button" disabled>Registrar para publicacion</button>
+              <button class="btn-ghost" id="plan-register-publish" type="button" disabled>Registrar y publicar ahora</button>
+            </div>
+            <p class="field-hint">"Publicar ahora" dispara la accion de GitHub para renderizar y publicar este carrusel de inmediato (usa el token de GitHub del tab Publicar Ahora).</p>
             <p class="status" id="plan-status"></p>
             <div id="plan-result"></div>
           </div>
@@ -1737,7 +1741,9 @@
     function updatePlanCounter() {
       const count = planState.selected.size;
       document.getElementById("plan-counter").innerHTML = `<strong>${count}</strong>&nbsp;/&nbsp;10 seleccionadas`;
-      document.getElementById("plan-register").disabled = count !== 10 || !clean(document.getElementById("plan-caption").value);
+      const disabled = count !== 10 || !clean(document.getElementById("plan-caption").value);
+      document.getElementById("plan-register").disabled = disabled;
+      document.getElementById("plan-register-publish").disabled = disabled;
     }
 
     function renderPlanTabs() {
@@ -1795,10 +1801,16 @@
       renderPlanList();
     }
 
-    async function registrarCarrusel() {
+    async function registrarCarrusel(publishNow) {
       const status = document.getElementById("plan-status");
       const result = document.getElementById("plan-result");
       const rowNumbers = [...planState.selected];
+
+      if (publishNow && !document.getElementById("token").value.trim()) {
+        result.innerHTML = `<div class="result-box err">Falta el token de GitHub (campo "Token de GitHub" del tab Publicar Ahora).</div>`;
+        return;
+      }
+
       status.textContent = "Registrando...";
       result.innerHTML = "";
       try {
@@ -1811,10 +1823,39 @@
             color: planState.color || ""
           })
         });
-        status.textContent = "";
-        result.innerHTML = `<div class="result-box ok">Registrado: <strong>${escapeHtml(data.carouselId || data.tipo)}</strong></div>`;
         document.getElementById("plan-caption").value = "";
         await loadPlanCarruseles();
+
+        if (publishNow && data.carouselId) {
+          status.textContent = "Disparando publicacion...";
+          const token = document.getElementById("token").value.trim();
+          const res = await fetch(
+            `https://api.github.com/repos/${OWNER}/${REPO}/actions/workflows/${WORKFLOW}/dispatches`,
+            {
+              method: "POST",
+              headers: {
+                "Authorization": `Bearer ${token}`,
+                "Accept": "application/vnd.github+json",
+                "Content-Type": "application/json"
+              },
+              body: JSON.stringify({
+                ref: "main",
+                inputs: { target_carousel_id: data.carouselId }
+              })
+            }
+          );
+          status.textContent = "";
+          if (res.status === 204) {
+            result.innerHTML = `<div class="result-box ok">Registrado <strong>${escapeHtml(data.carouselId)}</strong> y enviado a publicar. En 2-3 minutos deberia estar publicado.</div>`;
+          } else {
+            const errData = await res.json().catch(() => ({}));
+            result.innerHTML = `<div class="result-box warn">Registrado <strong>${escapeHtml(data.carouselId)}</strong>, pero fallo el disparo de publicacion: ${escapeHtml(errData.message || String(res.status))}</div>`;
+          }
+          return;
+        }
+
+        status.textContent = "";
+        result.innerHTML = `<div class="result-box ok">Registrado: <strong>${escapeHtml(data.carouselId || data.tipo)}</strong></div>`;
       } catch (err) {
         status.textContent = "";
         result.innerHTML = `<div class="result-box err">${escapeHtml(err.message || String(err))}</div>`;
@@ -1842,7 +1883,8 @@
     document.getElementById("plan-reload").addEventListener("click", () => loadPlanCarruseles().catch((err) => {
       document.getElementById("plan-list").innerHTML = `<div class="archive-empty">${escapeHtml(err.message || String(err))}</div>`;
     }));
-    document.getElementById("plan-register").addEventListener("click", registrarCarrusel);
+    document.getElementById("plan-register").addEventListener("click", () => registrarCarrusel(false));
+    document.getElementById("plan-register-publish").addEventListener("click", () => registrarCarrusel(true));
     document.getElementById("preview-render").addEventListener("click", updatePreviewTool);
     document.getElementById("preview-mode").addEventListener("change", updatePreviewTool);
     document.getElementById("preview-text").addEventListener("input", () => {

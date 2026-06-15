@@ -39,6 +39,10 @@ on:
         description: 'Desbloquear fila atascada. Pasar row_id (single) o carousel_id (carousel)'
         required: false
         default: ''
+      target_carousel_id:
+        description: 'Procesar (render+upload+publish) ahora este carousel_id recien registrado, sin esperar al cron'
+        required: false
+        default: ''
 
 concurrency:
   group: publish-posts
@@ -142,6 +146,13 @@ jobs:
         if: ${{ github.event_name == 'workflow_dispatch' && inputs.reintentar == 'true' && inputs.frases == '' && inputs.publish_only == '' && inputs.unlock_id == '' }}
         env:
           TIPO_INPUT: ${{ inputs.tipo }}
+        run: node scripts/pipeline/run-once.js
+
+      - name: Run pipeline carrusel especifico
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.target_carousel_id != '' && inputs.frases == '' && inputs.publish_only == '' && inputs.reintentar != 'true' && inputs.unlock_id == '' }}
+        env:
+          TIPO_INPUT: carousel
+          TARGET_CAROUSEL_ID: ${{ inputs.target_carousel_id }}
         run: node scripts/pipeline/run-once.js
 
       - name: Run pipeline programado
