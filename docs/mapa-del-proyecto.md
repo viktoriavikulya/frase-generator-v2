@@ -22,7 +22,7 @@ flowchart TD
   G --> H[render-lib.js<br/>Playwright]
   H --> I[index.html]
   I --> J[js/app.js]
-  J --> K[js/mode-retro3d.js<br/>drawRetro3DEditorial]
+  J --> K[js/mode-retro3d.js<br/>drawRetro3D]
   K --> L[PNG en output/]
 
   L --> M[upload job]
@@ -44,9 +44,9 @@ El render real de produccion sale de `index.html` + `js/`.
 index.html
   -> js/app.js
     -> draw()
-      -> drawRetro3DEditorial()
-        -> layoutEditorial()
-        -> drawRetro3DLineEditorial()
+      -> drawRetro3D()
+        -> layoutTextBalanced()
+        -> drawRetro3DLine()
 ```
 
 Si quieres cambiar como se ve la imagen publicada, normalmente se toca:
@@ -191,7 +191,7 @@ Entrada del modo:
 js/app.js
 ```
 
-`app.js` llama `drawRetro3DEditorial()` cuando `mode === "retro3d"`.
+`app.js` llama `drawRetro3D()` cuando `mode === "retro3d"`.
 
 ### Panel y preview manual
 
@@ -373,7 +373,7 @@ npm run check-palettes-sync
 Tambien revisar:
 
 ```powershell
-rg -n "drawRetro3DEditorial|layoutEditorial|drawRetro3DLineEditorial" js scripts panel.html
+rg -n "drawRetro3D|layoutTextBalanced|drawRetro3DLine" js scripts panel.html
 ```
 
 ### Cambio de paletas

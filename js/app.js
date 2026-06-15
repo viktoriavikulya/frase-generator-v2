@@ -18,7 +18,7 @@ function draw() {
   } else {
     if      (mode === "normal")  drawNormal(text, bg);
     else if (mode === "brat")    drawBrat(text, bg);
-    else if (mode === "retro3d") drawRetro3DEditorial(text, bg);
+    else if (mode === "retro3d") drawRetro3D(text, bg);
   }
 
   if      (mode === "brat")    drawCornerTagBrat();
