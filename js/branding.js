@@ -158,7 +158,7 @@ function drawRetroCornerLogo() {
   if (modeSelect.value !== "retro3d") return;
 
   const size          = 200;
-  const paddingBottom = 25;
+  const paddingBottom = 22;
   const x             = CANVAS_WIDTH / 2 - size / 2;
   const y             = CANVAS_HEIGHT - paddingBottom - size;
 

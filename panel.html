@@ -954,6 +954,9 @@
                 <button class="btn-main" id="preview-render" type="button">Actualizar preview</button>
               </div>
               <p class="status" id="preview-status"></p>
+              <!-- TEMPORAL: debug de layoutTextBalanced, ver getRetro3DLayoutDebug
+                   en js/mode-retro3d.js. Quitar cuando ya no se necesite. -->
+              <pre class="field-hint" id="preview-debug" style="white-space:pre-wrap; font-family:monospace; font-size:12px;"></pre>
             </div>
 
             <div class="publish-column">
@@ -1057,7 +1060,7 @@
       const resolve = pendingRenderResolvers.get(data.requestId);
       if (!resolve) return;
       pendingRenderResolvers.delete(data.requestId);
-      resolve(data.dataUrl);
+      resolve(data);
     });
 
     function waitForRenderFrame(timeoutMs = 5000) {
@@ -1109,11 +1112,11 @@
         previewCtx.fillText("Generando preview...", CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2);
       }
 
-      const dataUrl = await requestRender(frase, bg, "retro3d");
+      const response = await requestRender(frase, bg, "retro3d");
       if (requestId === latestPreviewRequestId) {
         const img = new Image();
         img.onload = () => { previewCtx.drawImage(img, 0, 0, CANVAS_WIDTH, CANVAS_HEIGHT); };
-        img.src = dataUrl;
+        img.src = response.dataUrl;
       }
 
       const nav = document.getElementById("carousel-nav");
@@ -1171,6 +1174,7 @@
         drawPreviewPlaceholder(previewToolCtx, "Escribe una frase", bg);
         status.textContent = "";
         status.className = "status";
+        renderPreviewDebug(null);
         return;
       }
 
@@ -1180,18 +1184,33 @@
       drawPreviewPlaceholder(previewToolCtx, "Generando preview...", bg);
 
       try {
-        const dataUrl = await requestRender(text, bg, mode);
+        const response = await requestRender(text, bg, mode);
         if (requestId !== latestPreviewToolRequestId) return;
         const img = new Image();
         img.onload = () => {
           previewToolCtx.drawImage(img, 0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
           status.textContent = "";
         };
-        img.src = dataUrl;
+        img.src = response.dataUrl;
+        renderPreviewDebug(response.debugInfo);
       } catch (err) {
         status.textContent = err.message || String(err);
         status.className = "status error";
       }
+    }
+
+    // TEMPORAL: ver comentario en getRetro3DLayoutDebug (js/mode-retro3d.js).
+    function renderPreviewDebug(info) {
+      const el = document.getElementById("preview-debug");
+      if (!info) { el.textContent = ""; return; }
+      const header = `lineCount=${info.lineCount}  heightFillRatio=${info.heightFillRatio}  ` +
+        `totalHeight=${info.totalHeight}/${info.boxHeight}  fontCap=${info.fontCap}  ` +
+        `targetWidth=${info.targetWidth}`;
+      const lines = info.lines.map((l, i) =>
+        `${String(i + 1).padStart(2, "0")}. fontSize=${String(l.fontSize).padStart(3)}  ` +
+        `width=${String(l.width).padStart(4)}/${info.targetWidth}  fillRatio=${l.fillRatio}  "${l.text}"`
+      );
+      el.textContent = [header, ...lines].join("\n");
     }
 
     function parseFrases() {

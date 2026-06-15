@@ -71,13 +71,29 @@ function wrapWordsToLinesRetro3D(words, maxWidth, ctxLocal) {
 // La partición completa además se puntúa con:
 //   - heightFillPenalty: qué tan lejos queda el bloque completo de llenar
 //     boxHeight.
-//   - jumpPenalty: red de seguridad final, penaliza saltos de tamaño
-//     bruscos entre líneas vecinas (ratio > maxJumpRatio) que capPenalty no
-//     haya evitado.
+//   - jumpPenalty: penaliza saltos de tamaño bruscos entre líneas vecinas
+//     (ratio > maxJumpRatio) que capPenalty no haya evitado. Solo se evalúa
+//     sobre la partición YA reconstruida de cada lineCount, y solo decide
+//     qué lineCount gana — no influye en cuál partición gana dentro de un
+//     mismo lineCount (eso lo decide solo fillScore+capScore).
 //
 // totalHeight > boxHeight es un descarte duro (nunca desborda verticalmente).
 // Si ninguna partición cabe, fallback a wrap codicioso a minFont (nunca una
 // sola línea gigante).
+//
+// Tras elegir el lineCount ganador, un pipeline de reparaciones locales
+// ajusta la partición sin cambiar el criterio de selección anterior:
+//   - repairOutlierLines: fusiona líneas vecinas si la peor fillRatio queda
+//     por debajo de outlierFillThreshold (ver mismo nombre en config.js).
+//   - repairBoundaryLines: para cada par de líneas vecinas con jumpScore > 0
+//     o con alguna topada en fontCap por debajo de outlierFillThreshold,
+//     prueba mover una palabra de un lado al otro de la frontera.
+//   - growCappedLines: si queda espacio vertical libre (heightFillRatio < 1),
+//     crece líneas topadas en fontCap con fillRatio bajo hasta su óptimo de
+//     ancho real.
+// Cada paso puede dejar casos límite sin resolver si la única alternativa
+// disponible empeora otra línea más de lo que mejora la actual — eso es
+// preferible a “arreglar” un caso a costa de otro.
 function layoutTextBalanced(text, boxWidth, boxHeight, ctxLocal, options = {}) {
   const cfg = { ...RETRO_3D_TEXT_CONFIG, ...options };
 
@@ -121,7 +137,9 @@ function layoutTextBalanced(text, boxWidth, boxHeight, ctxLocal, options = {}) {
 
     const width     = naturalWidthAt(lineWords, best);
     const fillRatio = width / targetWidth;
-    const fillScore = Math.pow(1 - fillRatio, 2) * cfg.fillPenalty;
+    const fillScore = fillRatio > 1
+      ? Math.pow(fillRatio - 1, 2) * cfg.overflowPenalty
+      : Math.pow(1 - fillRatio, 2) * cfg.fillPenalty;
 
     const capRatio = best / fontCap;
     const capScore = Math.pow(1 - capRatio, 2) * cfg.capPenalty;
@@ -146,6 +164,19 @@ function layoutTextBalanced(text, boxWidth, boxHeight, ctxLocal, options = {}) {
     }
     const width = naturalWidthAt(lineWords, best);
     return { fontSize: best, fillRatio: width / targetWidth };
+  }
+
+  // Costo de una línea según su fillRatio (mismo criterio que scoreLine, pero
+  // a partir de un fillRatio ya calculado) y de un salto de fontSize entre
+  // dos líneas vecinas — usados por repairBoundaryLines.
+  function fillScoreFor(fillRatio) {
+    return fillRatio > 1
+      ? Math.pow(fillRatio - 1, 2) * cfg.overflowPenalty
+      : Math.pow(1 - fillRatio, 2) * cfg.fillPenalty;
+  }
+  function jumpScoreFor(a, b) {
+    const ratio = Math.max(a, b) / Math.min(a, b);
+    return ratio > cfg.maxJumpRatio ? Math.pow(ratio - cfg.maxJumpRatio, 2) * cfg.jumpPenalty : 0;
   }
 
   // Reparación post-DP: el DP elige el lineCount según el costo total de la
@@ -194,6 +225,9 @@ function layoutTextBalanced(text, boxWidth, boxHeight, ctxLocal, options = {}) {
 
       let bestCandidate = null, bestCandidateMin = current[minIdx].fillRatio;
       for (const cand of candidates) {
+        // Nunca aceptar una fusión que desborde una línea (fillRatio > 1):
+        // un desborde es peor que el outlier que se intenta arreglar.
+        if (cand.some(l => l.fillRatio > 1)) continue;
         const candMin = Math.min(...cand.map(l => l.fillRatio));
         if (candMin > bestCandidateMin) {
           bestCandidateMin = candMin;
@@ -203,6 +237,152 @@ function layoutTextBalanced(text, boxWidth, boxHeight, ctxLocal, options = {}) {
 
       if (!bestCandidate) break;
       current = bestCandidate;
+    }
+
+    return current.map(item => ({
+      text:     item.words.join(" "),
+      words:    item.words,
+      fontSize: item.fontSize
+    }));
+  }
+
+  // Reparación final: fontCap reparte boxHeight en cuotas iguales por línea,
+  // pero cada línea tiene un ancho natural distinto — la mayoría queda
+  // limitada por ancho (fillRatio≈1) muy por debajo de fontCap, mientras
+  // alguna línea puede quedar topada por fontCap (fontSize === fontCap) con
+  // fillRatio < outlierFillThreshold. Si el bloque completo no llena
+  // boxHeight (heightFillRatio < 1), esa línea puede crecer más allá de
+  // fontCap hasta su óptimo de ancho real, usando el espacio vertical
+  // sobrante — sin afectar a las demás líneas ni cambiar el lineCount.
+  function growCappedLines(layoutLines) {
+    const lineCount = layoutLines.length;
+    const fontCap   = Math.max(minFont, Math.min(maxFont, Math.floor(boxHeight / (lineCount * lineHeightFactor))));
+
+    const current = layoutLines.map(item => ({
+      words:     item.words,
+      fontSize:  item.fontSize,
+      fillRatio: naturalWidthAt(item.words, item.fontSize) / targetWidth
+    }));
+
+    let totalHeight = current.reduce((acc, l) => acc + l.fontSize * lineHeightFactor, 0);
+    let slack       = boxHeight - totalHeight;
+    if (slack <= 0) return layoutLines;
+
+    const cappedIdx = current
+      .map((l, i) => i)
+      .filter(i => current[i].fontSize === fontCap && current[i].fillRatio < cfg.outlierFillThreshold)
+      .sort((a, b) => current[a].fillRatio - current[b].fillRatio);
+
+    for (const i of cappedIdx) {
+      if (slack <= 0) break;
+
+      const natural = bestFontAt(current[i].words, maxFont);
+      if (natural.fontSize <= current[i].fontSize) continue;
+
+      const maxGrowBySlack = Math.floor(slack / lineHeightFactor);
+      const newCap         = Math.min(natural.fontSize, current[i].fontSize + maxGrowBySlack);
+      if (newCap <= current[i].fontSize) continue;
+
+      const grown = bestFontAt(current[i].words, newCap);
+      const delta = (grown.fontSize - current[i].fontSize) * lineHeightFactor;
+      if (delta <= 0) continue;
+
+      current[i].fontSize  = grown.fontSize;
+      current[i].fillRatio = grown.fillRatio;
+      slack -= delta;
+    }
+
+    return current.map(item => ({
+      text:     item.words.join(" "),
+      words:    item.words,
+      fontSize: item.fontSize
+    }));
+  }
+
+  // Reparación de fronteras: el DP elige, para cada lineCount, la partición
+  // que minimiza fillScore+capScore por línea — jumpScore (penaliza saltos de
+  // fontSize entre líneas vecinas por encima de maxJumpRatio) solo se evalúa
+  // DESPUÉS, sobre la partición ya ganadora, y solo decide qué lineCount gana
+  // globalmente. No influye en CUÁL partición gana dentro de un mismo
+  // lineCount. Por eso puede quedar (a) un par de líneas vecinas con un salto
+  // de tamaño brusco, o (b) una línea topada en fontCap con fillRatio bajo
+  // (sin slack vertical para growCappedLines), aunque exista una partición
+  // vecina (mover una palabra de un lado al otro de la frontera) con
+  // fillScore casi idéntico pero sin ese problema. Aquí, para cada par de
+  // líneas vecinas donde haya jumpScore > 0 O alguna de las dos esté topada
+  // en fontCap con fillRatio < outlierFillThreshold, se prueba mover la
+  // última palabra de la línea izquierda a la derecha (o la primera de la
+  // derecha a la izquierda); se acepta si el costo local (fillScore +
+  // capScore de ambas líneas + jumpScore de los pares afectados) mejora, sin
+  // generar desbordes (fillRatio > 1). Mismo lineCount, recalcula solo
+  // fontSize de las líneas afectadas.
+  function repairBoundaryLines(layoutLines) {
+    const lineCount = layoutLines.length;
+    if (lineCount < 2) return layoutLines;
+
+    const fontCap = Math.max(minFont, Math.min(maxFont, Math.floor(boxHeight / (lineCount * lineHeightFactor))));
+
+    function capScoreFor(fontSize) {
+      return Math.pow(1 - fontSize / fontCap, 2) * cfg.capPenalty;
+    }
+    function lineState(lineWords) {
+      const best = bestFontAt(lineWords, fontCap);
+      return { words: lineWords, fontSize: best.fontSize, fillRatio: best.fillRatio };
+    }
+    function regionScore(lines, i) {
+      let s = fillScoreFor(lines[i].fillRatio) + capScoreFor(lines[i].fontSize)
+            + fillScoreFor(lines[i + 1].fillRatio) + capScoreFor(lines[i + 1].fontSize);
+      if (i - 1 >= 0) s += jumpScoreFor(lines[i - 1].fontSize, lines[i].fontSize);
+      s += jumpScoreFor(lines[i].fontSize, lines[i + 1].fontSize);
+      if (i + 2 < lines.length) s += jumpScoreFor(lines[i + 1].fontSize, lines[i + 2].fontSize);
+      return s;
+    }
+
+    let current = layoutLines.map(item => lineState(item.words));
+
+    let improved = true;
+    let guard = 0;
+    while (improved && guard < lineCount * 4) {
+      improved = false;
+      guard++;
+
+      for (let i = 0; i < current.length - 1; i++) {
+        const hasJump = jumpScoreFor(current[i].fontSize, current[i + 1].fontSize) > 0;
+        const cappedOutlier = (line) => line.fontSize === fontCap && line.fillRatio < cfg.outlierFillThreshold;
+        if (!hasJump && !cappedOutlier(current[i]) && !cappedOutlier(current[i + 1])) continue;
+
+        const before = regionScore(current, i);
+        let best = null, bestScore2 = before;
+
+        if (current[i].words.length > 1) {
+          const left  = current[i].words.slice(0, -1);
+          const right = [current[i].words[current[i].words.length - 1], ...current[i + 1].words];
+          const cand  = current.slice();
+          cand[i]     = lineState(left);
+          cand[i + 1] = lineState(right);
+          if (cand[i].fillRatio <= 1 && cand[i + 1].fillRatio <= 1) {
+            const s = regionScore(cand, i);
+            if (s < bestScore2) { bestScore2 = s; best = cand; }
+          }
+        }
+
+        if (current[i + 1].words.length > 1) {
+          const left  = [...current[i].words, current[i + 1].words[0]];
+          const right = current[i + 1].words.slice(1);
+          const cand  = current.slice();
+          cand[i]     = lineState(left);
+          cand[i + 1] = lineState(right);
+          if (cand[i].fillRatio <= 1 && cand[i + 1].fillRatio <= 1) {
+            const s = regionScore(cand, i);
+            if (s < bestScore2) { bestScore2 = s; best = cand; }
+          }
+        }
+
+        if (best) {
+          current  = best;
+          improved = true;
+        }
+      }
     }
 
     return current.map(item => ({
@@ -294,8 +474,65 @@ function layoutTextBalanced(text, boxWidth, boxHeight, ctxLocal, options = {}) {
     return bestLayout;
   }
 
-  return repairOutlierLines(bestLayout);
+  return growCappedLines(repairBoundaryLines(repairOutlierLines(bestLayout)));
 }
+
+// TEMPORAL: expone medidas de layoutTextBalanced (tamaños por línea,
+// fillRatio, heightFillRatio, fontCap) para el panel de Preview, así se
+// pueden afinar a mano los parámetros de RETRO_3D_TEXT_CONFIG sin adivinar.
+// Quitar junto con el bloque "Debug layout" de panel.html cuando ya no se
+// necesite.
+function getRetro3DLayoutDebug(rawText) {
+  const cfg = RETRO_3D_TEXT_CONFIG;
+
+  const text = rawText.trim().replace(/([,;:.!?])(\S)/g, "$1 $2");
+  if (!text) return null;
+
+  const boxWidth    = CANVAS_WIDTH  * cfg.boxWidthRatio;
+  const boxHeight   = CANVAS_HEIGHT * cfg.boxHeightRatio;
+  const targetWidth = boxWidth * cfg.targetFill;
+
+  const lines = layoutTextBalanced(text, boxWidth, boxHeight, ctx, {
+    maxFont:              cfg.maxFont,
+    minFont:              cfg.minFont,
+    lineHeightFactor:     cfg.lineHeightFactor,
+    targetFill:           cfg.targetFill,
+    fillPenalty:          cfg.fillPenalty,
+    overflowPenalty:      cfg.overflowPenalty,
+    capPenalty:           cfg.capPenalty,
+    heightFillPenalty:    cfg.heightFillPenalty,
+    maxJumpRatio:         cfg.maxJumpRatio,
+    jumpPenalty:          cfg.jumpPenalty,
+    outlierFillThreshold: cfg.outlierFillThreshold
+  });
+
+  function naturalWidthAt(lineWords, fontSize) {
+    ctx.font = `700 ${fontSize}px 'Noto Serif', serif`;
+    const space      = ctx.measureText(" ").width;
+    const wordsWidth = lineWords.reduce((acc, w) => acc + ctx.measureText(w).width, 0);
+    return wordsWidth + space * (lineWords.length - 1);
+  }
+
+  const totalHeight = lines.reduce((acc, l) => acc + l.fontSize * cfg.lineHeightFactor, 0);
+  const fontCap     = Math.max(cfg.minFont, Math.min(cfg.maxFont, Math.floor(boxHeight / (lines.length * cfg.lineHeightFactor))));
+
+  return {
+    lineCount:       lines.length,
+    boxWidth:        Math.round(boxWidth),
+    boxHeight:       Math.round(boxHeight),
+    targetWidth:     Math.round(targetWidth),
+    fontCap,
+    totalHeight:     Math.round(totalHeight),
+    heightFillRatio: +(totalHeight / boxHeight).toFixed(3),
+    lines: lines.map(l => ({
+      text:      l.text,
+      fontSize:  l.fontSize,
+      width:     Math.round(naturalWidthAt(l.words, l.fontSize)),
+      fillRatio: +(naturalWidthAt(l.words, l.fontSize) / targetWidth).toFixed(3)
+    }))
+  };
+}
+window.getRetro3DLayoutDebug = getRetro3DLayoutDebug;
 
 
 function drawRetro3D(rawText, bg) {
@@ -335,6 +572,7 @@ function drawRetro3D(rawText, bg) {
     lineHeightFactor:  cfg.lineHeightFactor,
     targetFill:        cfg.targetFill,
     fillPenalty:       cfg.fillPenalty,
+    overflowPenalty:   cfg.overflowPenalty,
     capPenalty:        cfg.capPenalty,
     heightFillPenalty: cfg.heightFillPenalty,
     maxJumpRatio:      cfg.maxJumpRatio,

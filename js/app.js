@@ -168,9 +168,16 @@ window.addEventListener("message", async (event) => {
   await waitForAssetsReady();
   draw();
 
+  // TEMPORAL: ver comentario en getRetro3DLayoutDebug (mode-retro3d.js).
+  let debugInfo = null;
+  if (modeSelect.value === "retro3d" && typeof getRetro3DLayoutDebug === "function") {
+    debugInfo = getRetro3DLayoutDebug(input.value.trim());
+  }
+
   event.source.postMessage({
     type:      "render-response",
     requestId: data.requestId,
-    dataUrl:   canvas.toDataURL("image/png")
+    dataUrl:   canvas.toDataURL("image/png"),
+    debugInfo
   }, "*");
 });
