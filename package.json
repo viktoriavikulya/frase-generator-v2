@@ -17,8 +17,6 @@
     "doctor": "node scripts/dev/doctor.js",
     "doctor:sheet": "node scripts/dev/doctor-sheet.js",
     "fetch:inspiration": "node scripts/jobs/inspiration/fetch-inspiration.js",
-    "analyze:phrases-offline": "node scripts/jobs/inspiration/curate-saved-tweets.js",
-    "curate:saved-tweets": "node scripts/jobs/inspiration/curate-saved-tweets.js",
     "import:saved-tweets": "node scripts/jobs/inspiration/import-saved-tweets-to-sheet.js",
     "curate:archivo-x": "node scripts/dev/archive-curator-server.js",
     "start:archivo-x": "node scripts/dev/archive-curator-server.js"

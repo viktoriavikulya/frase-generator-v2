@@ -29,7 +29,7 @@ formulario  ──►  render                Google Sheets (estado)
 ## Uso diario
 
 ### Publicar contenido
-Abrí `publicar.html` y completá el formulario. Con 1 frase se publica un **single**, con 2-10 frases se publica un **carrusel**.
+Abri `panel.html` como entrada principal. La pestana **Publicar** carga `publicar.html`; con 1 frase se publica un **single**, con 2-10 frases se publica un **carrusel**.
 
 ### Workflows disponibles en GitHub Actions
 
@@ -105,9 +105,6 @@ npm run doctor:sheet  # audita columnas y estados del Google Sheet
 npm run fetch:inspiration    # llena la pestaña "inspiracion" con candidatos para revisar
 npm run import:saved-tweets  # importa data/tweets-guardados-x.txt a la pestaña "archivo_x" (script activo: scripts/jobs/inspiration/import-saved-tweets-to-sheet.js)
 npm run curate:archivo-x     # abre la interfaz de curaduría manual en http://localhost:5177 (script activo: scripts/dev/archive-curator-server.js)
-
-# Análisis offline (solo referencia, NO escribe al Sheet)
-npm run analyze:phrases-offline -- archivo.txt  # evalúa un .txt local y genera CSVs con scoring
 ```
 
 ### Flujo editorial de archivo_x
@@ -186,8 +183,9 @@ scripts/
                        # render-utils, pipeline-runner, pipeline-utils
   dev/                 # herramientas locales (preview, sync-palettes)
 
+panel.html             # entrada unificada para publicar, render real y Archivo X
 index.html             # generador visual (sirve Playwright para los screenshots)
-publicar.html          # formulario de publicación (GitHub Pages)
+publicar.html          # formulario de publicacion (GitHub Pages, cargado por panel.html)
 ```
 
 ---
@@ -197,6 +195,7 @@ publicar.html          # formulario de publicación (GitHub Pages)
 | Documento | Contenido |
 |---|---|
 | [`CLAUDE.md`](CLAUDE.md) | Mapa completo del sistema: arquitectura, cada capa, modelo de datos, reglas críticas, flujo Archivo X |
+| [`docs/mapa-del-proyecto.md`](docs/mapa-del-proyecto.md) | Guia visual para entender piezas, riesgos y verificaciones antes de cambiar codigo |
 
 ---
 

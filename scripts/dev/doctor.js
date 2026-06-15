@@ -9,6 +9,7 @@ const ROOT = path.resolve(__dirname, "..", "..");
 const REQUIRED_FILES = [
   "package.json",
   ".github/workflows/publish.yml",
+  "panel.html",
   "publicar.html",
   "index.html",
   "scripts/libs/upload-lib.js",
@@ -18,7 +19,6 @@ const REQUIRED_FILES = [
   "scripts/pipeline/register-from-form.js",
   "scripts/jobs/inspiration/fetch-inspiration.js",
   "scripts/jobs/inspiration/taxonomy.js",
-  "scripts/jobs/inspiration/curate-saved-tweets.js",
   "scripts/jobs/inspiration/import-saved-tweets-to-sheet.js",
   "scripts/jobs/carousel/build-carousel-plan.js",
   "scripts/dev/archive-curator-server.js",
@@ -33,7 +33,6 @@ const CHECKED_JS_FILES = [
   "scripts/pipeline/register-from-form.js",
   "scripts/jobs/inspiration/fetch-inspiration.js",
   "scripts/jobs/inspiration/taxonomy.js",
-  "scripts/jobs/inspiration/curate-saved-tweets.js",
   "scripts/jobs/inspiration/import-saved-tweets-to-sheet.js",
   "scripts/jobs/carousel/build-carousel-plan.js",
   "scripts/dev/archive-curator-server.js",
@@ -85,7 +84,6 @@ function checkPackageScripts() {
       "doctor",
       "doctor:sheet",
       "fetch:inspiration",
-      "curate:saved-tweets",
       "import:saved-tweets",
       "curate:archivo-x"
     ]) {

@@ -99,8 +99,7 @@ const RETRO_3D_TEXT_CONFIG = {
   // Bono por tener variación agradable de tamaños (negativo = reduce el score).
   variationBonus: -35,
 
-  // --- EXPERIMENTAL (layoutEditorial / drawRetro3DEditorial, no usado por
-  // layoutTextBalanced / drawRetro3D) ---
+  // --- EXPERIMENTAL (layoutEditorial / drawRetro3DEditorial) ---
 
   // Interlineado para el layout editorial (sin justify, más aire que el
   // 0.88 de modo póster).
@@ -108,5 +107,11 @@ const RETRO_3D_TEXT_CONFIG = {
 
   // Cuánto más grande se renderizan las 1-2 "palabras clave" detectadas
   // (1.20 = 20% más grandes que el resto del bloque).
-  editorialEmphasisFactor: 1.20
+  editorialEmphasisFactor: 1.20,
+
+  // Si el fillRatio de una línea (ancho natural / boxWidth) es menor que
+  // este valor, esa línea se justifica estirando espacios (ver
+  // maxSpaceFactor/minSpaceFactor). Líneas con fillRatio >= a esto se
+  // dibujan sin estirar, como hoy.
+  editorialJustifyFillThreshold: 0.85
 };

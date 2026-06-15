@@ -38,9 +38,6 @@ npm run doctor:sheet
 # Buscar inspiración viral y guardarla en la pestaña "inspiracion"
 npm run fetch:inspiration
 
-# Curar archivo local de tweets guardados y generar CSV
-npm run curate:saved-tweets -- ruta/al/archivo.txt
-
 # Importar el archivo local de X al tablero editorial del Sheet
 # Entrada por defecto: data/tweets-guardados-x.txt
 # Pestaña destino por defecto: archivo_x
