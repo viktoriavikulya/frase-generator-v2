@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Panel monacastrosa</title>
   <style>
-    :root {
+    :root[data-theme="dark"] {
       color-scheme: dark;
       --bg: #080808;
       --panel: #101010;
@@ -18,6 +18,31 @@
       --border-strong: #555;
       --accent: #e8e2d9;
       --accent-fg: #080808;
+      --status-ok: #4a7a4a;
+      --status-err: #9b3a3a;
+      --status-warn: #9b8430;
+      --toggle-bg: #222;
+      --toggle-knob: #d9d3c9;
+    }
+
+    :root[data-theme="light"] {
+      color-scheme: light;
+      --bg: #f5f2ee;
+      --panel: #ffffff;
+      --panel-2: #f0ece6;
+      --text: #2a2520;
+      --title: #1a1510;
+      --muted: #888;
+      --quiet: #bbb;
+      --border: #ddd;
+      --border-strong: #999;
+      --accent: #1a1510;
+      --accent-fg: #f5f2ee;
+      --status-ok: #2e6e2e;
+      --status-err: #8b2020;
+      --status-warn: #8a6d1d;
+      --toggle-bg: #ddd;
+      --toggle-knob: #1a1510;
     }
 
     * {
@@ -51,7 +76,7 @@
 
     .top {
       border-bottom: 1px solid var(--border);
-      background: rgba(8, 8, 8, 0.96);
+      background: var(--bg);
       padding: 18px 20px 14px;
       position: sticky;
       top: 0;
@@ -69,6 +94,49 @@
 
     .brand {
       min-width: 0;
+    }
+
+    .theme-toggle {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      cursor: pointer;
+      background: none;
+      border: none;
+      padding: 4px;
+      flex-shrink: 0;
+    }
+
+    .toggle-icon {
+      font-size: 13px;
+      color: var(--muted);
+      width: 16px;
+      text-align: center;
+      transition: color 0.25s;
+    }
+
+    .toggle-track {
+      width: 40px;
+      height: 22px;
+      background: var(--toggle-bg);
+      border-radius: 999px;
+      position: relative;
+      transition: background 0.25s;
+    }
+
+    .toggle-knob {
+      width: 16px;
+      height: 16px;
+      background: var(--toggle-knob);
+      border-radius: 50%;
+      position: absolute;
+      top: 3px;
+      left: 3px;
+      transition: transform 0.25s, background 0.25s;
+    }
+
+    [data-theme="light"] .toggle-knob {
+      transform: translateX(18px);
     }
 
     .eyebrow {
@@ -187,6 +255,11 @@
       line-height: 1.7;
     }
 
+    .archive-final-input {
+      font-size: 18px;
+      line-height: 1.5;
+    }
+
     .field-hint,
     .tipo-tag,
     .selected-label,
@@ -199,11 +272,11 @@
 
     .tipo-tag.over,
     .status.error {
-      color: #9b3a3a;
+      color: var(--status-err);
     }
 
     .status.ok {
-      color: #4a7a4a;
+      color: var(--status-ok);
     }
 
     .divider {
@@ -392,14 +465,27 @@
       margin: 0 auto;
     }
 
+    .advanced-config {
+      margin: 0 0 28px;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 18px;
+    }
+
+    .advanced-config summary {
+      width: max-content;
+      cursor: pointer;
+      color: var(--muted);
+      font-size: 10px;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+    }
+
     .archive-config {
       display: grid;
       grid-template-columns: minmax(220px, 1fr) minmax(160px, 280px) auto;
       gap: 12px;
       align-items: end;
-      padding: 0 0 28px;
-      border-bottom: 1px solid var(--border);
-      margin-bottom: 32px;
+      padding-top: 18px;
     }
 
     .archive-head {
@@ -436,11 +522,6 @@
       margin-bottom: 28px;
     }
 
-    .archive-tabs .tab {
-      min-width: 170px;
-      text-align: left;
-    }
-
     .archive-subview {
       display: none;
     }
@@ -455,49 +536,6 @@
       gap: 18px;
       align-items: end;
       margin-bottom: 28px;
-    }
-
-    .archive-workspace {
-      display: grid;
-      grid-template-columns: minmax(0, 1fr) minmax(260px, 340px);
-      gap: 32px;
-      align-items: start;
-    }
-
-    .archive-main {
-      min-width: 0;
-    }
-
-    .archive-preview {
-      position: sticky;
-      top: 128px;
-    }
-
-    .archive-preview-canvas-wrap {
-      width: 100%;
-      position: relative;
-      border: 1px solid var(--border);
-      background: #000;
-    }
-
-    .archive-preview-canvas-wrap::before {
-      content: "";
-      display: block;
-      padding-top: 125%;
-    }
-
-    .archive-preview-canvas-wrap canvas {
-      position: absolute;
-      inset: 0;
-      width: 100%;
-      height: 100%;
-      display: block;
-    }
-
-    .archive-preview-actions {
-      display: grid;
-      gap: 10px;
-      margin-top: 12px;
     }
 
     .archive-panel {
@@ -557,6 +595,36 @@
       border-bottom: 1px solid var(--border);
     }
 
+    .decision-buttons .pending {
+      color: var(--status-warn);
+      border-color: var(--status-warn);
+    }
+
+    .decision-buttons .pending.active {
+      background: var(--status-warn);
+      color: var(--bg);
+    }
+
+    .decision-buttons .approved {
+      color: var(--status-ok);
+      border-color: var(--status-ok);
+    }
+
+    .decision-buttons .approved.active {
+      background: var(--status-ok);
+      color: var(--bg);
+    }
+
+    .decision-buttons .rejected {
+      color: var(--status-err);
+      border-color: var(--status-err);
+    }
+
+    .decision-buttons .rejected.active {
+      background: var(--status-err);
+      color: var(--bg);
+    }
+
     .editor {
       display: grid;
       grid-template-columns: 1fr 1fr;
@@ -564,16 +632,56 @@
       padding: 22px 0;
     }
 
+    .editor .field {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .editor .field-input {
+      flex: 1;
+    }
+
     .field-wide {
       grid-column: 1 / -1;
     }
 
     .group-buttons,
-    .temporalidad-buttons,
     .plan-tabs {
       display: flex;
       flex-wrap: wrap;
       gap: 8px;
+    }
+
+    .temporalidad-buttons {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 8px;
+    }
+
+    .group-btn,
+    .temporalidad-btn {
+      min-height: 34px;
+      padding: 0 12px;
+      border: 1px solid var(--border);
+      background: transparent;
+      color: var(--muted);
+      font-size: 10px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      cursor: pointer;
+    }
+
+    .group-btn:hover,
+    .temporalidad-btn:hover {
+      color: var(--text);
+      border-color: var(--border-strong);
+    }
+
+    .group-btn.active,
+    .temporalidad-btn.active {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: var(--accent-fg);
     }
 
     .plan-tabs {
@@ -621,9 +729,9 @@
       color: var(--muted);
     }
 
-    .result-box.ok { color: #4a7a4a; }
-    .result-box.err { color: #9b3a3a; }
-    .result-box.warn { color: #9b8430; }
+    .result-box.ok { color: var(--status-ok); }
+    .result-box.err { color: var(--status-err); }
+    .result-box.warn { color: var(--status-warn); }
 
     @media (max-width: 720px) {
       .top-row {
@@ -633,13 +741,8 @@
 
       .archive-config,
       .filters,
-      .editor,
-      .archive-workspace {
+      .editor {
         grid-template-columns: 1fr;
-      }
-
-      .archive-preview {
-        position: static;
       }
 
       .publish-grid {
@@ -656,11 +759,17 @@
           <p class="eyebrow">monacastrosa</p>
           <h1>Panel</h1>
         </div>
+        <button class="theme-toggle" type="button" id="theme-toggle" aria-label="Cambiar modo claro/oscuro">
+          <span class="toggle-icon" id="theme-icon">☽</span>
+          <span class="toggle-track"><span class="toggle-knob"></span></span>
+        </button>
       </div>
 
       <div class="tabs" role="tablist" aria-label="Secciones del panel">
-        <button class="tab active" type="button" data-tab="publish">Publicar</button>
-        <button class="tab" type="button" data-tab="archive">Archivo X</button>
+        <button class="tab active" type="button" data-tab="publish">Publicar Ahora</button>
+        <button class="tab" type="button" data-tab="curate">Curar Frases</button>
+        <button class="tab" type="button" data-tab="carousel">Armar Carruseles</button>
+        <button class="tab" type="button" data-tab="preview">Preview</button>
       </div>
     </header>
 
@@ -734,111 +843,122 @@
         <iframe id="render-frame" src="index.html" style="display:none;" aria-hidden="true"></iframe>
       </section>
 
-      <section class="view archive-view" id="archive-view">
+      <section class="view archive-view" id="curate-view">
         <div class="archive-shell">
-          <div class="archive-config">
-            <div class="field">
-              <label class="field-label" for="archive-api-url">API Render</label>
-              <input class="field-input" id="archive-api-url" type="url" spellcheck="false" value="https://archivo-x-curator.onrender.com">
+          <details class="advanced-config">
+            <summary>Configuracion avanzada</summary>
+            <div class="archive-config">
+              <div class="field">
+                <label class="field-label" for="archive-api-url">API Render</label>
+                <input class="field-input" id="archive-api-url" type="url" spellcheck="false" value="https://archivo-x-curator.onrender.com">
+              </div>
+              <div class="field">
+                <label class="field-label" for="archive-token">Token curador</label>
+                <input class="field-input" id="archive-token" type="password" autocomplete="current-password" placeholder="opcional">
+              </div>
+              <button class="btn-ghost" type="button" id="archive-save-config">Guardar</button>
             </div>
-            <div class="field">
-              <label class="field-label" for="archive-token">Token curador</label>
-              <input class="field-input" id="archive-token" type="password" autocomplete="current-password" placeholder="opcional">
-            </div>
-            <button class="btn-ghost" type="button" id="archive-save-config">Guardar</button>
-          </div>
+          </details>
 
           <div class="archive-head">
             <div>
-              <p class="eyebrow">Archivo X</p>
-              <h2 class="page-title">Curador editorial</h2>
+              <p class="eyebrow">curacion</p>
+              <h2 class="page-title">Curar frases</h2>
               <p class="field-hint" id="archive-worksheet">Cargando archivo editorial</p>
             </div>
             <div class="stats" id="archive-stats"></div>
           </div>
 
-          <div class="archive-tabs">
-            <button class="tab active" type="button" data-archive-view="curation">1. Curar frases</button>
-            <button class="tab" type="button" data-archive-view="plan">2. Armar carrusel</button>
-          </div>
+          <section class="filters">
+            <select class="field-input" id="archive-filter" aria-label="Filtro">
+              <option value="pending">Pendientes</option>
+              <option value="approved">Aprobadas</option>
+              <option value="rejected">Descartadas</option>
+              <option value="all">Todas</option>
+            </select>
+            <select class="field-input" id="archive-group-filter" aria-label="Grupo">
+              <option value="">Todos los grupos</option>
+            </select>
+            <input class="field-input" id="archive-search" type="search" placeholder="Buscar frase">
+            <button class="btn-ghost" id="archive-reload" type="button">Actualizar</button>
+          </section>
 
-          <div class="archive-subview active" id="archive-curation">
-            <div class="archive-workspace">
-              <div class="archive-main">
-                <section class="filters">
-                  <select class="field-input" id="archive-filter" aria-label="Filtro">
-                    <option value="pending">Pendientes</option>
-                    <option value="approved">Aprobadas</option>
-                    <option value="rejected">Descartadas</option>
-                    <option value="all">Todas</option>
-                  </select>
-                  <select class="field-input" id="archive-group-filter" aria-label="Grupo">
-                    <option value="">Todos los grupos</option>
-                  </select>
-                  <input class="field-input" id="archive-search" type="search" placeholder="Buscar frase">
-                  <button class="btn-ghost" id="archive-reload" type="button">Actualizar</button>
-                </section>
+          <section class="archive-panel" id="archive-phrase-panel">
+            <div class="archive-empty">Cargando frases...</div>
+          </section>
+        </div>
+      </section>
 
-                <section class="archive-panel" id="archive-phrase-panel">
-                  <div class="archive-empty">Cargando frases...</div>
-                </section>
-              </div>
-
-              <aside class="archive-preview">
-                <span class="preview-label">Preview frase final</span>
-                <div class="archive-preview-canvas-wrap">
-                  <canvas id="archive-preview-canvas" width="1080" height="1350"></canvas>
-                </div>
-                <div class="archive-preview-actions">
-                  <button class="btn-ghost" id="archive-preview-refresh" type="button">Actualizar preview</button>
-                  <p class="status" id="archive-preview-status"></p>
-                </div>
-              </aside>
+      <section class="view archive-view" id="carousel-view">
+        <div class="archive-shell">
+          <div class="archive-head">
+            <div>
+              <p class="eyebrow">carruseles</p>
+              <h2 class="page-title">Armar carruseles</h2>
+              <p class="field-hint">Selecciona 10 frases aprobadas de un grupo y registralas para publicar.</p>
             </div>
           </div>
 
-          <div class="archive-subview" id="archive-plan">
-            <div class="archive-workspace">
-              <div class="archive-main">
-                <div class="plan-tabs" id="plan-tabs"></div>
-                <div class="plan-list" id="plan-list">
-                  <div class="archive-empty">Cargando carruseles...</div>
-                </div>
-                <div class="plan-toolbar">
-                  <span class="chip" id="plan-counter"><strong>0</strong>&nbsp;/&nbsp;10 seleccionadas</span>
-                  <button class="btn-ghost" id="plan-reload" type="button">Actualizar</button>
-                </div>
-                <div class="plan-fields">
-                  <div class="field">
-                    <label class="field-label" for="plan-caption">Caption</label>
-                    <textarea class="field-input" id="plan-caption" rows="2" placeholder="monacastrosa"></textarea>
-                  </div>
-                  <div class="field">
-                    <span class="field-label">Color</span>
-                    <div class="color-grid" id="plan-color-grid"></div>
-                    <p class="selected-label" id="plan-color-label">Aleatorio</p>
-                  </div>
-                  <button class="btn-main" id="plan-register" type="button" disabled>Registrar para publicacion</button>
-                  <p class="status" id="plan-status"></p>
-                  <div id="plan-result"></div>
+          <div class="plan-tabs" id="plan-tabs"></div>
+          <div class="plan-list" id="plan-list">
+            <div class="archive-empty">Cargando carruseles...</div>
+          </div>
+          <div class="plan-toolbar">
+            <span class="chip" id="plan-counter"><strong>0</strong>&nbsp;/&nbsp;10 seleccionadas</span>
+            <button class="btn-ghost" id="plan-reload" type="button">Actualizar</button>
+          </div>
+          <div class="plan-fields">
+            <div class="field">
+              <label class="field-label" for="plan-caption">Caption</label>
+              <textarea class="field-input" id="plan-caption" rows="2" placeholder="monacastrosa"></textarea>
+            </div>
+            <div class="field">
+              <span class="field-label">Color</span>
+              <div class="color-grid" id="plan-color-grid"></div>
+              <p class="selected-label" id="plan-color-label">Aleatorio</p>
+            </div>
+            <button class="btn-main" id="plan-register" type="button" disabled>Registrar para publicacion</button>
+            <p class="status" id="plan-status"></p>
+            <div id="plan-result"></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="view archive-view" id="preview-view">
+        <div class="archive-shell">
+          <div class="publish-grid">
+            <div class="publish-column">
+              <h2 class="page-title">Preview</h2>
+              <div class="field">
+                <label class="field-label" for="preview-text">Frase</label>
+                <textarea class="field-input" id="preview-text" placeholder="Escribe una frase para probar el render"></textarea>
+              </div>
+              <div class="field">
+                <label class="field-label" for="preview-mode">Modo</label>
+                <select class="field-input" id="preview-mode">
+                  <option value="retro3d">Retro 3D</option>
+                  <option value="brat">Brat</option>
+                  <option value="normal">Normal</option>
+                </select>
+              </div>
+              <div class="field">
+                <span class="field-label">Color</span>
+                <div class="color-grid" id="preview-color-grid"></div>
+                <p class="selected-label" id="preview-color-label">Aleatorio</p>
+              </div>
+              <div class="btns">
+                <button class="btn-main" id="preview-render" type="button">Actualizar preview</button>
+              </div>
+              <p class="status" id="preview-status"></p>
+            </div>
+
+            <div class="publish-column">
+              <div class="preview-wrap visible">
+                <span class="preview-label">Render real</span>
+                <div class="preview-canvas-wrap">
+                  <canvas id="preview-tool-canvas" width="1080" height="1350"></canvas>
                 </div>
               </div>
-
-              <aside class="archive-preview">
-                <span class="preview-label">Preview carrusel</span>
-                <div class="archive-preview-canvas-wrap">
-                  <canvas id="plan-preview-canvas" width="1080" height="1350"></canvas>
-                </div>
-                <div class="carousel-nav">
-                  <button class="carousel-btn" type="button" id="plan-preview-prev">&larr;</button>
-                  <span class="carousel-counter" id="plan-preview-counter">0 / 0</span>
-                  <button class="carousel-btn" type="button" id="plan-preview-next">&rarr;</button>
-                </div>
-                <div class="archive-preview-actions">
-                  <button class="btn-ghost" id="plan-preview-refresh" type="button">Actualizar preview</button>
-                  <p class="status" id="plan-preview-status"></p>
-                </div>
-              </aside>
             </div>
           </div>
         </div>
@@ -851,6 +971,7 @@
     const DEFAULT_CURATOR_URL = "https://archivo-x-curator.onrender.com/";
     const STORAGE_KEY = "monacastrosa-curator-url";
     const ARCHIVE_TOKEN_KEY = "archive-x-token";
+    const THEME_KEY = "archive-x-theme";
     const OWNER = "imgifra";
     const REPO = "frase-generator-v2";
     const WORKFLOW = "publish.yml";
@@ -859,28 +980,26 @@
 
     const tabs = Array.from(document.querySelectorAll("[data-tab]"));
     const publishView = document.getElementById("publish-view");
-    const archiveView = document.getElementById("archive-view");
+    const curateView = document.getElementById("curate-view");
+    const carouselView = document.getElementById("carousel-view");
+    const previewView = document.getElementById("preview-view");
     const curatorUrlInput = document.getElementById("archive-api-url");
     const archiveTokenInput = document.getElementById("archive-token");
     const previewCanvas = document.getElementById("preview-canvas");
     const previewCtx = previewCanvas.getContext("2d");
-    const archivePreviewCanvas = document.getElementById("archive-preview-canvas");
-    const archivePreviewCtx = archivePreviewCanvas.getContext("2d");
-    const planPreviewCanvas = document.getElementById("plan-preview-canvas");
-    const planPreviewCtx = planPreviewCanvas.getContext("2d");
+    const previewToolCanvas = document.getElementById("preview-tool-canvas");
+    const previewToolCtx = previewToolCanvas.getContext("2d");
     const renderFrame = document.getElementById("render-frame");
 
     let colorSeleccionado = null;
+    let previewColorSeleccionado = null;
     let carouselIndex = 0;
     let currentFrases = [];
     let previewTimer = null;
-    let archivePreviewTimer = null;
     let renderFrameReady = false;
     let renderRequestSeq = 0;
     let latestPreviewRequestId = 0;
-    let latestArchivePreviewRequestId = 0;
-    let latestPlanPreviewRequestId = 0;
-    let planPreviewIndex = 0;
+    let latestPreviewToolRequestId = 0;
     const pendingRenderResolvers = new Map();
 
     function normalizeUrl(value) {
@@ -902,18 +1021,24 @@
     }
 
     function setActiveTab(name) {
-      const isPublish = name === "publish";
-
       tabs.forEach((tab) => {
         tab.classList.toggle("active", tab.dataset.tab === name);
       });
 
-      publishView.classList.toggle("active", isPublish);
-      archiveView.classList.toggle("active", name === "archive");
+      publishView.classList.toggle("active", name === "publish");
+      curateView.classList.toggle("active", name === "curate");
+      carouselView.classList.toggle("active", name === "carousel");
+      previewView.classList.toggle("active", name === "preview");
       location.hash = name;
-      if (name === "archive" && !archiveState.loaded) {
+      if (name === "curate" && !archiveState.loaded) {
         loadArchive().catch(showArchiveError);
       }
+      if (name === "carousel" && !planState.loaded) {
+        loadPlanCarruseles().catch((err) => {
+          document.getElementById("plan-list").innerHTML = `<div class="archive-empty">${escapeHtml(err.message || String(err))}</div>`;
+        });
+      }
+      if (name === "preview") updatePreviewTool();
     }
 
     tabs.forEach((tab) => {
@@ -943,7 +1068,7 @@
       });
     }
 
-    async function requestRender(text, bg) {
+    async function requestRender(text, bg, mode = "retro3d") {
       await waitForRenderFrame();
       const requestId = ++renderRequestSeq;
       return new Promise((resolve) => {
@@ -952,7 +1077,7 @@
           type: "render-request",
           requestId,
           text,
-          mode: "retro3d",
+          mode,
           bg
         }, "*");
       });
@@ -980,7 +1105,7 @@
         previewCtx.fillText("Generando preview...", CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2);
       }
 
-      const dataUrl = await requestRender(frase, bg);
+      const dataUrl = await requestRender(frase, bg, "retro3d");
       if (requestId === latestPreviewRequestId) {
         const img = new Image();
         img.onload = () => { previewCtx.drawImage(img, 0, 0, CANVAS_WIDTH, CANVAS_HEIGHT); };
@@ -1032,52 +1157,30 @@
       ctx.fillText(message, CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2);
     }
 
-    function selectedPlanItems() {
-      const byRow = new Map();
-      Object.values(planState.groups).flat().forEach((item) => {
-        byRow.set(item.rowNumber, item);
-      });
-      return [...planState.selected].map((row) => byRow.get(row)).filter(Boolean);
-    }
+    async function updatePreviewTool() {
+      const text = clean(document.getElementById("preview-text").value);
+      const mode = document.getElementById("preview-mode").value;
+      const bg = previewColorSeleccionado || "#D4A017";
+      const status = document.getElementById("preview-status");
 
-    function planPreviewText() {
-      const items = selectedPlanItems();
-      if (!items.length) return "";
-      planPreviewIndex = Math.max(0, Math.min(planPreviewIndex, items.length - 1));
-      const item = items[planPreviewIndex];
-      return clean(item.frase_final) || clean(item.frase_original);
-    }
-
-    function updatePlanPreviewCounter() {
-      const total = selectedPlanItems().length;
-      planPreviewIndex = Math.max(0, Math.min(planPreviewIndex, Math.max(0, total - 1)));
-      document.getElementById("plan-preview-counter").textContent = total ? `${planPreviewIndex + 1} / ${total}` : "0 / 0";
-      document.getElementById("plan-preview-prev").disabled = planPreviewIndex === 0;
-      document.getElementById("plan-preview-next").disabled = !total || planPreviewIndex === total - 1;
-    }
-
-    async function updateArchivePreview() {
-      const status = document.getElementById("archive-preview-status");
-      const input = document.getElementById("archive-final");
-      const text = clean(input?.value) || clean(currentArchiveItem()?.frase_original);
       if (!text) {
-        drawPreviewPlaceholder(archivePreviewCtx, "Sin frase");
+        drawPreviewPlaceholder(previewToolCtx, "Escribe una frase", bg);
         status.textContent = "";
         status.className = "status";
         return;
       }
 
-      const requestId = ++latestArchivePreviewRequestId;
-      const bg = "#D4A017";
+      const requestId = ++latestPreviewToolRequestId;
       status.textContent = "Generando...";
       status.className = "status";
-      drawPreviewPlaceholder(archivePreviewCtx, "Generando preview...", bg);
+      drawPreviewPlaceholder(previewToolCtx, "Generando preview...", bg);
+
       try {
-        const dataUrl = await requestRender(text, bg);
-        if (requestId !== latestArchivePreviewRequestId) return;
+        const dataUrl = await requestRender(text, bg, mode);
+        if (requestId !== latestPreviewToolRequestId) return;
         const img = new Image();
         img.onload = () => {
-          archivePreviewCtx.drawImage(img, 0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+          previewToolCtx.drawImage(img, 0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
           status.textContent = "";
         };
         img.src = dataUrl;
@@ -1085,44 +1188,6 @@
         status.textContent = err.message || String(err);
         status.className = "status error";
       }
-    }
-
-    async function updatePlanPreview() {
-      const status = document.getElementById("plan-preview-status");
-      const text = planPreviewText();
-      updatePlanPreviewCounter();
-      if (!text) {
-        drawPreviewPlaceholder(planPreviewCtx, "Selecciona frases");
-        status.textContent = "";
-        status.className = "status";
-        return;
-      }
-
-      const requestId = ++latestPlanPreviewRequestId;
-      const bg = planState.color || "#D4A017";
-      status.textContent = "Generando...";
-      status.className = "status";
-      drawPreviewPlaceholder(planPreviewCtx, "Generando preview...", bg);
-      try {
-        const dataUrl = await requestRender(text, bg);
-        if (requestId !== latestPlanPreviewRequestId) return;
-        const img = new Image();
-        img.onload = () => {
-          planPreviewCtx.drawImage(img, 0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
-          status.textContent = "";
-        };
-        img.src = dataUrl;
-      } catch (err) {
-        status.textContent = err.message || String(err);
-        status.className = "status error";
-      }
-    }
-
-    function movePlanPreview(delta) {
-      const total = selectedPlanItems().length;
-      if (!total) return;
-      planPreviewIndex = Math.max(0, Math.min(total - 1, planPreviewIndex + delta));
-      updatePlanPreview();
     }
 
     function parseFrases() {
@@ -1439,6 +1504,51 @@
       setArchiveStatus("Cambio pendiente");
     }
 
+    function renderArchiveGroupButtons() {
+      const container = document.getElementById("archive-group-buttons");
+      if (!container) return;
+
+      const groups = [{ name: "", hint: "Sin grupo" }, ...archiveState.taxonomy];
+      container.innerHTML = groups.map((group) => {
+        const active = archiveState.selectedGroup === group.name ? " active" : "";
+        const label = group.name || group.hint;
+        return `<button type="button" class="group-btn${active}" data-group="${escapeHtml(group.name)}">${escapeHtml(label)}</button>`;
+      }).join("");
+
+      container.querySelectorAll(".group-btn").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          archiveState.selectedGroup = btn.dataset.group || "";
+          renderArchiveGroupButtons();
+          setArchiveStatus("Cambio pendiente");
+        });
+      });
+    }
+
+    function renderArchiveTemporalidadButtons() {
+      const container = document.getElementById("archive-temporalidad-buttons");
+      if (!container) return;
+
+      const options = [
+        ["atemporal", "Atemporal"],
+        ["temporada", "Temporada"],
+        ["coyuntural", "Coyuntural"],
+        ["fecha_especial", "Fecha especial"]
+      ];
+
+      container.innerHTML = options.map(([value, label]) => {
+        const active = archiveState.selectedTemporalidad === value ? " active" : "";
+        return `<button type="button" class="temporalidad-btn${active}" data-temporalidad="${value}">${label}</button>`;
+      }).join("");
+
+      container.querySelectorAll(".temporalidad-btn").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          archiveState.selectedTemporalidad = btn.dataset.temporalidad || "atemporal";
+          renderArchiveTemporalidadButtons();
+          setArchiveStatus("Cambio pendiente");
+        });
+      });
+    }
+
     function renderArchivePhrase() {
       const panel = document.getElementById("archive-phrase-panel");
       const item = currentArchiveItem();
@@ -1446,7 +1556,6 @@
       if (!item) {
         panel.innerHTML = '<div class="archive-empty">No hay frases en esta vista.</div>';
         renderArchiveStats();
-        drawPreviewPlaceholder(archivePreviewCtx, "Sin frase");
         return;
       }
 
@@ -1470,38 +1579,30 @@
         </div>
         <div class="phrase-box">${escapeHtml(phrase)}</div>
         <div class="decision-buttons">
-          <button class="btn-ghost ${archiveState.selectedDecision === "pendiente" ? "active" : ""}" type="button" data-decision="pendiente">Pendiente</button>
-          <button class="btn-ghost ${archiveState.selectedDecision === "aprobada" ? "active" : ""}" type="button" data-decision="aprobada">Aprobar</button>
-          <button class="btn-ghost ${archiveState.selectedDecision === "descartada" ? "active" : ""}" type="button" data-decision="descartada">Descartar</button>
+          <button class="btn-ghost pending ${archiveState.selectedDecision === "pendiente" ? "active" : ""}" type="button" data-decision="pendiente">Pendiente</button>
+          <button class="btn-ghost approved ${archiveState.selectedDecision === "aprobada" ? "active" : ""}" type="button" data-decision="aprobada">Aprobar</button>
+          <button class="btn-ghost rejected ${archiveState.selectedDecision === "descartada" ? "active" : ""}" type="button" data-decision="descartada">Descartar</button>
         </div>
         <div class="editor">
           <div class="field field-wide">
-            <label class="field-label" for="archive-group">Grupo</label>
-            <select class="field-input" id="archive-group">
-              <option value="">Sin grupo</option>
-              ${archiveState.taxonomy.map((group) => `<option value="${escapeHtml(group.name)}">${escapeHtml(group.name)}</option>`).join("")}
-            </select>
+            <span class="field-label">Grupo</span>
+            <div class="group-buttons" id="archive-group-buttons"></div>
           </div>
-          <div class="field">
-            <label class="field-label" for="archive-temporalidad">Temporalidad</label>
-            <select class="field-input" id="archive-temporalidad">
-              <option value="atemporal">Atemporal</option>
-              <option value="temporada">Temporada</option>
-              <option value="coyuntural">Coyuntural</option>
-              <option value="fecha_especial">Fecha especial</option>
-            </select>
+          <div class="field field-wide">
+            <span class="field-label">Temporalidad</span>
+            <div class="temporalidad-buttons" id="archive-temporalidad-buttons"></div>
           </div>
           <div class="field">
             <label class="field-label" for="archive-temporada">Temporada</label>
-            <input class="field-input" id="archive-temporada" type="text" value="${escapeHtml(temporada)}">
+            <textarea class="field-input" id="archive-temporada" rows="1">${escapeHtml(temporada)}</textarea>
+          </div>
+          <div class="field">
+            <label class="field-label" for="archive-notes">Notas</label>
+            <textarea class="field-input" id="archive-notes">${escapeHtml(notes)}</textarea>
           </div>
           <div class="field field-wide">
             <label class="field-label" for="archive-final">Frase final</label>
-            <textarea class="field-input" id="archive-final">${escapeHtml(finalPhrase)}</textarea>
-          </div>
-          <div class="field field-wide">
-            <label class="field-label" for="archive-notes">Notas</label>
-            <textarea class="field-input" id="archive-notes">${escapeHtml(notes)}</textarea>
+            <textarea class="field-input archive-final-input" id="archive-final">${escapeHtml(finalPhrase)}</textarea>
           </div>
         </div>
         <div class="archive-actions">
@@ -1514,24 +1615,19 @@
         </div>
       `;
 
-      document.getElementById("archive-group").value = archiveState.selectedGroup;
-      document.getElementById("archive-temporalidad").value = archiveState.selectedTemporalidad;
+      renderArchiveGroupButtons();
+      renderArchiveTemporalidadButtons();
       document.querySelectorAll("[data-decision]").forEach((btn) => {
         btn.addEventListener("click", () => setDraftDecision(btn.dataset.decision));
       });
-      ["archive-group", "archive-temporalidad", "archive-temporada", "archive-final", "archive-notes"].forEach((id) => {
+      ["archive-temporada", "archive-final", "archive-notes"].forEach((id) => {
         document.getElementById(id).addEventListener("input", () => setArchiveStatus("Cambio pendiente"));
         document.getElementById(id).addEventListener("change", () => setArchiveStatus("Cambio pendiente"));
-      });
-      document.getElementById("archive-final").addEventListener("input", () => {
-        clearTimeout(archivePreviewTimer);
-        archivePreviewTimer = setTimeout(updateArchivePreview, 500);
       });
       document.getElementById("archive-prev").addEventListener("click", () => moveArchive(-1));
       document.getElementById("archive-next").addEventListener("click", () => moveArchive(1));
       document.getElementById("archive-save").addEventListener("click", saveArchiveCurrent);
       renderArchiveStats();
-      updateArchivePreview();
     }
 
     function moveArchive(delta) {
@@ -1548,8 +1644,8 @@
       setArchiveStatus("Guardando...");
       const payload = {
         decision_editorial: archiveState.selectedDecision,
-        grupo_carrusel: document.getElementById("archive-group").value,
-        temporalidad: document.getElementById("archive-temporalidad").value,
+        grupo_carrusel: archiveState.selectedGroup,
+        temporalidad: archiveState.selectedTemporalidad,
         temporada: document.getElementById("archive-temporada").value,
         frase_final: document.getElementById("archive-final").value,
         notas: document.getElementById("archive-notes").value
@@ -1602,8 +1698,37 @@
           grid.querySelectorAll(".swatch").forEach((item) => item.classList.remove("selected"));
           swatch.classList.add("selected");
           planState.color = hex;
-          updatePlanPreview();
           document.getElementById("plan-color-label").textContent = hex ? `${label} · ${hex}` : "Aleatorio";
+        });
+        grid.appendChild(swatch);
+      });
+    }
+
+    function initPreviewColors() {
+      const grid = document.getElementById("preview-color-grid");
+      grid.innerHTML = "";
+      const light = ["#f6f1e8", "#f4c400", "#c8e6c9", "#b3d9f2", "#d6cfc4"];
+      const colors = [
+        { hex: null, label: "Aleatorio" },
+        ...RETRO_PALETTES.map((palette) => ({ hex: palette.bg, label: palette.id }))
+      ];
+
+      colors.forEach(({ hex, label }) => {
+        const swatch = document.createElement("button");
+        swatch.type = "button";
+        swatch.className = "swatch" + (hex === null ? " random selected" : "");
+        swatch.title = label;
+        swatch.setAttribute("aria-label", label);
+        if (hex !== null) {
+          swatch.style.background = hex;
+          if (light.includes(hex)) swatch.style.outline = "1px solid #2a2a2a";
+        }
+        swatch.addEventListener("click", () => {
+          grid.querySelectorAll(".swatch").forEach((item) => item.classList.remove("selected"));
+          swatch.classList.add("selected");
+          previewColorSeleccionado = hex;
+          document.getElementById("preview-color-label").textContent = hex === null ? "Aleatorio" : `${label} / ${hex}`;
+          updatePreviewTool();
         });
         grid.appendChild(swatch);
       });
@@ -1613,7 +1738,6 @@
       const count = planState.selected.size;
       document.getElementById("plan-counter").innerHTML = `<strong>${count}</strong>&nbsp;/&nbsp;10 seleccionadas`;
       document.getElementById("plan-register").disabled = count !== 10 || !clean(document.getElementById("plan-caption").value);
-      updatePlanPreviewCounter();
     }
 
     function renderPlanTabs() {
@@ -1655,13 +1779,10 @@
           const row = Number(checkbox.dataset.row);
           if (checkbox.checked) planState.selected.add(row);
           else planState.selected.delete(row);
-          planPreviewIndex = 0;
           updatePlanCounter();
-          updatePlanPreview();
         });
       });
       updatePlanCounter();
-      updatePlanPreview();
     }
 
     async function loadPlanCarruseles() {
@@ -1700,19 +1821,6 @@
       }
     }
 
-    function setArchiveSubview(view) {
-      document.getElementById("archive-curation").classList.toggle("active", view === "curation");
-      document.getElementById("archive-plan").classList.toggle("active", view === "plan");
-      document.querySelectorAll("[data-archive-view]").forEach((tab) => {
-        tab.classList.toggle("active", tab.dataset.archiveView === view);
-      });
-      if (view === "plan" && !planState.loaded) {
-        loadPlanCarruseles().catch((err) => {
-          document.getElementById("plan-list").innerHTML = `<div class="archive-empty">${escapeHtml(err.message || String(err))}</div>`;
-        });
-      }
-    }
-
     document.getElementById("frases").addEventListener("input", onFrasesInput);
     document.getElementById("btn-publicar").addEventListener("click", () => publicar(false));
     document.getElementById("btn-guardar").addEventListener("click", () => publicar(true));
@@ -1730,29 +1838,41 @@
     document.getElementById("archive-group-filter").addEventListener("change", applyArchiveFilters);
     document.getElementById("archive-search").addEventListener("input", applyArchiveFilters);
     document.getElementById("archive-reload").addEventListener("click", () => loadArchive().catch(showArchiveError));
-    document.getElementById("archive-preview-refresh").addEventListener("click", updateArchivePreview);
-    document.querySelectorAll("[data-archive-view]").forEach((tab) => {
-      tab.addEventListener("click", () => setArchiveSubview(tab.dataset.archiveView));
-    });
     document.getElementById("plan-caption").addEventListener("input", updatePlanCounter);
     document.getElementById("plan-reload").addEventListener("click", () => loadPlanCarruseles().catch((err) => {
       document.getElementById("plan-list").innerHTML = `<div class="archive-empty">${escapeHtml(err.message || String(err))}</div>`;
     }));
-    document.getElementById("plan-preview-prev").addEventListener("click", () => movePlanPreview(-1));
-    document.getElementById("plan-preview-next").addEventListener("click", () => movePlanPreview(1));
-    document.getElementById("plan-preview-refresh").addEventListener("click", updatePlanPreview);
     document.getElementById("plan-register").addEventListener("click", registrarCarrusel);
+    document.getElementById("preview-render").addEventListener("click", updatePreviewTool);
+    document.getElementById("preview-mode").addEventListener("change", updatePreviewTool);
+    document.getElementById("preview-text").addEventListener("input", () => {
+      clearTimeout(previewTimer);
+      previewTimer = setTimeout(updatePreviewTool, 400);
+    });
+    document.getElementById("theme-toggle").addEventListener("click", toggleTheme);
+
+    function applyTheme(theme) {
+      document.documentElement.setAttribute("data-theme", theme);
+      document.getElementById("theme-icon").textContent = theme === "dark" ? "☽" : "○";
+    }
+
+    function toggleTheme() {
+      const next = document.documentElement.getAttribute("data-theme") === "dark" ? "light" : "dark";
+      applyTheme(next);
+      localStorage.setItem(THEME_KEY, next);
+    }
+
+    applyTheme(localStorage.getItem(THEME_KEY) || "dark");
 
     setCuratorUrl(localStorage.getItem(STORAGE_KEY) || DEFAULT_CURATOR_URL);
     archiveTokenInput.value = localStorage.getItem(ARCHIVE_TOKEN_KEY) || "";
     initColores();
     initArchiveColors();
-    drawPreviewPlaceholder(archivePreviewCtx, "Cargando frases...");
-    drawPreviewPlaceholder(planPreviewCtx, "Selecciona frases");
-    updatePlanPreviewCounter();
+    initPreviewColors();
+    drawPreviewPlaceholder(previewToolCtx, "Escribe una frase", "#D4A017");
 
     const initialTab = location.hash.replace("#", "");
-    setActiveTab(["publish", "archive"].includes(initialTab) ? initialTab : "publish");
+    setActiveTab(["publish", "curate", "carousel", "preview"].includes(initialTab) ? initialTab : "publish");
   </script>
 </body>
 </html>

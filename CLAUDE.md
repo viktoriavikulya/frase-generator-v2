@@ -165,9 +165,13 @@ render+upload), `unlock_id` (row_id/carousel_id, frees a stuck row immediately),
 
 Daily/manual entry points are split by deployment plane:
 
-- `panel.html` is the GitHub Pages entry point. It owns the Publish UI and the native Archivo X UI.
+- `panel.html` is the GitHub Pages entry point, with four tabs: `Publicar Ahora` (publish form),
+  `Curar Frases` and `Armar Carruseles` (the native Archivo X UI, split into curation and
+  carousel-assembly views), and `Preview` (a standalone render tester for any text/mode/color).
 - `publicar.html` is a compatibility redirect to `panel.html#publish`.
-- The Publish tab preview uses a hidden iframe pointed at `index.html` and communicates via `postMessage`, so it asks the real renderer for a `canvas.toDataURL()` instead of keeping a copied renderer.
+- The Publish and Preview tabs' previews use a hidden iframe pointed at `index.html` and
+  communicate via `postMessage`, so they ask the real renderer for a `canvas.toDataURL()` instead
+  of keeping a copied renderer.
 - `index.html` is still the render engine used by Playwright and by the preview iframe.
 - Render runs `scripts/dev/archive-curator-server.js` and exposes `/api/phrases`, `/api/taxonomy`, and `/api/plan-carruseles`. `panel.html` calls those APIs directly from GitHub Pages; `tools/archivo-x-curator.html` remains as a legacy/fallback UI served by the same server.
 
@@ -180,13 +184,14 @@ Do not copy render functions into `publicar.html` or `panel.html`. If the visual
 ```
 data/tweets-guardados-x.txt
   -> npm run import:saved-tweets        (sheet tab "archivo_x", decision_editorial = pendiente)
-  -> panel.html#archive                 (GitHub Pages, daily UI)
+  -> panel.html#curate / panel.html#carousel   (GitHub Pages, daily UI)
      or npm run curate:archivo-x        (http://localhost:5177 legacy/fallback)
-       Tab "Curaduría": approve/discard/edit frase_final, assign grupo_carrusel
+       "Curar Frases" / legacy "Curaduría" tab: approve/discard/edit frase_final, assign
+         grupo_carrusel
          only the "Aprobar" button sets decision_editorial = aprobada
          changing grupo_carrusel or frase_final does NOT approve
-       Tab "Publicar carruseles": pick exactly 10 approved phrases from one
-         grupo_carrusel + caption (+ optional color) -> registers them as a
+       "Armar Carruseles" / legacy "Publicar carruseles" tab: pick exactly 10 approved phrases
+         from one grupo_carrusel + caption (+ optional color) -> registers them as a
          new pending carousel directly in Hoja 2, then sets
          decision_editorial = publicada on those archivo_x rows
 ```
