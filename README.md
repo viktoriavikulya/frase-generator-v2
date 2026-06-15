@@ -29,7 +29,7 @@ formulario  ──►  render                Google Sheets (estado)
 ## Uso diario
 
 ### Publicar contenido
-Abri `panel.html` como entrada principal. Con 1 frase se publica un **single**, con 2-10 frases se publica un **carrusel**.
+Abri `panel.html` como entrada principal. Desde ahi puedes publicar frases nuevas y curar Archivo X. Con 1 frase se publica un **single**, con 2-10 frases se publica un **carrusel**.
 
 ### Workflows disponibles en GitHub Actions
 
@@ -104,7 +104,7 @@ npm run doctor:sheet  # audita columnas y estados del Google Sheet
 # Inspiración viral
 npm run fetch:inspiration    # llena la pestaña "inspiracion" con candidatos para revisar
 npm run import:saved-tweets  # importa data/tweets-guardados-x.txt a la pestaña "archivo_x" (script activo: scripts/jobs/inspiration/import-saved-tweets-to-sheet.js)
-npm run curate:archivo-x     # abre la interfaz de curaduría manual en http://localhost:5177 (script activo: scripts/dev/archive-curator-server.js)
+npm run curate:archivo-x     # abre el backend/API de Archivo X en http://localhost:5177; panel.html#archive usa esas APIs
 ```
 
 ### Flujo editorial de archivo_x
@@ -124,10 +124,10 @@ No hay scoring automático, no hay clasificación, no hay recomendaciones.
 
 #### 2. Curar frase por frase
 ```bash
-npm run curate:archivo-x
-# → http://localhost:5177
+panel.html#archive
+# o, en local/fallback: npm run curate:archivo-x -> http://localhost:5177
 ```
-Interfaz web/móvil para revisar cada frase. Para cada una podés:
+Interfaz web para revisar cada frase. Para cada una podés:
 
 | Acción | Efecto |
 |---|---|
@@ -139,11 +139,10 @@ Interfaz web/móvil para revisar cada frase. Para cada una podés:
 
 Solo las frases con `decision_editorial = aprobada` entran al plan de carruseles.
 
-#### 3. Generar plan de carruseles
-```bash
-npm run build:carousel-plan
-```
-Lee **solo** las frases aprobadas, agrupa por `grupo_carrusel`, requiere mínimo 8 por grupo y genera `output/carousel-plan.json`. Para cada frase usa `frase_final` si existe, `frase_original` si no.
+#### 3. Registrar carruseles
+Desde `panel.html#archive`, entra a **Publicar carruseles**, elige exactamente 10 frases aprobadas de un mismo grupo, define caption/color y registra el carrusel en Hoja 2 como `pending`.
+
+`npm run build:carousel-plan` queda como herramienta legacy de planeación/export; no es el flujo principal del panel.
 
 #### Columnas principales de `archivo_x`
 
@@ -183,8 +182,8 @@ scripts/
                        # render-utils, pipeline-runner, pipeline-utils
   dev/                 # herramientas locales (preview, sync-palettes)
 
-panel.html             # entrada unificada para publicar, render real y Archivo X
-index.html             # generador visual (sirve Playwright para los screenshots)
+panel.html             # entrada unificada para publicar y curar Archivo X
+index.html             # generador visual (sirve Playwright y el preview oculto del panel)
 publicar.html          # redireccion de compatibilidad a panel.html#publish
 ```
 

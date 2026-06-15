@@ -296,6 +296,33 @@ async function main() {
   const app = express();
   const sheets = await getSheetsClient();
 
+  const allowedOrigins = new Set([
+    "https://imgifra.github.io",
+    "http://localhost:5173",
+    "http://localhost:5177",
+    "http://localhost:5181",
+    "http://localhost:5182",
+    "http://127.0.0.1:5173",
+    "http://127.0.0.1:5177",
+    "http://127.0.0.1:5181",
+    "http://127.0.0.1:5182"
+  ]);
+
+  app.use((req, res, next) => {
+    const origin = req.headers.origin;
+    if (origin && (allowedOrigins.has(origin) || origin.endsWith(".github.io"))) {
+      res.setHeader("Access-Control-Allow-Origin", origin);
+      res.setHeader("Vary", "Origin");
+      res.setHeader("Access-Control-Allow-Headers", "Content-Type, X-Curator-Token");
+      res.setHeader("Access-Control-Allow-Methods", "GET, POST, PATCH, OPTIONS");
+    }
+    if (req.method === "OPTIONS") {
+      res.sendStatus(204);
+      return;
+    }
+    next();
+  });
+
   app.use(express.json({ limit: "256kb" }));
   app.use(express.static(path.join(ROOT, "tools")));
 

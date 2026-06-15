@@ -9,7 +9,7 @@ El proyecto publica frases como imagenes retro 3D en Instagram, Facebook y Threa
 ```mermaid
 flowchart TD
   Z[panel.html<br/>Entrada unificada<br/>Formulario manual] --> A[GitHub Actions<br/>publish.yml]
-  Z --> Y[index.html<br/>Render real]
+  Z --> Y[index.html<br/>Motor visual]
   Z --> X[Archivo X<br/>Render]
   A --> C[register-from-form.js<br/>registra filas pending]
 
@@ -74,8 +74,10 @@ flowchart TD
   A[GitHub Pages<br/>HTML estatico] --> B[panel.html]
   B --> C[Publish tab<br/>registrar y disparar workflow]
   B --> D[index.html<br/>motor visual]
+  B --> G[/api/phrases]
+  B --> H[/api/plan-carruseles]
 
-  E[Render<br/>Node server] --> F[tools/archivo-x-curator.html]
+  E[Render<br/>Node server] --> F[tools/archivo-x-curator.html<br/>fallback legacy]
   E --> G[/api/phrases]
   E --> H[/api/plan-carruseles]
 
@@ -89,11 +91,11 @@ flowchart TD
 Reglas:
 
 ```txt
-GitHub Pages: interfaz estatica y preview.
-Render: curador con backend/API.
+GitHub Pages: interfaz estatica unificada y preview.
+Render: backend/API de Archivo X.
 GitHub Actions: publicacion real.
 index.html: motor de render real.
-panel.html: puerta de entrada, no motor de render.
+panel.html: puerta de entrada diaria, no motor de render.
 ```
 
 ## Piezas principales
@@ -193,7 +195,7 @@ js/app.js
 
 ### Panel y preview manual
 
-`panel.html` es la entrada unificada. Contiene la UI de publicar y carga `index.html` y el curador de Render en pestanas/iframes.
+`panel.html` es la entrada unificada. Contiene la UI de publicar y la UI nativa de Archivo X.
 
 La previsualizacion del panel usa un `iframe` oculto con `index.html` y `postMessage`, para pedirle al render real un PNG.
 
@@ -209,6 +211,15 @@ panel.html
 ```
 
 Esto es bueno porque evita mantener dos renderers distintos.
+
+Archivo X no se muestra dentro de un iframe visible. El panel llama directamente al backend de Render:
+
+```txt
+panel.html
+  -> GET/PATCH /api/phrases
+  -> GET/POST /api/plan-carruseles
+  -> Google Sheet archivo_x / Hoja 2
+```
 
 ### Estado y locks
 
@@ -253,7 +264,7 @@ Regla mental: si cambias locks, estados o columnas, prueba con mas calma.
 | Orden del pipeline | `scripts/pipeline/run-once.js`, `scripts/utils/pipeline-runner.js` | `npm run doctor` |
 | Upload | `scripts/libs/upload-lib.js` | `npm run doctor` + prueba controlada |
 | Instagram/Facebook/Threads | `scripts/libs/*-lib.js`, jobs publish | `npm run doctor` + revisar errores por plataforma |
-| Archivo X | `scripts/dev/archive-curator-server.js`, `tools/archivo-x-curator.html`, `scripts/jobs/inspiration/*` | `npm run curate:archivo-x` |
+| Archivo X | `panel.html`, `scripts/dev/archive-curator-server.js`, `scripts/jobs/inspiration/*` | probar `panel.html#archive` + `npm run curate:archivo-x` |
 | Sheet/locks/estados | `scripts/core/*`, `scripts/utils/pipeline-utils.js`, jobs | `npm run doctor` + `npm run doctor:sheet` |
 
 ## Mapa de riesgo

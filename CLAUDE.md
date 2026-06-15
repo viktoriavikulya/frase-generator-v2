@@ -53,7 +53,7 @@ npm run doctor:sheet  # audits Google Sheet columns/states
 
 # Archivo X (manual curation flow)
 npm run import:saved-tweets   # imports data/tweets-guardados-x.txt into the "archivo_x" sheet tab
-npm run curate:archivo-x      # curation UI at http://localhost:5177
+npm run curate:archivo-x      # local/API fallback at http://localhost:5177; daily UI is panel.html#archive
 ```
 
 There is no automated test suite — `npm run doctor` / `doctor:sheet` are the closest thing to a
@@ -108,11 +108,10 @@ scripts/
     common.js          nowIsoLocal(), colToLetter(), normalizeValue()
     logger.js          structured JSON logger
   dev/                 local-only tools (never run in production): render-preview, sync-palettes,
-                       check-palettes-sync, archive-curator-server (port 5177; serves the
-                       curator UI + /api/phrases, /api/taxonomy, /api/plan-carruseles), doctor,
-                       doctor-sheet
+                       check-palettes-sync, archive-curator-server (port 5177; serves
+                       Archivo X APIs + a legacy/fallback curator UI), doctor, doctor-sheet
 
-tools/archivo-x-curator.html   manual curation UI ("Curaduría" + "Publicar carruseles" tabs),
+tools/archivo-x-curator.html   legacy/fallback manual curation UI ("Curaduría" + "Publicar carruseles" tabs),
                                 served by archive-curator-server.js
 data/tweets-guardados-x.txt    input for import:saved-tweets
 .github/workflows/publish.yml  main pipeline (schedule 10am/6pm Bogotá + workflow_dispatch)
@@ -166,11 +165,11 @@ render+upload), `unlock_id` (row_id/carousel_id, frees a stuck row immediately),
 
 Daily/manual entry points are split by deployment plane:
 
-- `panel.html` is the GitHub Pages entry point. It owns the Publish UI, Real Render tab, and Archivo X tab.
+- `panel.html` is the GitHub Pages entry point. It owns the Publish UI and the native Archivo X UI.
 - `publicar.html` is a compatibility redirect to `panel.html#publish`.
 - The Publish tab preview uses a hidden iframe pointed at `index.html` and communicates via `postMessage`, so it asks the real renderer for a `canvas.toDataURL()` instead of keeping a copied renderer.
 - `index.html` is still the render engine used by Playwright and by the preview iframe.
-- Render runs `scripts/dev/archive-curator-server.js`, serves `tools/archivo-x-curator.html`, and exposes `/api/phrases`, `/api/taxonomy`, and `/api/plan-carruseles`.
+- Render runs `scripts/dev/archive-curator-server.js` and exposes `/api/phrases`, `/api/taxonomy`, and `/api/plan-carruseles`. `panel.html` calls those APIs directly from GitHub Pages; `tools/archivo-x-curator.html` remains as a legacy/fallback UI served by the same server.
 
 Do not copy render functions into `publicar.html` or `panel.html`. If the visual output changes, update `js/mode-retro3d.js` / `js/config.js` and verify through `index.html` or `render-preview.js`.
 
@@ -181,7 +180,8 @@ Do not copy render functions into `publicar.html` or `panel.html`. If the visual
 ```
 data/tweets-guardados-x.txt
   -> npm run import:saved-tweets        (sheet tab "archivo_x", decision_editorial = pendiente)
-  -> npm run curate:archivo-x           (http://localhost:5177)
+  -> panel.html#archive                 (GitHub Pages, daily UI)
+     or npm run curate:archivo-x        (http://localhost:5177 legacy/fallback)
        Tab "Curaduría": approve/discard/edit frase_final, assign grupo_carrusel
          only the "Aprobar" button sets decision_editorial = aprobada
          changing grupo_carrusel or frase_final does NOT approve
