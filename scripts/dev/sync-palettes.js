@@ -4,19 +4,17 @@
  *
  * Fuente de verdad: scripts/config/retro-palettes.js
  *
- * Sincroniza las paletas a:
- *   1. js/palettes.js    — bloque RETRO_PALETTES (frontend / Playwright)
- *   2. publicar.html     — bloque COLORES (formulario GitHub Pages)
+ * Sincroniza las paletas a js/palettes.js. Ese archivo alimenta el render
+ * real y el panel unificado.
  *
  * Uso:
  *   node scripts/dev/sync-palettes.js
  *   npm run sync-palettes
  *
- * Cómo funciona:
+ * Como funciona:
  *   Busca los marcadores // RETRO_PALETTES_START / // RETRO_PALETTES_END en
- *   js/palettes.js, y // COLORES_START / // COLORES_END en publicar.html,
- *   y reemplaza el contenido entre ellos con los datos actuales de
- *   retro-palettes.js. Los marcadores deben existir en los archivos destino.
+ *   js/palettes.js y reemplaza el contenido entre ellos con los datos actuales
+ *   de retro-palettes.js.
  */
 
 "use strict";
@@ -28,7 +26,6 @@ const { RETRO_PALETTES } = require("../config/retro-palettes");
 
 const ROOT        = path.resolve(__dirname, "../..");
 const PALETTES_JS = path.join(ROOT, "js", "palettes.js");
-const PUBLICAR    = path.join(ROOT, "publicar.html");
 
 // ── 1. js/palettes.js ────────────────────────────────────────────────────────
 
@@ -41,16 +38,7 @@ replaceMarkedBlock(
 
 console.log("✔  js/palettes.js actualizado");
 
-// ── 2. publicar.html — COLORES ───────────────────────────────────────────────
 
-replaceMarkedBlock(
-  PUBLICAR,
-  "COLORES_START",
-  "COLORES_END",
-  buildColoresBlock()
-);
-
-console.log("✔  publicar.html actualizado");
 console.log(`\n   ${RETRO_PALETTES.length} paletas sincronizadas.`);
 
 // ── Builders ─────────────────────────────────────────────────────────────────
@@ -67,19 +55,6 @@ function buildPalettesBlock() {
   });
 
   return `const RETRO_PALETTES = [\n${rows.join(",\n")},\n];`;
-}
-
-function buildColoresBlock() {
-  const rows = RETRO_PALETTES.map(
-    (p) => `    { hex: "${p.bg}", label: "${p.id}" },`
-  );
-
-  return [
-    "  const COLORES = [",
-    '    { hex: null,      label: "Aleatorio" },',
-    ...rows,
-    "  ];",
-  ].join("\n");
 }
 
 // ── replaceMarkedBlock ───────────────────────────────────────────────────────

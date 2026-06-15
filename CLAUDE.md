@@ -5,7 +5,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## What this project does
 
 Automated content publishing pipeline for Instagram, Facebook and Threads. Phrases entered via
-a web form (`publicar.html`, GitHub Pages) get rendered as retro-3D-styled images (Playwright over
+a web form (`panel.html`, GitHub Pages) get rendered as retro-3D-styled images (Playwright over
 `index.html`), uploaded to Cloudinary, and published to all three platforms. Runs twice daily via
 GitHub Actions (`.github/workflows/publish.yml`). There's also a secondary manual curation flow
 ("Archivo X") for turning saved tweets into carousels.
@@ -15,7 +15,7 @@ GitHub Actions (`.github/workflows/publish.yml`). There's also a secondary manua
 ## Architecture in one line
 
 ```
-publicar.html → GitHub Actions (publish.yml) → register → render → upload → publish → metrics
+panel.html -> GitHub Actions (publish.yml) -> register -> render -> upload -> publish -> metrics
 ```
 
 Each arrow is an independent script (own Node process). **All state travels through a Google
@@ -155,7 +155,7 @@ render+upload), `unlock_id` (row_id/carousel_id, frees a stuck row immediately),
 
 4. **Palettes have one source of truth: `scripts/config/retro-palettes.js`.** `js/palettes.js` is
    a generated mirror — never hand-edit it. After changing `retro-palettes.js`, run
-   `npm run sync-palettes` and verify with `npm run check-palettes-sync`. `publicar.html` has its own color swatches, kept in sync by `sync-palettes.js`.
+   `npm run sync-palettes` and verify with `npm run check-palettes-sync`.
 
 5. **Row IDs are UUIDs (`crypto.randomUUID()`), never sheet row numbers** — row numbers shift
    when rows are reordered/deleted.
@@ -166,8 +166,9 @@ render+upload), `unlock_id` (row_id/carousel_id, frees a stuck row immediately),
 
 Daily/manual entry points are split by deployment plane:
 
-- `panel.html` is the GitHub Pages entry point. It is a static shell with tabs for Publish, Real Render, and Archivo X.
-- `publicar.html` is the static publish form. Its preview uses a hidden iframe pointed at `index.html` and communicates via `postMessage`, so it asks the real renderer for a `canvas.toDataURL()` instead of keeping a copied renderer.
+- `panel.html` is the GitHub Pages entry point. It owns the Publish UI, Real Render tab, and Archivo X tab.
+- `publicar.html` is a compatibility redirect to `panel.html#publish`.
+- The Publish tab preview uses a hidden iframe pointed at `index.html` and communicates via `postMessage`, so it asks the real renderer for a `canvas.toDataURL()` instead of keeping a copied renderer.
 - `index.html` is still the render engine used by Playwright and by the preview iframe.
 - Render runs `scripts/dev/archive-curator-server.js`, serves `tools/archivo-x-curator.html`, and exposes `/api/phrases`, `/api/taxonomy`, and `/api/plan-carruseles`.
 
@@ -235,3 +236,4 @@ legacy until confirmed nothing else depends on them.
   without re-rendering. Otherwise use `reintentar: true`.
 - **A row is stuck (`lock_status = locked`):** wait ~10 min for `releaseStaleLocks`, or run
   `publish.yml` manually with `unlock_id` = the `row_id`/`carousel_id`.
+

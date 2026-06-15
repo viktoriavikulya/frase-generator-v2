@@ -8,11 +8,10 @@ El proyecto publica frases como imagenes retro 3D en Instagram, Facebook y Threa
 
 ```mermaid
 flowchart TD
-  Z[panel.html<br/>Entrada unificada] --> A[publicar.html<br/>Formulario manual]
+  Z[panel.html<br/>Entrada unificada<br/>Formulario manual] --> A[GitHub Actions<br/>publish.yml]
   Z --> Y[index.html<br/>Render real]
   Z --> X[Archivo X<br/>Render]
-  A --> B[GitHub Actions<br/>publish.yml]
-  B --> C[register-from-form.js<br/>registra filas pending]
+  A --> C[register-from-form.js<br/>registra filas pending]
 
   D[Schedule automatico<br/>10am / 6pm Bogota] --> E[run-once.js]
   C --> E
@@ -73,7 +72,7 @@ El proyecto vive en tres planos distintos. La confusion normal viene de que los 
 ```mermaid
 flowchart TD
   A[GitHub Pages<br/>HTML estatico] --> B[panel.html]
-  B --> C[publicar.html<br/>registrar y disparar workflow]
+  B --> C[Publish tab<br/>registrar y disparar workflow]
   B --> D[index.html<br/>motor visual]
 
   E[Render<br/>Node server] --> F[tools/archivo-x-curator.html]
@@ -194,19 +193,19 @@ js/app.js
 
 ### Panel y preview manual
 
-`panel.html` es la entrada unificada. Carga `publicar.html`, `index.html` y el curador de Render en pestanas con iframes.
+`panel.html` es la entrada unificada. Contiene la UI de publicar y carga `index.html` y el curador de Render en pestanas/iframes.
 
-`publicar.html` muestra el formulario y la previsualizacion. La previsualizacion actual usa un `iframe` con `index.html` y `postMessage`, para pedirle al render real un PNG.
+La previsualizacion del panel usa un `iframe` oculto con `index.html` y `postMessage`, para pedirle al render real un PNG.
 
 Flujo:
 
 ```txt
-publicar.html
+panel.html
   -> iframe index.html
     -> js/app.js escucha render-request
     -> draw()
     -> canvas.toDataURL()
-  <- publicar.html pinta el PNG en su canvas local
+  <- panel.html pinta el PNG en su canvas local
 ```
 
 Esto es bueno porque evita mantener dos renderers distintos.
@@ -248,7 +247,7 @@ Regla mental: si cambias locks, estados o columnas, prueba con mas calma.
 | --- | --- | --- |
 | Look del post retro 3D | `js/mode-retro3d.js`, `js/config.js` | render preview + `node --check` |
 | Paletas | `scripts/config/retro-palettes.js` | `sync-palettes` + `check-palettes-sync` |
-| Preview del formulario | `publicar.html`, `js/app.js` | probar formulario local + render preview |
+| Preview del formulario | `panel.html`, `js/app.js` | probar panel local + render preview |
 | Render desde Node/Playwright | `scripts/libs/render-lib.js`, `scripts/dev/render-preview.js` | `npm run render` |
 | Registro desde formulario | `scripts/pipeline/register-from-form.js`, workflow | `npm run doctor` |
 | Orden del pipeline | `scripts/pipeline/run-once.js`, `scripts/utils/pipeline-runner.js` | `npm run doctor` |
@@ -279,7 +278,7 @@ npm run doctor
 ```txt
 js/mode-retro3d.js
 js/config.js
-publicar.html
+panel.html
 scripts/config/retro-palettes.js
 scripts/dev/render-preview.js
 ```
@@ -363,7 +362,7 @@ npm run check-palettes-sync
 Tambien revisar:
 
 ```powershell
-rg -n "drawRetro3DEditorial|layoutEditorial|drawRetro3DLineEditorial" js scripts publicar.html
+rg -n "drawRetro3DEditorial|layoutEditorial|drawRetro3DLineEditorial" js scripts panel.html
 ```
 
 ### Cambio de paletas
@@ -392,7 +391,7 @@ error_step
 error_message
 ```
 
-### Cambio en `publicar.html`
+### Cambio en `panel.html`
 
 Revisar que el preview siga usando el render real:
 
@@ -403,7 +402,7 @@ render-response
 canvas.toDataURL()
 ```
 
-No volver a copiar funciones de `js/mode-retro3d.js` dentro de `publicar.html`.
+No volver a copiar funciones de `js/mode-retro3d.js` dentro de `panel.html`.
 
 ## Orden recomendado para limpiar o mejorar
 

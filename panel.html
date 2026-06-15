@@ -38,7 +38,8 @@
     }
 
     button,
-    input {
+    input,
+    textarea {
       font: inherit;
     }
 
@@ -140,6 +141,272 @@
       min-height: 0;
       display: grid;
       grid-template-rows: auto 1fr;
+    }
+
+    .view {
+      display: none;
+    }
+
+    .view.active {
+      display: block;
+    }
+
+    .publish-view {
+      padding: 42px 24px 80px;
+      overflow: auto;
+    }
+
+    .publish-grid {
+      display: grid;
+      grid-template-columns: minmax(280px, 420px) minmax(280px, 420px);
+      gap: 42px;
+      justify-content: center;
+      align-items: start;
+      max-width: 980px;
+      margin: 0 auto;
+    }
+
+    .publish-column {
+      min-width: 0;
+    }
+
+    .page-title {
+      color: var(--title);
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: 32px;
+      font-weight: 400;
+      margin: 0 0 36px;
+    }
+
+    .field {
+      margin-bottom: 28px;
+    }
+
+    .field-label {
+      display: block;
+      color: var(--muted);
+      font-size: 10px;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      margin-bottom: 10px;
+    }
+
+    .field-input {
+      width: 100%;
+      border: 0;
+      border-bottom: 1px solid var(--border);
+      background: transparent;
+      color: var(--text);
+      padding: 8px 0 10px;
+      outline: none;
+    }
+
+    .field-input:focus {
+      border-bottom-color: var(--border-strong);
+    }
+
+    .field-input::placeholder {
+      color: var(--quiet);
+    }
+
+    textarea.field-input {
+      resize: vertical;
+      min-height: 104px;
+      line-height: 1.7;
+    }
+
+    .field-hint,
+    .tipo-tag,
+    .selected-label,
+    .status {
+      color: var(--muted);
+      font-size: 11px;
+      line-height: 1.5;
+      margin-top: 8px;
+    }
+
+    .tipo-tag.over,
+    .status.error {
+      color: #9b3a3a;
+    }
+
+    .status.ok {
+      color: #4a7a4a;
+    }
+
+    .divider {
+      border: 0;
+      border-top: 1px solid var(--border);
+      margin: 36px 0;
+    }
+
+    .color-grid {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 7px;
+      margin-bottom: 10px;
+    }
+
+    .swatch {
+      width: 26px;
+      height: 26px;
+      border-radius: 50%;
+      cursor: pointer;
+      border: 1.5px solid transparent;
+      flex-shrink: 0;
+      transition: transform 0.15s, border-color 0.15s;
+    }
+
+    .swatch:hover,
+    .swatch.selected {
+      transform: scale(1.16);
+    }
+
+    .swatch.selected {
+      border-color: var(--title);
+    }
+
+    .swatch.random {
+      background: conic-gradient(#ff6b6b 0deg, #f4c400 90deg, #3d5afe 180deg, #e91e63 270deg, #ff6b6b 360deg);
+    }
+
+    .preview-wrap {
+      opacity: 0;
+      transform: translateY(8px);
+      transition: opacity 0.25s, transform 0.25s;
+      pointer-events: none;
+    }
+
+    .preview-wrap.visible {
+      opacity: 1;
+      transform: translateY(0);
+      pointer-events: auto;
+    }
+
+    .preview-label {
+      display: block;
+      color: var(--muted);
+      font-size: 10px;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      margin-bottom: 12px;
+    }
+
+    .preview-canvas-wrap {
+      width: 100%;
+      position: relative;
+      border: 1px solid var(--border);
+      background: #000;
+    }
+
+    .preview-canvas-wrap::before {
+      content: "";
+      display: block;
+      padding-top: 125%;
+    }
+
+    .preview-canvas-wrap canvas {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    .carousel-nav {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin-top: 12px;
+    }
+
+    .carousel-btn {
+      width: 32px;
+      height: 32px;
+      border: 1px solid var(--border);
+      background: transparent;
+      color: var(--muted);
+      cursor: pointer;
+    }
+
+    .carousel-btn:disabled {
+      opacity: 0.25;
+      cursor: not-allowed;
+    }
+
+    .carousel-dots {
+      display: flex;
+      gap: 6px;
+      align-items: center;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    .carousel-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--border-strong);
+      opacity: 0.3;
+      cursor: pointer;
+    }
+
+    .carousel-dot.active {
+      opacity: 1;
+      transform: scale(1.3);
+    }
+
+    .carousel-counter {
+      min-width: 42px;
+      color: var(--muted);
+      font-size: 10px;
+      letter-spacing: 0.1em;
+      text-align: right;
+    }
+
+    .preview-carousel-nav {
+      display: none;
+    }
+
+    .preview-carousel-nav.active {
+      display: flex;
+    }
+
+    .btns {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin-top: 38px;
+    }
+
+    .btn-main,
+    .btn-ghost {
+      width: 100%;
+      padding: 15px 20px;
+      cursor: pointer;
+      font-size: 11px;
+      font-weight: 500;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+    }
+
+    .btn-main {
+      border: 0;
+      background: var(--accent);
+      color: var(--accent-fg);
+    }
+
+    .btn-ghost {
+      border: 1px solid var(--border);
+      background: transparent;
+      color: var(--muted);
+    }
+
+    .btn-main:disabled,
+    .btn-ghost:disabled {
+      opacity: 0.3;
+      cursor: not-allowed;
     }
 
     .bar {
@@ -248,6 +515,10 @@
         align-items: stretch;
         flex-direction: column;
       }
+
+      .publish-grid {
+        grid-template-columns: 1fr;
+      }
     }
   </style>
 </head>
@@ -260,7 +531,7 @@
           <h1>Panel</h1>
         </div>
         <nav class="links" aria-label="Enlaces directos">
-          <a class="link" href="publicar.html" target="_blank" rel="noopener">Publicar</a>
+          <a class="link" href="panel.html#publish">Publicar</a>
           <a class="link" href="index.html" target="_blank" rel="noopener">Render real</a>
           <a class="link" id="curator-link" href="https://archivo-x-curator.onrender.com/" target="_blank" rel="noopener">Archivo X</a>
         </nav>
@@ -274,6 +545,75 @@
     </header>
 
     <main class="frame-wrap">
+      <section class="view publish-view active" id="publish-view">
+        <div class="publish-grid">
+          <div class="publish-column">
+            <h2 class="page-title">Nuevo post</h2>
+
+            <div class="field">
+              <label class="field-label" for="token">Token de GitHub</label>
+              <input class="field-input" type="password" id="token" placeholder="ghp_..." autocomplete="current-password">
+              <p class="field-hint">Necesita permiso <code>workflow</code> en este repo.</p>
+            </div>
+
+            <div class="field">
+              <label class="field-label" for="caption">Caption</label>
+              <input class="field-input" type="text" id="caption" placeholder="y ya, sin drama.">
+            </div>
+
+            <div class="field">
+              <label class="field-label" for="frases">Frases</label>
+              <textarea class="field-input" id="frases" placeholder="Una por linea&#10;1 frase -> single · 2-10 -> carrusel"></textarea>
+              <p class="tipo-tag" id="tipo-detectado"></p>
+            </div>
+
+            <div class="field">
+              <span class="field-label">Color</span>
+              <div class="color-grid" id="color-grid"></div>
+              <p class="selected-label" id="color-label">Aleatorio</p>
+            </div>
+
+            <div class="btns">
+              <button class="btn-main" type="button" id="btn-publicar">Publicar ahora</button>
+              <button class="btn-ghost" type="button" id="btn-guardar">Guardar en sheet</button>
+            </div>
+            <p class="status" id="status"></p>
+
+            <hr class="divider">
+
+            <p class="eyebrow">Republicar post</p>
+            <p class="field-hint">Si fallo el publish pero render y upload estan bien, pega el <code>row_id</code> o <code>carousel_id</code>.</p>
+
+            <div class="field">
+              <label class="field-label" for="publish-only-id">ID a republicar</label>
+              <input class="field-input" type="text" id="publish-only-id" placeholder="row_id o carousel_id">
+            </div>
+
+            <div class="btns">
+              <button class="btn-main" type="button" id="btn-republish">Republicar ahora</button>
+            </div>
+            <p class="status" id="status-republish"></p>
+          </div>
+
+          <div class="publish-column">
+            <div class="preview-wrap" id="preview-wrap">
+              <span class="preview-label">Previsualizacion</span>
+              <div class="preview-canvas-wrap">
+                <canvas id="preview-canvas" width="1080" height="1350"></canvas>
+              </div>
+              <div class="preview-carousel-nav carousel-nav" id="carousel-nav">
+                <button class="carousel-btn" type="button" id="carousel-prev">&larr;</button>
+                <div class="carousel-dots" id="carousel-dots"></div>
+                <span class="carousel-counter" id="carousel-counter"></span>
+                <button class="carousel-btn" type="button" id="carousel-next">&rarr;</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <iframe id="render-frame" src="index.html" style="display:none;" aria-hidden="true"></iframe>
+      </section>
+
       <div class="bar" id="archive-bar">
         <div class="bar-inner">
           <label for="curator-url">URL Render</label>
@@ -283,30 +623,49 @@
         </div>
       </div>
 
-      <iframe class="frame" id="main-frame" title="Panel" src="publicar.html"></iframe>
+      <iframe class="frame view" id="main-frame" title="Panel" src="index.html"></iframe>
 
       <div class="empty" id="frame-empty">
         <div class="empty-card">
           <p>No se pudo cargar la vista dentro del panel.</p>
-          <a class="link" id="open-current" href="publicar.html" target="_blank" rel="noopener">Abrir en pestana nueva</a>
+          <a class="link" id="open-current" href="panel.html#publish" target="_blank" rel="noopener">Abrir en pestana nueva</a>
         </div>
       </div>
     </main>
   </div>
 
+  <script src="js/palettes.js"></script>
   <script>
     const DEFAULT_CURATOR_URL = "https://archivo-x-curator.onrender.com/";
     const STORAGE_KEY = "monacastrosa-curator-url";
+    const OWNER = "imgifra";
+    const REPO = "frase-generator-v2";
+    const WORKFLOW = "publish.yml";
+    const CANVAS_WIDTH = 1080;
+    const CANVAS_HEIGHT = 1350;
 
     const frame = document.getElementById("main-frame");
     const tabs = Array.from(document.querySelectorAll(".tab"));
+    const publishView = document.getElementById("publish-view");
     const archiveBar = document.getElementById("archive-bar");
     const curatorUrlInput = document.getElementById("curator-url");
     const curatorLink = document.getElementById("curator-link");
     const openCurrent = document.getElementById("open-current");
+    const previewCanvas = document.getElementById("preview-canvas");
+    const previewCtx = previewCanvas.getContext("2d");
+    const renderFrame = document.getElementById("render-frame");
+
+    let colorSeleccionado = null;
+    let carouselIndex = 0;
+    let currentFrases = [];
+    let previewTimer = null;
+    let renderFrameReady = false;
+    let renderRequestSeq = 0;
+    let latestPreviewRequestId = 0;
+    const pendingRenderResolvers = new Map();
 
     const routes = {
-      publish: () => "publicar.html",
+      publish: () => "",
       render: () => "index.html",
       archive: () => getCuratorUrl()
     };
@@ -332,14 +691,21 @@
     function setActiveTab(name) {
       const getRoute = routes[name] || routes.publish;
       const nextSrc = getRoute();
+      const isPublish = name === "publish";
 
       tabs.forEach((tab) => {
         tab.classList.toggle("active", tab.dataset.tab === name);
       });
 
+      publishView.classList.toggle("active", isPublish);
+      frame.classList.toggle("active", !isPublish);
       archiveBar.classList.toggle("active", name === "archive");
-      frame.src = nextSrc;
-      openCurrent.href = nextSrc;
+      if (!isPublish) {
+        frame.src = nextSrc;
+        openCurrent.href = nextSrc;
+      } else {
+        openCurrent.href = "panel.html#publish";
+      }
       location.hash = name;
     }
 
@@ -357,7 +723,306 @@
       frame.src = frame.src;
     });
 
+    renderFrame.addEventListener("load", () => { renderFrameReady = true; });
+
+    window.addEventListener("message", (event) => {
+      const data = event.data;
+      if (!data || data.type !== "render-response") return;
+      const resolve = pendingRenderResolvers.get(data.requestId);
+      if (!resolve) return;
+      pendingRenderResolvers.delete(data.requestId);
+      resolve(data.dataUrl);
+    });
+
+    function waitForRenderFrame(timeoutMs = 5000) {
+      if (renderFrameReady) return Promise.resolve();
+      return new Promise((resolve) => {
+        const start = Date.now();
+        function check() {
+          if (renderFrameReady || Date.now() - start > timeoutMs) resolve();
+          else requestAnimationFrame(check);
+        }
+        check();
+      });
+    }
+
+    async function requestRender(text, bg) {
+      await waitForRenderFrame();
+      const requestId = ++renderRequestSeq;
+      return new Promise((resolve) => {
+        pendingRenderResolvers.set(requestId, resolve);
+        renderFrame.contentWindow.postMessage({
+          type: "render-request",
+          requestId,
+          text,
+          mode: "retro3d",
+          bg
+        }, "*");
+      });
+    }
+
+    async function updatePreview() {
+      const wrap = document.getElementById("preview-wrap");
+      if (!currentFrases.length) {
+        wrap.classList.remove("visible");
+        return;
+      }
+
+      wrap.classList.add("visible");
+      const frase = currentFrases[carouselIndex] || currentFrases[0];
+      const bg = colorSeleccionado || "#f4c400";
+      const requestId = ++latestPreviewRequestId;
+
+      if (!renderFrameReady) {
+        previewCtx.fillStyle = bg;
+        previewCtx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+        previewCtx.fillStyle = "rgba(0,0,0,0.4)";
+        previewCtx.font = "48px sans-serif";
+        previewCtx.textAlign = "center";
+        previewCtx.textBaseline = "middle";
+        previewCtx.fillText("Generando preview...", CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2);
+      }
+
+      const dataUrl = await requestRender(frase, bg);
+      if (requestId === latestPreviewRequestId) {
+        const img = new Image();
+        img.onload = () => { previewCtx.drawImage(img, 0, 0, CANVAS_WIDTH, CANVAS_HEIGHT); };
+        img.src = dataUrl;
+      }
+
+      const nav = document.getElementById("carousel-nav");
+      if (currentFrases.length > 1) {
+        nav.classList.add("active");
+        renderDots(currentFrases.length);
+        updateCarouselNav(currentFrases.length);
+      } else {
+        nav.classList.remove("active");
+      }
+    }
+
+    function renderDots(total) {
+      const el = document.getElementById("carousel-dots");
+      el.innerHTML = "";
+      for (let i = 0; i < total; i++) {
+        const dot = document.createElement("div");
+        dot.className = "carousel-dot" + (i === carouselIndex ? " active" : "");
+        dot.addEventListener("click", () => {
+          carouselIndex = i;
+          updatePreview();
+        });
+        el.appendChild(dot);
+      }
+    }
+
+    function updateCarouselNav(total) {
+      document.getElementById("carousel-prev").disabled = carouselIndex === 0;
+      document.getElementById("carousel-next").disabled = carouselIndex === total - 1;
+      document.getElementById("carousel-counter").textContent = `${carouselIndex + 1} / ${total}`;
+    }
+
+    function carouselNav(dir) {
+      carouselIndex = Math.max(0, Math.min(carouselIndex + dir, currentFrases.length - 1));
+      updatePreview();
+    }
+
+    function parseFrases() {
+      return document.getElementById("frases").value.split("\n").map((item) => item.trim()).filter(Boolean);
+    }
+
+    function setStatus(msg, cls) {
+      const el = document.getElementById("status");
+      el.textContent = msg;
+      el.className = `status ${cls || ""}`;
+    }
+
+    function setStatusRepublish(msg, cls) {
+      const el = document.getElementById("status-republish");
+      el.textContent = msg;
+      el.className = `status ${cls || ""}`;
+    }
+
+    function detectarTipo() {
+      const frases = parseFrases();
+      const el = document.getElementById("tipo-detectado");
+      if (!frases.length) {
+        el.textContent = "";
+        el.className = "tipo-tag";
+      } else if (frases.length === 1) {
+        el.textContent = "Single";
+        el.className = "tipo-tag";
+      } else if (frases.length <= 10) {
+        el.textContent = `Carrusel · ${frases.length} frases`;
+        el.className = "tipo-tag";
+      } else {
+        el.textContent = `Maximo 10 frases (tienes ${frases.length})`;
+        el.className = "tipo-tag over";
+      }
+    }
+
+    function onFrasesInput() {
+      detectarTipo();
+      currentFrases = parseFrases();
+      carouselIndex = 0;
+      clearTimeout(previewTimer);
+      previewTimer = setTimeout(updatePreview, 400);
+    }
+
+    function initColores() {
+      const grid = document.getElementById("color-grid");
+      const light = ["#f6f1e8", "#f4c400", "#c8e6c9", "#b3d9f2", "#d6cfc4"];
+      const colors = [
+        { hex: null, label: "Aleatorio" },
+        ...RETRO_PALETTES.map((palette) => ({ hex: palette.bg, label: palette.id }))
+      ];
+
+      colors.forEach(({ hex, label }) => {
+        const swatch = document.createElement("button");
+        swatch.type = "button";
+        swatch.className = "swatch" + (hex === null ? " random selected" : "");
+        swatch.title = label;
+        swatch.setAttribute("aria-label", label);
+        if (hex !== null) {
+          swatch.style.background = hex;
+          if (light.includes(hex)) swatch.style.outline = "1px solid #2a2a2a";
+        }
+        swatch.addEventListener("click", () => seleccionarColor(hex, label, swatch));
+        grid.appendChild(swatch);
+      });
+    }
+
+    function seleccionarColor(hex, label, el) {
+      document.querySelectorAll(".swatch").forEach((swatch) => swatch.classList.remove("selected"));
+      el.classList.add("selected");
+      colorSeleccionado = hex;
+      document.getElementById("color-label").textContent = hex === null ? "Aleatorio" : `${label} · ${hex}`;
+      updatePreview();
+    }
+
+    async function publicar(soloSheet) {
+      const token = document.getElementById("token").value.trim();
+      const caption = document.getElementById("caption").value.trim();
+      const frases = parseFrases();
+      const publishBtn = document.getElementById("btn-publicar");
+      const saveBtn = document.getElementById("btn-guardar");
+
+      setStatus("", "");
+      if (!token) { setStatus("Falta el token de GitHub.", "error"); return; }
+      if (!caption) { setStatus("Falta el caption.", "error"); return; }
+      if (frases.length < 1) { setStatus("Escribe al menos una frase.", "error"); return; }
+      if (frases.length > 10) { setStatus("Maximo 10 frases.", "error"); return; }
+
+      const tipo = frases.length === 1 ? "single" : "carousel";
+      publishBtn.disabled = true;
+      saveBtn.disabled = true;
+      setStatus(soloSheet ? "Guardando en sheet..." : "Publicando...", "");
+
+      try {
+        const res = await fetch(
+          `https://api.github.com/repos/${OWNER}/${REPO}/actions/workflows/${WORKFLOW}/dispatches`,
+          {
+            method: "POST",
+            headers: {
+              "Authorization": `Bearer ${token}`,
+              "Accept": "application/vnd.github+json",
+              "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+              ref: "main",
+              inputs: {
+                frases: frases.join("||"),
+                caption,
+                tipo,
+                color: colorSeleccionado || "",
+                solo_registrar: soloSheet ? "true" : "false"
+              }
+            })
+          }
+        );
+
+        if (res.status === 204) {
+          setStatus(
+            soloSheet ? "Guardado en sheet. Se publicara en el proximo horario." : `Enviado como ${tipo}. En 2-3 minutos estara publicado.`,
+            "ok"
+          );
+          document.getElementById("frases").value = "";
+          document.getElementById("caption").value = "";
+          document.getElementById("tipo-detectado").textContent = "";
+          document.getElementById("tipo-detectado").className = "tipo-tag";
+          document.getElementById("preview-wrap").classList.remove("visible");
+          currentFrases = [];
+          carouselIndex = 0;
+        } else {
+          const data = await res.json();
+          setStatus(`Error: ${data.message}`, "error");
+        }
+      } catch (err) {
+        setStatus(`Error: ${err.message}`, "error");
+      } finally {
+        publishBtn.disabled = false;
+        saveBtn.disabled = false;
+      }
+    }
+
+    async function republicar() {
+      const token = document.getElementById("token").value.trim();
+      const id = document.getElementById("publish-only-id").value.trim();
+      const btn = document.getElementById("btn-republish");
+
+      setStatusRepublish("", "");
+      if (!token) { setStatusRepublish("Falta el token de GitHub.", "error"); return; }
+      if (!id) { setStatusRepublish("Falta el ID a republicar.", "error"); return; }
+
+      btn.disabled = true;
+      setStatusRepublish("Enviando...", "");
+
+      try {
+        const res = await fetch(
+          `https://api.github.com/repos/${OWNER}/${REPO}/actions/workflows/${WORKFLOW}/dispatches`,
+          {
+            method: "POST",
+            headers: {
+              "Authorization": `Bearer ${token}`,
+              "Accept": "application/vnd.github+json",
+              "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+              ref: "main",
+              inputs: {
+                publish_only: id,
+                tipo: "auto",
+                frases: "",
+                caption: "",
+                color: "",
+                solo_registrar: "false",
+                reintentar: "false"
+              }
+            })
+          }
+        );
+
+        if (res.status === 204) {
+          setStatusRepublish("Enviado. En 1-2 minutos deberia llegar la notificacion de Telegram.", "ok");
+          document.getElementById("publish-only-id").value = "";
+        } else {
+          const data = await res.json();
+          setStatusRepublish(`Error: ${data.message}`, "error");
+        }
+      } catch (err) {
+        setStatusRepublish(`Error: ${err.message}`, "error");
+      } finally {
+        btn.disabled = false;
+      }
+    }
+
+    document.getElementById("frases").addEventListener("input", onFrasesInput);
+    document.getElementById("btn-publicar").addEventListener("click", () => publicar(false));
+    document.getElementById("btn-guardar").addEventListener("click", () => publicar(true));
+    document.getElementById("btn-republish").addEventListener("click", republicar);
+    document.getElementById("carousel-prev").addEventListener("click", () => carouselNav(-1));
+    document.getElementById("carousel-next").addEventListener("click", () => carouselNav(1));
+
     setCuratorUrl(localStorage.getItem(STORAGE_KEY) || DEFAULT_CURATOR_URL);
+    initColores();
 
     const initialTab = location.hash.replace("#", "");
     setActiveTab(routes[initialTab] ? initialTab : "publish");

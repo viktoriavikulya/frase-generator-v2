@@ -17,7 +17,7 @@ formulario  ──►  render                Google Sheets (estado)
                                        Telegram (alertas)
 ```
 
-1. Escribís una frase en `publicar.html` (GitHub Pages)
+1. Escribes una frase en `panel.html` (GitHub Pages)
 2. El formulario dispara el workflow `publish.yml` en GitHub Actions
 3. El pipeline renderiza → sube → publica en IG, FB y Threads
 4. El estado de cada post vive en Google Sheets
@@ -29,7 +29,7 @@ formulario  ──►  render                Google Sheets (estado)
 ## Uso diario
 
 ### Publicar contenido
-Abri `panel.html` como entrada principal. La pestana **Publicar** carga `publicar.html`; con 1 frase se publica un **single**, con 2-10 frases se publica un **carrusel**.
+Abri `panel.html` como entrada principal. Con 1 frase se publica un **single**, con 2-10 frases se publica un **carrusel**.
 
 ### Workflows disponibles en GitHub Actions
 
@@ -185,7 +185,7 @@ scripts/
 
 panel.html             # entrada unificada para publicar, render real y Archivo X
 index.html             # generador visual (sirve Playwright para los screenshots)
-publicar.html          # formulario de publicacion (GitHub Pages, cargado por panel.html)
+publicar.html          # redireccion de compatibilidad a panel.html#publish
 ```
 
 ---
@@ -224,3 +224,4 @@ publicar.html          # formulario de publicacion (GitHub Pages, cargado por pa
 | `SAVED_TWEETS_WORKSHEET_NAME` | Opcional: pestaña destino para el archivo de X. Default: `archivo_x` |
 | `SAVED_TWEETS_DRY_RUN` | Opcional: `true` evalúa el archivo local sin guardar filas |
 | `SAVED_TWEETS_IMPORT_MODE` | ⚠️ Deprecated: ya no tiene efecto en el flujo manual. Se conserva por compatibilidad |
+
