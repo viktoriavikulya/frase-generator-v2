@@ -44,53 +44,64 @@ const RETRO_3D_TEXT_CONFIG = {
   // 0.50 = centro exacto del canvas.
   centerYRatio: 0.50,
 
-  // Tamaño máximo permitido para una línea.
-  maxFont: 165,
+  // Tamaño máximo permitido por línea. Cada línea recibe su propio fontSize
+  // (el más grande que entra en targetWidth), acotado por este valor (ver
+  // layoutTextBalanced en mode-retro3d.js).
+  maxFont: 400,
 
-  // Tamaño mínimo permitido para una línea. Actúa como piso real: si una
-  // palabra no cabe ni siquiera a este tamaño, esa línea se descarta como
-  // inválida (ver getBestFontForLine / scoreLine en mode-retro3d.js).
+  // Tamaño mínimo permitido para una línea. Piso real: si ni a este tamaño
+  // entra alguna palabra, se usa igual (límite físico aceptado, ver
+  // layoutTextBalanced en mode-retro3d.js).
   minFont: 24,
 
-  // Separación vertical entre líneas.
-  // 0.88 = líneas más juntas, estilo póster.
+  // Separación vertical entre líneas (multiplicador del fontSize).
   lineHeightFactor: 1.0,
 
-  // Ancho objetivo (fracción de boxWidth) usado tanto para medir/validar el
-  // layout (layoutTextBalanced) como para dibujar (drawRetro3DLine). Un
-  // único valor evita que el render dibuje algo más ancho de lo que el
-  // layout midió como "cabe".
+  // Penaliza líneas cuyo ancho natural queda lejos de targetWidth
+  // (1 - fillRatio)^2 * fillPenalty.
+  fillPenalty: 100,
+
+  // Penaliza líneas cuyo fontSize elegido queda lejos de fontCap (el tope de
+  // altura para esa cantidad de líneas), aunque su fillRatio sea ~1.
+  // (1 - fontSize/fontCap)^2 * capPenalty. Sin esto, palabras anchas (tildes,
+  // palabras largas) pueden quedar "perfectamente justificadas" en ancho pero
+  // muy por debajo del tamaño de sus líneas vecinas, creando saltos de tamaño
+  // bruscos. Esto afecta cómo el DP reparte las palabras en líneas, no solo
+  // qué lineCount gana.
+  //
+  // En 0: se acepta la variación dramática estilo brat (una línea puede ser
+  // mucho más grande que sus vecinas, p.ej. "tiempo" a 229px junto a "para
+  // gente" a 152px) a cambio de menor llenado vertical (~85-93%) y de que
+  // casos extremos (palabras muy anchas con tildes) puedan quedar con un
+  // salto de tamaño visible respecto a sus líneas vecinas. Subir este valor
+  // (≈400+) prioriza llenar el alto con líneas más uniformes, pero aplana
+  // también la variación dramática deseada. Decisión: 0, se prefiere la
+  // variación dramática.
+  capPenalty: 0,
+
+  // Penaliza que el bloque completo (suma de fontSize*lineHeightFactor) quede
+  // lejos de boxHeight: (1 - heightFillRatio)^2 * heightFillPenalty. Pesa más
+  // que jumpPenalty para que llenar el alto gane sobre evitar saltos cuando
+  // la diferencia de llenado es grande.
+  heightFillPenalty: 600,
+
+  // Relación máxima de fontSize entre líneas vecinas antes de penalizar
+  // saltos bruscos.
+  maxJumpRatio: 1.8,
+
+  // Peso de la penalización por salto: (ratio - maxJumpRatio)^2 * jumpPenalty.
+  jumpPenalty: 40,
+
+  // Ancho objetivo (fracción de boxWidth) usado tanto para el layout
+  // (layoutTextBalanced) como referencia de dibujo (drawRetro3DLine).
   targetFill: 1,
 
-  // Penalización para evitar líneas de una sola palabra en frases medianas/largas.
-  singleWordPenalty: 180,
-
-  // Penalización para evitar líneas con demasiadas palabras.
-  manyWordsPenalty: 90,
-
-  // Penalización para evitar que la última línea quede muy corta.
-  lastLineShortPenalty: 700,
-
-  // Penalización cuando una línea no llena el ancho objetivo.
-  fillPenalty: 260,
-
-  // Penalización cuando una línea queda cerca del tamaño mínimo.
-  minFontPenalty: 20,
-
-  // Máxima diferencia aceptable entre tamaños de líneas vecinas.
-  maxJumpRatio: 1.65,
-
-  // Variación mínima para premiar el efecto póster.
-  variationBonusMin: 1.15,
-
-  // Variación máxima para premiar el efecto póster.
-  variationBonusMax: 1.65,
-
-  // Bono por tener variación agradable de tamaños (negativo = reduce el score).
-  variationBonus: -35,
-
-  // Penalización por dejar espacio vertical sin usar (boxHeight no ocupado).
-  // Evita que pequeños cambios de texto hagan saltar el layout entre un
-  // conteo de líneas que llena el bloque y otro mucho más chato.
-  heightFillPenalty: 200
+  // Llenado horizontal mínimo aceptable por línea. Tras elegir la partición
+  // (DP), si alguna línea queda con fillRatio por debajo de este umbral —
+  // aunque el conjunto tenga buen heightFillRatio — se fusiona con el vecino
+  // que produzca el mejor fillRatio mínimo resultante, recalculando fontSize
+  // para el nuevo lineCount (ver repairOutlierLines en mode-retro3d.js). Esto
+  // prioriza el llenado horizontal sobre el vertical: el bloque final puede
+  // ocupar menos alto, pero ninguna línea queda visiblemente angosta.
+  outlierFillThreshold: 0.85
 };
