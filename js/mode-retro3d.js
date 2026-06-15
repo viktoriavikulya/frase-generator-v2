@@ -225,19 +225,10 @@ function detectEditorialKeywords(words) {
 
 
 // ========= EXPERIMENTAL: layoutEditorial =========
-// Rediseño desde cero, sin justify. Dos enfoques posibles según el texto:
-//
-// - "cita": un único fontSize para toda la frase. Se busca el tamaño más
-//   grande tal que el wrap natural (greedy, cada línea <= boxWidth) entre en
-//   boxHeight. Cada línea queda con su ancho natural, centrada (sin estirar
-//   espacios) — estilo cita editorial.
-//
-// - "titular+bajada": si la frase tiene una pausa temprana (coma o punto
-//   dentro de las primeras 3-6 palabras, con texto suficiente después), se
-//   divide en dos bloques. El "titular" (hasta la pausa) y la "bajada"
-//   (resto) se ajustan cada uno a su propio tamaño único (mismo método que
-//   "cita"), repartiendo boxHeight entre ambos. La bajada nunca queda más
-//   grande que el titular (jerarquía tipográfica).
+// Rediseño desde cero, sin justify. "cita": un único fontSize para toda la
+// frase. Se busca el tamaño más grande tal que el wrap natural (greedy, cada
+// línea <= boxWidth) entre en boxHeight. Cada línea queda con su ancho
+// natural, centrada (sin estirar espacios) — estilo cita editorial.
 //
 // Devuelve { blocks: [{ fontSize, lines: [{ text, width }] }, ...], approach, gap }
 function layoutEditorial(text, boxWidth, boxHeight, ctxLocal, options = {}) {
@@ -246,8 +237,6 @@ function layoutEditorial(text, boxWidth, boxHeight, ctxLocal, options = {}) {
   const maxFont          = cfg.maxFont;
   const minFont          = cfg.minFont;
   const lineHeightFactor = cfg.editorialLineHeightFactor ?? 1.05;
-  const titularRatio     = cfg.editorialTitularRatio ?? 0.55;
-  const gapRatio         = cfg.editorialGapRatio ?? 0.06;
   const emphasisFactor   = cfg.editorialEmphasisFactor ?? 1.20;
 
   const words = text.split(/\s+/).filter(Boolean);
@@ -334,40 +323,8 @@ function layoutEditorial(text, boxWidth, boxHeight, ctxLocal, options = {}) {
 
   const n = words.length;
 
-  // Detecta una pausa temprana (coma/punto/etc.) dentro de las primeras
-  // 3-6 palabras, dejando al menos 2 palabras de "bajada" después.
-  const PAUSE_CHARS    = [",", ".", ";", ":", "!", "?"];
-  const maxTitularIdx  = Math.min(5, n - 2);
-  let splitIndex = -1;
-  for (let i = 2; i <= maxTitularIdx; i++) {
-    const w = words[i];
-    if (w.length > 0 && PAUSE_CHARS.includes(w[w.length - 1])) {
-      splitIndex = i;
-      break;
-    }
-  }
-
-  if (splitIndex === -1) {
-    const block = fitBlock(0, n, boxHeight, maxFont);
-    return { blocks: [block], approach: "cita", gap: 0 };
-  }
-
-  const titularCount = splitIndex + 1;
-  const bajadaCount  = n - titularCount;
-
-  const gap            = boxHeight * gapRatio;
-  const titularBudget  = boxHeight * titularRatio - gap / 2;
-  const bajadaBudget   = boxHeight * (1 - titularRatio) - gap / 2;
-
-  const titular = fitBlock(0, titularCount, titularBudget, maxFont);
-  let bajada    = fitBlock(titularCount, bajadaCount, bajadaBudget, maxFont);
-
-  // Jerarquía: la bajada nunca debe quedar más grande que el titular.
-  if (bajada.fontSize > titular.fontSize) {
-    bajada = { fontSize: titular.fontSize, lines: wrapAt(titularCount, bajadaCount, titular.fontSize) };
-  }
-
-  return { blocks: [titular, bajada], approach: "titular+bajada", gap };
+  const block = fitBlock(0, n, boxHeight, maxFont);
+  return { blocks: [block], approach: "cita", gap: 0 };
 }
 
 

@@ -20,7 +20,8 @@ const PHRASES = [
   "A mí me llegan a embolatar la matrícula cero y armo un mierdero",
   "Mor, diga que va a votar y yo le boto esos bóxer pa' la puta mierda.",
   "A lo mejor no encuentras el amor porque eres el problema y Dios está cuidando a las otras personas de ti.",
-  "Esta es una prueba para saber si el codigo funciona correctamente"
+  "Esta es una prueba para saber si el codigo funciona correctamente",
+  "Desperté, estoy soltera, duermo 8 horas, voy al gym, estoy tranquila, no envío párrafos de cómo quiero ser tratada, estoy linda, trabajo, estudio y no me interesa ningún hombre."
 ];
 
 const BG = "#2e3f5c";
