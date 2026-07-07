@@ -1807,13 +1807,25 @@
           body: JSON.stringify({ phrases, notes: clean(notesInput.value) })
         });
 
+        // POST /api/raw-phrases responde { ok, inserted, duplicates, skippedEmpty, skippedShort }.
+        // Si la respuesta no trae ese shape (p.ej. el "Curator URL" apunta a un backend viejo
+        // sin este endpoint y cae en el fallback HTML), no la tratamos como exito silencioso.
+        if (!data.ok || typeof data.inserted !== "number") {
+          throw new Error("Respuesta inesperada del servidor. Revisa que \"Curator URL\" apunte a un backend con /api/raw-phrases.");
+        }
+
+        const inserted = data.inserted;
+        const duplicates = Number(data.duplicates) || 0;
+        const skippedEmpty = Number(data.skippedEmpty) || 0;
+        const skippedShort = Number(data.skippedShort) || 0;
+
         setRawPhrasesStatus("");
         result.innerHTML = `
           <div class="result-box ok">
-            Guardadas <strong>${data.inserted}</strong> frase(s) como pendientes.
-            ${data.duplicates ? `${data.duplicates} duplicada(s) omitida(s).` : ""}
-            ${data.skippedEmpty ? `${data.skippedEmpty} linea(s) vacia(s) omitida(s).` : ""}
-            ${data.skippedShort ? `${data.skippedShort} muy corta(s) omitida(s).` : ""}
+            Guardadas <strong>${inserted}</strong> frase(s) como pendientes.
+            ${duplicates ? `${duplicates} duplicada(s) omitida(s).` : ""}
+            ${skippedEmpty ? `${skippedEmpty} linea(s) vacia(s) omitida(s).` : ""}
+            ${skippedShort ? `${skippedShort} muy corta(s) omitida(s).` : ""}
           </div>
           <button class="btn-ghost" type="button" id="raw-phrases-goto-curate">Ir a curar pendientes</button>
         `;
@@ -1826,7 +1838,7 @@
           });
         }
 
-        if (data.inserted > 0) {
+        if (inserted > 0) {
           textarea.value = "";
           notesInput.value = "";
           archiveState.loaded = false; // fuerza recarga la proxima vez que se abra "Curar Frases"
