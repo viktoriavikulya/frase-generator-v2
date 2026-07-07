@@ -138,7 +138,7 @@ window.assetsReady     = assetsReady;
 
 
 /* ========= PREVIEW API (postMessage) =========
-   Permite que otra página (ej. publicar.html, vía iframe) pida un render
+   Permite que el panel principal (panel.html, vía iframe) pida un render
    con (text, mode, bg) y reciba el PNG resultante — así el preview usa
    exactamente el mismo código que el pipeline real, sin copias. */
 
