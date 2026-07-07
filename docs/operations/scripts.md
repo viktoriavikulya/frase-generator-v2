@@ -5,7 +5,9 @@ sueltos y cuáles pueden publicar contenido real o tocar el Google Sheet de prod
 [`docs/architecture/entrypoints.md`](../architecture/entrypoints.md) (qué es cada HTML) y
 [`docs/architecture/mapa-del-proyecto.md`](../architecture/mapa-del-proyecto.md) (riesgos y
 verificaciones por tipo de cambio de código). Para el detalle archivo por archivo de
-`scripts/dev/` y `tools/`, ver [`docs/operations/dev-tools.md`](dev-tools.md).
+`scripts/dev/` y `tools/`, ver [`docs/operations/dev-tools.md`](dev-tools.md). Para qué carpetas
+son artefactos generados/exports vs. código real, ver
+[`docs/operations/generated-artifacts.md`](generated-artifacts.md).
 
 Niveles de riesgo usados abajo:
 
