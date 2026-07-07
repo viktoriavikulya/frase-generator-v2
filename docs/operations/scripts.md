@@ -4,7 +4,8 @@ Mapa completo de qué hace cada comando del proyecto, para saber cuáles son seg
 sueltos y cuáles pueden publicar contenido real o tocar el Google Sheet de producción. Cruza con
 [`docs/architecture/entrypoints.md`](../architecture/entrypoints.md) (qué es cada HTML) y
 [`docs/architecture/mapa-del-proyecto.md`](../architecture/mapa-del-proyecto.md) (riesgos y
-verificaciones por tipo de cambio de código).
+verificaciones por tipo de cambio de código). Para el detalle archivo por archivo de
+`scripts/dev/` y `tools/`, ver [`docs/operations/dev-tools.md`](dev-tools.md).
 
 Niveles de riesgo usados abajo:
 
