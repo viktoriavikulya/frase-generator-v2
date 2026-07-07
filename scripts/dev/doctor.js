@@ -41,7 +41,13 @@ const CHECKED_JS_FILES = [
   "scripts/jobs/single/publish-single-from-sheet.js",
   "scripts/jobs/carousel/render-carousel-from-sheet.js",
   "scripts/jobs/carousel/upload-carousel-from-sheet.js",
-  "scripts/jobs/carousel/publish-carousel-from-sheet.js"
+  "scripts/jobs/carousel/publish-carousel-from-sheet.js",
+  "scripts/jobs/metrics/fetch-metrics.js",
+  "scripts/dev/doctor.js",
+  "scripts/dev/doctor-sheet.js",
+  "scripts/dev/check-palettes-sync.js",
+  "scripts/dev/sync-palettes.js",
+  "scripts/dev/render-preview.js"
 ];
 
 const STALE_DOC_PATTERNS = [
@@ -72,6 +78,7 @@ function checkPackageScripts() {
     const scripts = pkg.scripts || {};
 
     for (const scriptName of [
+      "render",
       "render:single",
       "render:carousel",
       "upload:single",
@@ -84,8 +91,11 @@ function checkPackageScripts() {
       "doctor",
       "doctor:sheet",
       "fetch:inspiration",
+      "fetch:metrics",
       "import:saved-tweets",
-      "curate:archivo-x"
+      "curate:archivo-x",
+      "start:archivo-x",
+      "panel"
     ]) {
       record(Boolean(scripts[scriptName]), `package script:${scriptName}`);
     }
@@ -98,7 +108,11 @@ function checkSyntax() {
   for (const relPath of CHECKED_JS_FILES) {
     try {
       const source = fs.readFileSync(absolute(relPath), "utf8");
-      const wrapped = `(function (exports, require, module, __filename, __dirname) {\n${source}\n});`;
+      // Node's real CLI strips a leading shebang (#!/usr/bin/env node) before parsing;
+      // reproduce that here or scripts with one (sync-palettes.js, check-palettes-sync.js)
+      // fail with "Invalid or unexpected token" once wrapped in a function body.
+      const withoutShebang = source.replace(/^#!.*\r?\n/, "");
+      const wrapped = `(function (exports, require, module, __filename, __dirname) {\n${withoutShebang}\n});`;
       new vm.Script(wrapped, { filename: relPath });
       record(true, `syntax:${relPath}`);
     } catch (err) {
