@@ -78,7 +78,8 @@ async function main() {
   const browser = await chromium.launch({ headless: true });
   const page = await browser.newPage({ viewport: { width: 1080, height: 1350 } });
 
-  await page.goto(`${url}/?text=x&mode=retro3d&bg=%230a1628`, { waitUntil: "domcontentloaded" });
+  // Fase C7A: panel.html en modo renderEngine=1 reemplaza a index.html como motor de render.
+  await page.goto(`${url}/panel.html?renderEngine=1&text=x&mode=retro3d&bg=%230a1628`, { waitUntil: "domcontentloaded" });
   await page.waitForFunction(() => window.renderReady === true, { timeout: 30000 });
 
   let overflowCount = 0, jumpCount = 0, outlierCount = 0;

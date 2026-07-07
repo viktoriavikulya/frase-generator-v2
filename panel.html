@@ -4,6 +4,46 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Panel monacastrosa</title>
+
+  <!-- Fase C7A: si panel.html?renderEngine=1, este documento actua como motor de
+       render (reemplaza a index.html) en vez de mostrar el panel administrativo.
+       Se detecta lo antes posible para que el CSS de mas abajo pueda ocultar/mostrar
+       lo que corresponde sin parpadeo. -->
+  <script>
+    window.__RENDER_ENGINE_MODE__ = new URLSearchParams(location.search).get("renderEngine") === "1";
+    if (window.__RENDER_ENGINE_MODE__) {
+      document.documentElement.classList.add("render-engine-mode");
+    }
+  </script>
+
+  <!-- Fuentes que necesita el motor de render (identicas a index.html) para que
+       document.fonts.ready espere las mismas fuentes y el render se vea igual. -->
+  <link href="https://fonts.cdnfonts.com/css/felt-tip-roman" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Serif:wght@700&display=swap" rel="stylesheet">
+  <link rel="preload"
+        href="https://www.bratgenerator.com/sites/g/files/g2000017981/files/2024-03/arial_narrow-webfont.woff"
+        as="font"
+        type="font/woff"
+        crossorigin>
+  <style>
+    @font-face {
+      font-family: 'arial_narrowregular';
+      src: url('https://www.bratgenerator.com/sites/g/files/g2000017981/files/2024-03/arial_narrow-webfont.woff') format('woff');
+      font-weight: normal;
+      font-style: normal;
+      font-display: swap;
+    }
+    @font-face {
+      font-family: 'OPTICashew-ExtraBold';
+      src: url('assets/OPTICashew-ExtraBold.woff') format('woff');
+      font-weight: 800;
+    }
+    /* Fase C7A: alternar entre panel administrativo y motor de render */
+    #render-engine-root { display: none; }
+    .render-engine-mode .shell { display: none !important; }
+    .render-engine-mode #render-engine-root { display: block !important; }
+  </style>
+
   <style>
     :root[data-theme="dark"] {
       color-scheme: dark;
@@ -851,7 +891,7 @@
           </div>
         </div>
 
-        <iframe id="render-frame" src="index.html" style="display:none;" aria-hidden="true"></iframe>
+        <iframe id="render-frame" src="panel.html?renderEngine=1" style="display:none;" aria-hidden="true"></iframe>
       </section>
 
       <section class="view archive-view" id="curate-view">
@@ -1014,8 +1054,53 @@
     </main>
   </div>
 
+  <!-- Fase C7A: DOM minimo equivalente al de index.html, para que js/config.js
+       (document.getElementById("previewCanvas"/"textInput"/"bgColor"/"modeSelect"/
+       "downloadBtn")) y js/app.js (document.querySelector(".control-panel")) lo
+       encuentren igual que en index.html. Siempre oculto salvo en renderEngine=1
+       (ver CSS en el <head>). No tiene estilos propios: nunca se ve, ni siquiera
+       dentro del iframe que lo carga. -->
+  <div id="render-engine-root">
+    <canvas id="previewCanvas" width="1080" height="1350"></canvas>
+    <select id="modeSelect">
+      <option value="normal">Normal</option>
+      <option value="brat">Brat</option>
+      <option value="retro3d">3D Retro</option>
+    </select>
+    <input id="textInput" type="text">
+    <input id="bgColor" type="color" value="#ffffff">
+    <button id="downloadBtn" type="button">Descargar PNG</button>
+    <div class="control-panel"></div>
+  </div>
+
   <script src="js/palettes.js"></script>
   <script>
+    // Fase C7A: en modo motor de render, cargar el resto de la cadena de
+    // index.html (config, utils, modos, branding, app) en el mismo orden que
+    // index.html. "js/palettes.js" ya se cargo arriba con el <script> estatico
+    // de siempre (es un archivo de datos puro, sin dependencia de config.js en
+    // ningun sentido, asi que el orden entre ambos no afecta nada) — cargarlo
+    // de nuevo aca duplicaria "const RETRO_PALETTES" y rompería con un error de
+    // redeclaracion, por eso no se repite.
+    if (window.__RENDER_ENGINE_MODE__) {
+      [
+        "js/config.js",
+        "js/utils.js",
+        "js/mode-normal.js",
+        "js/mode-brat.js",
+        "js/mode-retro3d.js",
+        "js/branding.js",
+        "js/app.js"
+      ].forEach((src) => {
+        const s = document.createElement("script");
+        s.src = src;
+        s.async = false;
+        document.body.appendChild(s);
+      });
+    }
+  </script>
+  <script>
+    if (!window.__RENDER_ENGINE_MODE__) {
     const DEFAULT_CURATOR_URL = "https://archivo-x-curator.onrender.com/";
     const STORAGE_KEY = "monacastrosa-curator-url";
     const ARCHIVE_TOKEN_KEY = "archive-x-token";
@@ -2079,6 +2164,7 @@
 
     const initialTab = location.hash.replace("#", "");
     setActiveTab(["publish", "curate", "raw", "carousel", "preview"].includes(initialTab) ? initialTab : "publish");
+    }
   </script>
 </body>
 </html>

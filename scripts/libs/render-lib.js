@@ -155,12 +155,16 @@ function buildSafeName(text) {
 
 function buildRenderUrl({ text, mode, bg }) {
   const params = new URLSearchParams({
+    renderEngine: "1",
     text,
     mode,
     bg
   });
 
-  return `${GENERATOR_URL}/?${params.toString()}`;
+  // Fase C7A: panel.html en modo renderEngine=1 reemplaza a index.html como
+  // motor de render — ya no depende de que "/" sirva index.html como
+  // directory-index.
+  return `${GENERATOR_URL}/panel.html?${params.toString()}`;
 }
 
 async function renderPhrase({ text, mode = "normal", bg = "#ffffff" }) {
