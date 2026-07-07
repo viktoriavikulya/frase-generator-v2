@@ -2,6 +2,8 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+For the full documentation index (architecture, operations, dev tools, generated artifacts, roadmap), see [`docs/README.md`](docs/README.md).
+
 ## What this project does
 
 Automated content publishing pipeline for Instagram, Facebook and Threads. Phrases entered via
