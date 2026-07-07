@@ -25,6 +25,7 @@ Niveles de riesgo usados abajo:
 | `npm run start:archivo-x` | mismo script que `curate:archivo-x` | curaduría | Medio | No se corre a mano — es el `startCommand` que usa el deploy de Render (`render.yaml`, servicio `archivo-x-curator`). | Mismo código, pero en producción sirve a `panel.html` real vía `archivo-x-curator.onrender.com`. |
 | `npm run import:saved-tweets` | `node scripts/jobs/inspiration/import-saved-tweets-to-sheet.js` | curaduría | Medio | Para meter `data/tweets-guardados-x.txt` a la pestaña `archivo_x` como filas `pendiente`. | Deduplica por texto normalizado antes de escribir. |
 | `npm run fetch:inspiration` | `node scripts/jobs/inspiration/fetch-inspiration.js` | inspiración | Medio | Para llenar la pestaña `inspiracion` con candidatos de X/Bluesky para revisar manualmente. | Llama APIs externas (X Bearer Token / Bluesky) — puede gastar cuota. Soporta `INSPIRATION_DRY_RUN=true` para probar sin escribir. |
+| `npm run fetch:metrics` | `node scripts/jobs/metrics/fetch-metrics.js` | métricas | Medio | Para recalcular métricas (`performance_score`, `saves`, `reach`, etc.) sin esperar al cron de los domingos. | Llama a la Meta Graph API (insights de IG/FB/Threads) y escribe columnas de métricas en Hoja 2. Igual que corre `.github/workflows/metrics.yml`. |
 | `npm run render` | `node scripts/dev/render-preview.js` | dev/debug | Bajo | Preview rápido de una frase suelta, resultado en `/output`. | No toca el Sheet. |
 | `npm run render:single` | `node scripts/jobs/single/render-single-from-sheet.js` | render | Medio | Paso de render del pipeline para posts sueltos, leyendo filas `pending` del Sheet. | Actualiza `estado_render` y toma un `lock_status`. Parte del pipeline real, no un preview. |
 | `npm run render:carousel` | `node scripts/jobs/carousel/render-carousel-from-sheet.js` | render | Medio | Igual que arriba, pero para carruseles. | Idem — actualiza estado y locks reales. |
@@ -45,10 +46,9 @@ para mantenimiento manual — igual de importantes para saber qué es seguro toc
 
 | Comando | Categoría | Riesgo | Cuándo usarlo | Notas |
 | --- | --- | --- | --- | --- |
-| `node scripts/pipeline/run-once.js` | pipeline | **Alto** | Corre el pipeline completo (register → render → upload → publish) igual que lo hace `publish.yml`. | Soporta `TIPO_INPUT=carousel` / `TIPO_INPUT=single`. Llama `releaseStaleLocks` primero. **Publica en redes reales si llega hasta el final.** |
-| `node scripts/pipeline/register-from-form.js` | pipeline | Medio | Registra frases nuevas como filas `pending` en Hoja 2 (lo usa el workflow cuando llega un submit del formulario). | No publica por sí solo, pero es el primer paso del pipeline real. |
-| `node scripts/pipeline/unlock-row.js` | pipeline / mantenimiento | Medio | Para liberar a mano una fila con `lock_status=locked` sin esperar los 10 min de `releaseStaleLocks`. | Requiere `UNLOCK_ID=<row_id o carousel_id>`. Deja `estado_general=error` para que el próximo ciclo reintente. Actúa sobre una fila puntual, no sobre todo el Sheet. |
-| `node scripts/jobs/metrics/fetch-metrics.js` | métricas | Medio | Corre los domingos vía `.github/workflows/metrics.yml` para calcular `performance_score`, `saves`, `reach`, etc. | Llama a la Meta Graph API (insights) y escribe columnas de métricas en Hoja 2. **No tiene alias `npm run` — ver nota de inconsistencia abajo.** |
+| `node scripts/pipeline/run-once.js` | pipeline | **Alto** | Corre el pipeline completo (register → render → upload → publish) igual que lo hace `publish.yml`. | Soporta `TIPO_INPUT=carousel` / `TIPO_INPUT=single`. Llama `releaseStaleLocks` primero. **Publica en redes reales si llega hasta el final.** Deliberadamente sin alias `npm run` — un `npm run pipeline` facilitaría correrlo por accidente (ver nota más abajo). |
+| `node scripts/pipeline/register-from-form.js` | pipeline | Medio | Registra frases nuevas como filas `pending` en Hoja 2 (lo usa el workflow cuando llega un submit del formulario). | No publica por sí solo, pero es el primer paso del pipeline real. Solo tiene sentido con las env vars que arma el workflow (`FRASES_INPUT`, etc.) — sin alias `npm run` a propósito. |
+| `node scripts/pipeline/unlock-row.js` | pipeline / mantenimiento | Medio | Para liberar a mano una fila con `lock_status=locked` sin esperar los 10 min de `releaseStaleLocks`. | Requiere `UNLOCK_ID=<row_id o carousel_id>`. Deja `estado_general=error` para que el próximo ciclo reintente. Actúa sobre una fila puntual, no sobre todo el Sheet. Deliberadamente sin alias `npm run` (ver nota más abajo). |
 | `node scripts/dev/render-all-retro-colors.js` | dev/debug | Bajo | Genera un PNG por cada una de las 30 paletas, para revisión visual. | Solo escribe en `/output`, no toca el Sheet. |
 | `node scripts/dev/debug-layout-tmp.js` | dev/debug | Bajo | Ayuda temporal para depurar el layout de texto retro3D con un set de frases fijas, sirviendo un preview en `:8099`. | Es explícitamente temporal (ver mensaje del commit "Keep retro3d layout debug helper") — no es parte del flujo oficial documentado. |
 
@@ -97,6 +97,17 @@ INSPIRATION_DRY_RUN=true npm run fetch:inspiration            # probar sin escri
 INSPIRATION_SOURCE=bluesky npm run fetch:inspiration           # si X se queda sin créditos
 ```
 
+## Comandos de métricas
+
+```bash
+npm run fetch:metrics                 # últimos 30 días (default)
+METRICS_DAYS=7 npm run fetch:metrics  # ventana más corta
+```
+
+Llama a la Meta Graph API real y escribe en Hoja 2 — mismo efecto que espera al domingo a que
+corra `metrics.yml`. No hace falta confirmación especial, pero no correrlo repetidamente sin
+necesidad (gasta cuota de la API de insights).
+
 ## Comandos de validación (siempre seguros)
 
 ```bash
@@ -114,10 +125,15 @@ No correr sin saber exactamente qué se va a afectar:
 - `node scripts/pipeline/unlock-row.js` — modifica `lock_status`/`estado_general` de una fila real.
 - `npm run upload:single` / `npm run upload:carousel` — suben contenido a Cloudinary de verdad.
 
-## Nota: inconsistencia documental detectada (no aplicada)
+## Nota: alias agregado (Fase A.10)
 
-`scripts/jobs/metrics/fetch-metrics.js` no tiene alias en `package.json` — se invoca directo con
-`node scripts/jobs/metrics/fetch-metrics.js` en `.github/workflows/metrics.yml`. El resto de jobs
-similares (`render:single`, `upload:carousel`, etc.) sí tienen alias `npm run`. Se podría agregar
-un `"metrics:fetch": "node scripts/jobs/metrics/fetch-metrics.js"` para consistencia, pero esta
-fase no toca `package.json` — queda como propuesta para confirmar aparte.
+`scripts/jobs/metrics/fetch-metrics.js` ahora tiene alias `npm run fetch:metrics` en
+`package.json` (antes solo se invocaba directo en `.github/workflows/metrics.yml`, que sigue
+usando `node scripts/jobs/metrics/fetch-metrics.js` sin cambios).
+
+En la misma auditoría se revisó si convenía agregar alias para `run-once.js`,
+`register-from-form.js` y `unlock-row.js` (los tres corridos por `publish.yml` sin alias). Se
+decidió **no** agregarles uno: son de riesgo medio/alto y requieren contexto específico (env vars
+del workflow, o un `TIPO_INPUT`/`UNLOCK_ID` puntual) — un alias `npm run` los haría más fáciles de
+correr por accidente sin ese contexto. Quedan documentados arriba como comandos deliberadamente
+sin alias.
