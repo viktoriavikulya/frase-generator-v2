@@ -23,6 +23,9 @@ Sheet** — there is no database and no shared memory between steps.
 
 ## Commands
 
+For a full inventory of every command (what it does, risk level, whether it publishes/writes to
+the real Sheet), see [`docs/operations/scripts.md`](docs/operations/scripts.md).
+
 ```bash
 # Full pipeline (auto: tries carousel first, falls back to single)
 node scripts/pipeline/run-once.js

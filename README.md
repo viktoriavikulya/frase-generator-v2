@@ -216,6 +216,7 @@ publicar.html          # redireccion de compatibilidad a panel.html#publish
 |---|---|
 | [`CLAUDE.md`](CLAUDE.md) | Mapa completo del sistema: arquitectura, cada capa, modelo de datos, reglas críticas, flujo Archivo X |
 | [`docs/architecture/mapa-del-proyecto.md`](docs/architecture/mapa-del-proyecto.md) | Guia visual para entender piezas, riesgos y verificaciones antes de cambiar codigo |
+| [`docs/operations/scripts.md`](docs/operations/scripts.md) | Inventario de todos los comandos (`npm run ...` y `node ...`): para qué sirve cada uno, riesgo y cuáles publican/tocan el Sheet de verdad |
 
 ---
 
