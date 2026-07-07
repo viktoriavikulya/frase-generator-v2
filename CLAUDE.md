@@ -115,11 +115,15 @@ scripts/
     common.js          nowIsoLocal(), colToLetter(), normalizeValue()
     logger.js          structured JSON logger
   dev/                 local-only tools (never run in production): render-preview, sync-palettes,
-                       check-palettes-sync, archive-curator-server (port 5177; serves
-                       Archivo X APIs + a legacy/fallback curator UI), doctor, doctor-sheet
+                       check-palettes-sync, doctor, doctor-sheet.
+                       archive-curator-server (port 5177; serves Archivo X APIs + a fallback
+                       curator UI) is the one exception — it's also deployed to Render
+                       (render.yaml, service "archivo-x-curator") as the production backend
+                       panel.html talks to by default, so it's not local-only.
 
-tools/archivo-x-curator.html   legacy/fallback manual curation UI ("Curaduría" + "Publicar carruseles" tabs),
-                                served by archive-curator-server.js
+tools/archivo-x-curator.html   fallback UI served by archive-curator-server.js's catch-all route
+                                ("Curaduría" + "Publicar carruseles" tabs) — reachable in
+                                production via the Render deployment above, not dead code
 data/tweets-guardados-x.txt    input for import:saved-tweets
 .github/workflows/publish.yml  main pipeline (schedule 10am/6pm Bogotá + workflow_dispatch)
 .github/workflows/metrics.yml  Sunday metrics job (+ manual `days` input)

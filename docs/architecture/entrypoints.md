@@ -14,6 +14,23 @@ lo puedo mover?".
 | `publicar.html` | Redirect de compatibilidad hacia `panel.html#publish` (meta refresh + `location.replace`). Sin lógica propia. | Todavía no. Pendiente confirmar que no haya enlaces externos (bio, bookmarks) apuntando a esta URL antes de moverlo. |
 | `tools/archivo-x-curator.html` | Fallback **activo en producción**: es lo que sirve `scripts/dev/archive-curator-server.js` (ruta catch-all) cuando se visita el servicio de Render (`archivo-x-curator.onrender.com`, definido en `render.yaml`) fuera de las rutas de API. `panel.html` usa esa misma URL como backend por defecto. | Todavía no. Moverlo requiere actualizar el `path.join(...)` en `archive-curator-server.js` y `REQUIRED_FILES` en `doctor.js` en el mismo cambio — no es un simple mover de archivo. |
 
+## Archivos de compatibilidad que NO se deben mover todavía
+
+Estos dos ya tienen un comentario HTML al inicio del propio archivo con la misma advertencia,
+para que quede visible incluso si alguien abre el archivo sin pasar por este doc:
+
+- **`publicar.html`** — redirect de compatibilidad hacia `panel.html#publish`, sin lógica propia.
+  Se queda en la raíz por si hay links externos, bookmarks o accesos guardados apuntando a esta
+  URL — algo que no se puede confirmar ni descartar solo auditando el repo. No mover sin antes
+  confirmar eso.
+- **`tools/archivo-x-curator.html`** — **no es HTML muerto**. Es el fallback que
+  `scripts/dev/archive-curator-server.js` sirve (ruta catch-all) cuando no matchea ninguna ruta
+  de `/api/*`, y ese servidor está desplegado en producción en Render (`render.yaml`, servicio
+  `archivo-x-curator`) — la misma URL que `panel.html` usa por defecto como backend del curador.
+  Es decir: reachable en producción, no solo un leftover local. No mover ni borrar sin actualizar
+  en el mismo cambio `scripts/dev/archive-curator-server.js` (el `path.join(...)` del fallback),
+  `scripts/dev/doctor.js` (`REQUIRED_FILES`) y las menciones en `README.md`/`CLAUDE.md`.
+
 ## Cómo servir cada cosa en local
 
 `panel.html` es el panel principal — el resto (`index.html`, la API de Archivo X) existe para

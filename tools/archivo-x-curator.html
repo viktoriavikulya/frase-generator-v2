@@ -1,4 +1,16 @@
 <!doctype html>
+<!--
+  Fallback activo, NO es HTML muerto ni legacy sin uso.
+  Lo sirve scripts/dev/archive-curator-server.js (ruta catch-all) para cualquier request que no
+  matchee una ruta de /api/*. Ese mismo servidor está desplegado en producción vía render.yaml
+  (servicio "archivo-x-curator" en Render), que es la URL que panel.html usa por defecto como
+  backend del curador — así que este archivo es alcanzable en producción, no solo en local.
+  No mover ni eliminar sin actualizar en el mismo cambio:
+    - el path.join(...) en scripts/dev/archive-curator-server.js
+    - REQUIRED_FILES en scripts/dev/doctor.js
+    - las menciones en README.md / CLAUDE.md
+  Ver docs/architecture/entrypoints.md para más contexto.
+-->
 <html lang="es" data-theme="dark">
 <head>
   <meta charset="utf-8">
