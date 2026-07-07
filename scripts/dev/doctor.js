@@ -21,8 +21,7 @@ const REQUIRED_FILES = [
   "scripts/jobs/inspiration/taxonomy.js",
   "scripts/jobs/inspiration/import-saved-tweets-to-sheet.js",
   "scripts/jobs/carousel/build-carousel-plan.js",
-  "scripts/dev/archive-curator-server.js",
-  "tools/archivo-x-curator.html"
+  "scripts/dev/archive-curator-server.js"
 ];
 
 const CHECKED_JS_FILES = [

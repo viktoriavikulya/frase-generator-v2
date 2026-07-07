@@ -125,13 +125,12 @@ scripts/
                        exception — it's also deployed to Render (render.yaml, service
                        "archivo-x-curator") as the production backend panel.html talks to by
                        default, so it's not local-only. Its catch-all route (and the explicit
-                       /archivo-x-curator.html path) now redirect (302) to panel.html#curate
-                       instead of serving tools/archivo-x-curator.html directly.
+                       /archivo-x-curator.html path) redirect (302) to panel.html#curate.
 
-tools/archivo-x-curator.html   legacy curaduría UI ("Curaduría" + "Publicar carruseles" tabs),
-                                kept for compatibility/history — no longer served as the visible
-                                fallback (archive-curator-server.js redirects to panel.html#curate
-                                instead). Not deleted or moved yet; do so only in a separate phase.
+tools/archivo-x-curator.html   REMOVED in Phase C5 — was the legacy curaduría UI ("Curaduría" +
+                                "Publicar carruseles" tabs). The /archivo-x-curator.html URL is
+                                kept as a compatibility redirect (302) to panel.html#curate in
+                                archive-curator-server.js; the physical file no longer exists.
 data/tweets-guardados-x.txt    input for import:saved-tweets
 .github/workflows/publish.yml  main pipeline (schedule 10am/6pm Bogotá + workflow_dispatch)
 .github/workflows/metrics.yml  Sunday metrics job (+ manual `days` input)
@@ -199,10 +198,10 @@ Daily/manual entry points are split by deployment plane:
 - `index.html` is still the render engine used by Playwright and by the preview iframe.
 - Render runs `scripts/dev/archive-curator-server.js` and exposes `/api/phrases`, `/api/taxonomy`,
   `/api/raw-phrases`, and `/api/plan-carruseles`. `panel.html` calls those APIs directly from
-  GitHub Pages; `tools/archivo-x-curator.html` is kept as a legacy UI file for compatibility, but
-  the server no longer serves it as the visible fallback — both `/` and `/archivo-x-curator.html`
-  redirect (302) to `panel.html#curate` instead (it never exposed the `Agregar Frases` raw-intake
-  form anyway, only the daily `panel.html` UI does).
+  GitHub Pages; `tools/archivo-x-curator.html` (the legacy curator UI file) was deleted in Phase
+  C5 — both `/` and `/archivo-x-curator.html` redirect (302) to `panel.html#curate` instead (that
+  legacy UI never exposed the `Agregar Frases` raw-intake form anyway, only the daily `panel.html`
+  UI does).
 
 Do not copy render functions into `publicar.html` or `panel.html`. If the visual output changes, update `js/mode-retro3d.js` / `js/config.js` and verify through `index.html` or `render-preview.js`.
 

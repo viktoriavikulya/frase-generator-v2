@@ -17,9 +17,10 @@ const PORT = Number(process.env.PORT || process.env.CURATOR_PORT || 5177);
 const HOST = process.env.HOST || "127.0.0.1";
 const CURATOR_TOKEN = process.env.CURATOR_TOKEN;
 
-// tools/archivo-x-curator.html queda como legacy (no se borra ni se mueve todavía),
-// pero ya no se sirve directamente: tanto la raíz como su propia ruta redirigen al
-// panel principal real. 302 temporal a propósito, para poder revertir sin fricción.
+// tools/archivo-x-curator.html (la UI legacy que corría acá) se eliminó en la Fase C5.
+// La URL /archivo-x-curator.html se conserva como redirect de compatibilidad, igual que
+// la raíz — ambas van al panel principal real. 302 temporal a propósito, para poder
+// revertir sin fricción si hiciera falta volver a servir algo ahí.
 const PANEL_CURATE_URL = "https://imgifra.github.io/frase-generator-v2/panel.html#curate";
 
 function redirectToPanelCurate(_req, res) {

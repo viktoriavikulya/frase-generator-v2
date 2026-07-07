@@ -12,26 +12,26 @@ lo puedo mover?".
 | `panel.html` | Panel principal de trabajo diario (GitHub Pages). Publicar, curar frases, agregar frases, armar carruseles, preview. | No — es un entrypoint de GitHub Pages y lo exige `scripts/dev/doctor.js`. |
 | `index.html` | Motor visual/render. Lo usa Playwright (`scripts/libs/render-lib.js`) para generar el PNG de producción, y `panel.html` lo carga en un `<iframe>` oculto para su preview (`postMessage` + `canvas.toDataURL()`). | No — `serve-static` lo sirve desde la raíz del repo y el iframe de `panel.html` depende de esa ruta. |
 | `publicar.html` | Redirect de compatibilidad hacia `panel.html#publish` (meta refresh + `location.replace`). Sin lógica propia. | Todavía no. Pendiente confirmar que no haya enlaces externos (bio, bookmarks) apuntando a esta URL antes de moverlo. |
-| `tools/archivo-x-curator.html` | UI legacy de curaduría, **conservada por compatibilidad/historial** — ya no es el fallback visible. Desde la Fase C3, tanto la raíz del servicio de Render (`archivo-x-curator.onrender.com`) como la ruta `/archivo-x-curator.html` redirigen (302) a `panel.html#curate` en vez de servir este archivo. `panel.html` usa esa misma URL como backend por defecto (solo para la API, no para ver esta UI). | Todavía no. No borrar ni mover sin una fase aparte — sigue existiendo en disco por si hace falta revertir el redirect. |
 
 ## Archivos de compatibilidad que NO se deben mover todavía
 
-Estos dos ya tienen un comentario HTML al inicio del propio archivo con la misma advertencia,
+Este ya tiene un comentario HTML al inicio del propio archivo con la misma advertencia,
 para que quede visible incluso si alguien abre el archivo sin pasar por este doc:
 
 - **`publicar.html`** — redirect de compatibilidad hacia `panel.html#publish`, sin lógica propia.
   Se queda en la raíz por si hay links externos, bookmarks o accesos guardados apuntando a esta
   URL — algo que no se puede confirmar ni descartar solo auditando el repo. No mover sin antes
   confirmar eso.
-- **`tools/archivo-x-curator.html`** — **no es HTML muerto, pero tampoco es el fallback visible
-  principal desde la Fase C3**. `scripts/dev/archive-curator-server.js` está desplegado en
-  producción en Render (`render.yaml`, servicio `archivo-x-curator`) — la misma URL que
-  `panel.html` usa por defecto como backend del curador — pero su ruta catch-all y la ruta
-  explícita `/archivo-x-curator.html` ahora hacen `res.redirect(302, ...)` hacia
-  `panel.html#curate` en vez de servir este archivo con `res.sendFile(...)`. El archivo sigue
-  en disco (no se borró ni se movió) por si hace falta revertir el redirect. No mover ni borrar
-  sin actualizar en el mismo cambio `scripts/dev/archive-curator-server.js`,
-  `scripts/dev/doctor.js` (`REQUIRED_FILES`) y las menciones en `README.md`/`CLAUDE.md`.
+
+## `tools/archivo-x-curator.html` — eliminado en la Fase C5
+
+Este archivo **ya no existe físicamente en el repo**. Era la UI legacy de curaduría
+("Curaduría" + "Publicar carruseles"); en la Fase C3 dejó de ser el fallback visible
+(`scripts/dev/archive-curator-server.js` empezó a redirigir en vez de servirlo), y en la Fase C5
+se borró del todo con `git rm`. La URL `/archivo-x-curator.html` **se conserva** como redirect
+(302) hacia `panel.html#curate` — igual que la raíz del servicio — así que ningún link viejo
+queda roto, solo redirige en vez de mostrar la UI vieja. `scripts/dev/doctor.js` ya no la exige
+en `REQUIRED_FILES`.
 
 ## Cómo servir cada cosa en local
 
