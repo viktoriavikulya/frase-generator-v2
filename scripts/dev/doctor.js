@@ -47,7 +47,24 @@ const CHECKED_JS_FILES = [
   "scripts/dev/doctor-sheet.js",
   "scripts/dev/check-palettes-sync.js",
   "scripts/dev/sync-palettes.js",
-  "scripts/dev/render-preview.js"
+  "scripts/dev/render-preview.js",
+  "scripts/pipeline/run-once.js",
+  "scripts/pipeline/run-single.js",
+  "scripts/pipeline/run-carousel.js",
+  "scripts/pipeline/unlock-row.js",
+  "scripts/libs/facebook-lib.js",
+  "scripts/libs/graph-client.js",
+  "scripts/libs/instagram-lib.js",
+  "scripts/libs/render-lib.js",
+  "scripts/libs/telegram-lib.js",
+  "scripts/core/sheets.js",
+  "scripts/core/status.js",
+  "scripts/auth/google-auth.js",
+  "scripts/utils/common.js",
+  "scripts/utils/logger.js",
+  "scripts/utils/pipeline-utils.js",
+  "scripts/utils/render-job-utils.js",
+  "scripts/utils/carousel-utils.js"
 ];
 
 const STALE_DOC_PATTERNS = [
