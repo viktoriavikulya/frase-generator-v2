@@ -58,7 +58,7 @@ npm run doctor:sheet  # audits Google Sheet columns/states
 
 # Archivo X (manual curation flow)
 npm run import:saved-tweets   # imports data/tweets-guardados-x.txt into the "archivo_x" sheet tab
-npm run curate:archivo-x      # local/API fallback at http://localhost:5177; daily UI is panel.html#archive
+npm run curate:archivo-x      # curator API at http://localhost:5177; daily UI is panel.html#curate
 
 # panel.html locally (two terminals)
 npm run curate:archivo-x      # terminal 1 — curator API at http://localhost:5177
@@ -121,14 +121,17 @@ scripts/
     logger.js          structured JSON logger
   dev/                 local-only tools (never run in production): render-preview, sync-palettes,
                        check-palettes-sync, doctor, doctor-sheet.
-                       archive-curator-server (port 5177; serves Archivo X APIs + a fallback
-                       curator UI) is the one exception — it's also deployed to Render
-                       (render.yaml, service "archivo-x-curator") as the production backend
-                       panel.html talks to by default, so it's not local-only.
+                       archive-curator-server (port 5177; serves Archivo X APIs) is the one
+                       exception — it's also deployed to Render (render.yaml, service
+                       "archivo-x-curator") as the production backend panel.html talks to by
+                       default, so it's not local-only. Its catch-all route (and the explicit
+                       /archivo-x-curator.html path) now redirect (302) to panel.html#curate
+                       instead of serving tools/archivo-x-curator.html directly.
 
-tools/archivo-x-curator.html   fallback UI served by archive-curator-server.js's catch-all route
-                                ("Curaduría" + "Publicar carruseles" tabs) — reachable in
-                                production via the Render deployment above, not dead code
+tools/archivo-x-curator.html   legacy curaduría UI ("Curaduría" + "Publicar carruseles" tabs),
+                                kept for compatibility/history — no longer served as the visible
+                                fallback (archive-curator-server.js redirects to panel.html#curate
+                                instead). Not deleted or moved yet; do so only in a separate phase.
 data/tweets-guardados-x.txt    input for import:saved-tweets
 .github/workflows/publish.yml  main pipeline (schedule 10am/6pm Bogotá + workflow_dispatch)
 .github/workflows/metrics.yml  Sunday metrics job (+ manual `days` input)
@@ -196,9 +199,10 @@ Daily/manual entry points are split by deployment plane:
 - `index.html` is still the render engine used by Playwright and by the preview iframe.
 - Render runs `scripts/dev/archive-curator-server.js` and exposes `/api/phrases`, `/api/taxonomy`,
   `/api/raw-phrases`, and `/api/plan-carruseles`. `panel.html` calls those APIs directly from
-  GitHub Pages; `tools/archivo-x-curator.html` remains as a legacy/fallback UI served by the same
-  server (it does not expose the `Agregar Frases` raw-intake form, only the daily `panel.html` UI
-  does).
+  GitHub Pages; `tools/archivo-x-curator.html` is kept as a legacy UI file for compatibility, but
+  the server no longer serves it as the visible fallback — both `/` and `/archivo-x-curator.html`
+  redirect (302) to `panel.html#curate` instead (it never exposed the `Agregar Frases` raw-intake
+  form anyway, only the daily `panel.html` UI does).
 
 Do not copy render functions into `publicar.html` or `panel.html`. If the visual output changes, update `js/mode-retro3d.js` / `js/config.js` and verify through `index.html` or `render-preview.js`.
 
@@ -212,7 +216,8 @@ Two equivalent ways in, both land in sheet tab "archivo_x" with decision_editori
   panel.html#raw ("Agregar Frases")  -> POST /api/raw-phrases
 
   -> panel.html#curate / panel.html#carousel   (GitHub Pages, daily UI)
-     or npm run curate:archivo-x        (http://localhost:5177 legacy/fallback)
+     or npm run curate:archivo-x        (http://localhost:5177 — the API only; visiting it in a
+                                          browser now redirects to panel.html#curate)
        "Curar Frases" / legacy "Curaduría" tab: approve/discard/edit frase_final, assign
          grupo_carrusel
          only the "Aprobar" button sets decision_editorial = aprobada

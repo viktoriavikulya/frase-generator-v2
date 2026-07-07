@@ -1,12 +1,13 @@
 <!doctype html>
 <!--
-  Fallback activo, NO es HTML muerto ni legacy sin uso.
-  Lo sirve scripts/dev/archive-curator-server.js (ruta catch-all) para cualquier request que no
-  matchee una ruta de /api/*. Ese mismo servidor está desplegado en producción vía render.yaml
-  (servicio "archivo-x-curator" en Render), que es la URL que panel.html usa por defecto como
-  backend del curador — así que este archivo es alcanzable en producción, no solo en local.
+  UI legacy de curaduría, conservada por compatibilidad/historial — no borrada ni movida.
+  Desde la Fase C3 ya NO es el fallback visible: scripts/dev/archive-curator-server.js redirige
+  (302) tanto su ruta catch-all como /archivo-x-curator.html hacia panel.html#curate en vez de
+  servir este archivo. Ese mismo servidor sigue desplegado en producción vía render.yaml (servicio
+  "archivo-x-curator" en Render), que es la URL que panel.html usa por defecto como backend del
+  curador — pero ya no se llega a este HTML por ahí.
   No mover ni eliminar sin actualizar en el mismo cambio:
-    - el path.join(...) en scripts/dev/archive-curator-server.js
+    - el redirect en scripts/dev/archive-curator-server.js
     - REQUIRED_FILES en scripts/dev/doctor.js
     - las menciones en README.md / CLAUDE.md
   Ver docs/architecture/entrypoints.md para más contexto.

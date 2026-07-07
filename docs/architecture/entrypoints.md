@@ -12,7 +12,7 @@ lo puedo mover?".
 | `panel.html` | Panel principal de trabajo diario (GitHub Pages). Publicar, curar frases, agregar frases, armar carruseles, preview. | No — es un entrypoint de GitHub Pages y lo exige `scripts/dev/doctor.js`. |
 | `index.html` | Motor visual/render. Lo usa Playwright (`scripts/libs/render-lib.js`) para generar el PNG de producción, y `panel.html` lo carga en un `<iframe>` oculto para su preview (`postMessage` + `canvas.toDataURL()`). | No — `serve-static` lo sirve desde la raíz del repo y el iframe de `panel.html` depende de esa ruta. |
 | `publicar.html` | Redirect de compatibilidad hacia `panel.html#publish` (meta refresh + `location.replace`). Sin lógica propia. | Todavía no. Pendiente confirmar que no haya enlaces externos (bio, bookmarks) apuntando a esta URL antes de moverlo. |
-| `tools/archivo-x-curator.html` | Fallback **activo en producción**: es lo que sirve `scripts/dev/archive-curator-server.js` (ruta catch-all) cuando se visita el servicio de Render (`archivo-x-curator.onrender.com`, definido en `render.yaml`) fuera de las rutas de API. `panel.html` usa esa misma URL como backend por defecto. | Todavía no. Moverlo requiere actualizar el `path.join(...)` en `archive-curator-server.js` y `REQUIRED_FILES` en `doctor.js` en el mismo cambio — no es un simple mover de archivo. |
+| `tools/archivo-x-curator.html` | UI legacy de curaduría, **conservada por compatibilidad/historial** — ya no es el fallback visible. Desde la Fase C3, tanto la raíz del servicio de Render (`archivo-x-curator.onrender.com`) como la ruta `/archivo-x-curator.html` redirigen (302) a `panel.html#curate` en vez de servir este archivo. `panel.html` usa esa misma URL como backend por defecto (solo para la API, no para ver esta UI). | Todavía no. No borrar ni mover sin una fase aparte — sigue existiendo en disco por si hace falta revertir el redirect. |
 
 ## Archivos de compatibilidad que NO se deben mover todavía
 
@@ -23,12 +23,14 @@ para que quede visible incluso si alguien abre el archivo sin pasar por este doc
   Se queda en la raíz por si hay links externos, bookmarks o accesos guardados apuntando a esta
   URL — algo que no se puede confirmar ni descartar solo auditando el repo. No mover sin antes
   confirmar eso.
-- **`tools/archivo-x-curator.html`** — **no es HTML muerto**. Es el fallback que
-  `scripts/dev/archive-curator-server.js` sirve (ruta catch-all) cuando no matchea ninguna ruta
-  de `/api/*`, y ese servidor está desplegado en producción en Render (`render.yaml`, servicio
-  `archivo-x-curator`) — la misma URL que `panel.html` usa por defecto como backend del curador.
-  Es decir: reachable en producción, no solo un leftover local. No mover ni borrar sin actualizar
-  en el mismo cambio `scripts/dev/archive-curator-server.js` (el `path.join(...)` del fallback),
+- **`tools/archivo-x-curator.html`** — **no es HTML muerto, pero tampoco es el fallback visible
+  principal desde la Fase C3**. `scripts/dev/archive-curator-server.js` está desplegado en
+  producción en Render (`render.yaml`, servicio `archivo-x-curator`) — la misma URL que
+  `panel.html` usa por defecto como backend del curador — pero su ruta catch-all y la ruta
+  explícita `/archivo-x-curator.html` ahora hacen `res.redirect(302, ...)` hacia
+  `panel.html#curate` en vez de servir este archivo con `res.sendFile(...)`. El archivo sigue
+  en disco (no se borró ni se movió) por si hace falta revertir el redirect. No mover ni borrar
+  sin actualizar en el mismo cambio `scripts/dev/archive-curator-server.js`,
   `scripts/dev/doctor.js` (`REQUIRED_FILES`) y las menciones en `README.md`/`CLAUDE.md`.
 
 ## Cómo servir cada cosa en local
@@ -38,15 +40,16 @@ que `panel.html` funcione. En local hacen falta **dos procesos**:
 
 ```bash
 # Terminal 1 — API del curador (Archivo X)
-npm run curate:archivo-x   # levanta SOLO la API + el fallback legacy, en http://localhost:5177
+npm run curate:archivo-x   # levanta SOLO la API en http://localhost:5177
 
 # Terminal 2 — el panel
 npm run panel              # sirve panel.html e index.html en http://localhost:5173/panel.html
 ```
 
 - `npm run curate:archivo-x` **no sirve el panel completo** — es un servidor de API (con
-  credenciales de Google Sheets) que además sirve `tools/archivo-x-curator.html` como fallback.
-  Mezclarlo con servir `panel.html` acoplaría un frontend público a un backend con credenciales.
+  credenciales de Google Sheets). Visitar su raíz (`/`) o `/archivo-x-curator.html` en el
+  navegador redirige (302) a `panel.html#curate` en vez de mostrar una UI ahí. Mezclarlo con
+  servir `panel.html` acoplaría un frontend público a un backend con credenciales.
 - `index.html` sigue siendo el motor de render/preview: `panel.html` lo carga en un `<iframe>`
   oculto, y ambos quedan en el mismo origen (`localhost:5173`) al levantarlos con `npm run panel`.
 - **No abrir `panel.html` con doble clic ni `file://`** — el navegador manda `Origin: null`, que

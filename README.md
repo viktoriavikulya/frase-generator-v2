@@ -122,7 +122,7 @@ npm run doctor:sheet  # audita columnas y estados del Google Sheet
 # Inspiración viral
 npm run fetch:inspiration    # llena la pestaña "inspiracion" con candidatos para revisar
 npm run import:saved-tweets  # importa data/tweets-guardados-x.txt a la pestaña "archivo_x" (script activo: scripts/jobs/inspiration/import-saved-tweets-to-sheet.js)
-npm run curate:archivo-x     # abre el backend/API de Archivo X en http://localhost:5177; panel.html#archive usa esas APIs
+npm run curate:archivo-x     # abre el backend/API de Archivo X en http://localhost:5177; panel.html#curate usa esas APIs
 
 # Panel local (ver "Panel local (desarrollo)" más arriba)
 npm run panel                # sirve panel.html/index.html en http://localhost:5173 (no abrir con file://)
@@ -145,8 +145,9 @@ No hay scoring automático, no hay clasificación, no hay recomendaciones.
 
 #### 2. Curar frase por frase
 ```bash
-panel.html#archive
-# o, en local/fallback: npm run curate:archivo-x -> http://localhost:5177
+panel.html#curate
+# la API que consume corre con: npm run curate:archivo-x -> http://localhost:5177
+# (visitar esa URL directo en el navegador redirige a panel.html#curate, no muestra una UI ahí)
 ```
 Interfaz web para revisar cada frase. Para cada una podés:
 
@@ -161,7 +162,7 @@ Interfaz web para revisar cada frase. Para cada una podés:
 Solo las frases con `decision_editorial = aprobada` entran al plan de carruseles.
 
 #### 3. Registrar carruseles
-Desde `panel.html#archive`, entra a **Publicar carruseles**, elige exactamente 10 frases aprobadas de un mismo grupo, define caption/color y registra el carrusel en Hoja 2 como `pending`.
+Desde `panel.html#carousel` ("Armar Carruseles"), elige exactamente 10 frases aprobadas de un mismo grupo, define caption/color y registra el carrusel en Hoja 2 como `pending`.
 
 `npm run build:carousel-plan` queda como herramienta legacy de planeación/export; no es el flujo principal del panel.
 

@@ -77,7 +77,7 @@ flowchart TD
   B --> G[/api/phrases]
   B --> H[/api/plan-carruseles]
 
-  E[Render<br/>Node server] --> F[tools/archivo-x-curator.html<br/>fallback legacy]
+  E[Render<br/>Node server] --> F[Redirect 302<br/>panel.html#curate]
   E --> G[/api/phrases]
   E --> H[/api/plan-carruseles]
 
@@ -264,7 +264,7 @@ Regla mental: si cambias locks, estados o columnas, prueba con mas calma.
 | Orden del pipeline | `scripts/pipeline/run-once.js`, `scripts/utils/pipeline-runner.js` | `npm run doctor` |
 | Upload | `scripts/libs/upload-lib.js` | `npm run doctor` + prueba controlada |
 | Instagram/Facebook/Threads | `scripts/libs/*-lib.js`, jobs publish | `npm run doctor` + revisar errores por plataforma |
-| Archivo X | `panel.html`, `scripts/dev/archive-curator-server.js`, `scripts/jobs/inspiration/*` | probar `panel.html#archive` + `npm run curate:archivo-x` |
+| Archivo X | `panel.html`, `scripts/dev/archive-curator-server.js`, `scripts/jobs/inspiration/*` | probar `panel.html#curate` + `npm run curate:archivo-x` |
 | Sheet/locks/estados | `scripts/core/*`, `scripts/utils/pipeline-utils.js`, jobs | `npm run doctor` + `npm run doctor:sheet` |
 
 ## Mapa de riesgo
