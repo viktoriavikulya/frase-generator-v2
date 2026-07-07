@@ -31,6 +31,24 @@ formulario  ──►  render                Google Sheets (estado)
 ### Publicar contenido
 Abri `panel.html` como entrada principal. Desde ahi puedes publicar frases nuevas y curar Archivo X. Con 1 frase se publica un **single**, con 2-10 frases se publica un **carrusel**.
 
+En producción esto es GitHub Pages, no hace falta nada más. Para probar `panel.html` **en local**, ver la sección siguiente.
+
+### Panel local (desarrollo)
+
+`panel.html` es una página estática: para probarla en tu máquina necesitas dos terminales.
+
+```bash
+# Terminal 1 — API del curador de Archivo X
+npm run curate:archivo-x
+# levanta http://localhost:5177
+
+# Terminal 2 — el panel en sí
+npm run panel
+# sirve http://localhost:5173/panel.html
+```
+
+Abrí **`http://localhost:5173/panel.html`** en el navegador. **No abras `panel.html` con doble clic ni con `file://`** — el panel hace `fetch` hacia la API del curador, y esas llamadas fallan con "Failed to fetch" cuando el origen es `file://` (no pasa el CORS del backend). Sirviéndolo por `http://localhost:5173` sí funciona, porque ese origen ya está permitido en `scripts/dev/archive-curator-server.js`.
+
 ### Workflows disponibles en GitHub Actions
 
 Entrá a tu repo → pestaña **Actions** → elegí el workflow.
@@ -105,6 +123,9 @@ npm run doctor:sheet  # audita columnas y estados del Google Sheet
 npm run fetch:inspiration    # llena la pestaña "inspiracion" con candidatos para revisar
 npm run import:saved-tweets  # importa data/tweets-guardados-x.txt a la pestaña "archivo_x" (script activo: scripts/jobs/inspiration/import-saved-tweets-to-sheet.js)
 npm run curate:archivo-x     # abre el backend/API de Archivo X en http://localhost:5177; panel.html#archive usa esas APIs
+
+# Panel local (ver "Panel local (desarrollo)" más arriba)
+npm run panel                # sirve panel.html/index.html en http://localhost:5173 (no abrir con file://)
 ```
 
 ### Flujo editorial de archivo_x

@@ -54,6 +54,13 @@ npm run doctor:sheet  # audits Google Sheet columns/states
 # Archivo X (manual curation flow)
 npm run import:saved-tweets   # imports data/tweets-guardados-x.txt into the "archivo_x" sheet tab
 npm run curate:archivo-x      # local/API fallback at http://localhost:5177; daily UI is panel.html#archive
+
+# panel.html locally (two terminals)
+npm run curate:archivo-x      # terminal 1 — curator API at http://localhost:5177
+npm run panel                 # terminal 2 — serves panel.html at http://localhost:5173/panel.html
+                               # (set "Curator URL" in the panel to http://localhost:5177)
+                               # do NOT open panel.html via file:// — fetch() to the curator API
+                               # fails CORS ("Failed to fetch") from a file:// origin
 ```
 
 There is no automated test suite — `npm run doctor` / `doctor:sheet` are the closest thing to a

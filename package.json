@@ -19,7 +19,8 @@
     "fetch:inspiration": "node scripts/jobs/inspiration/fetch-inspiration.js",
     "import:saved-tweets": "node scripts/jobs/inspiration/import-saved-tweets-to-sheet.js",
     "curate:archivo-x": "node scripts/dev/archive-curator-server.js",
-    "start:archivo-x": "node scripts/dev/archive-curator-server.js"
+    "start:archivo-x": "node scripts/dev/archive-curator-server.js",
+    "panel": "http-server . -p 5173 -c-1"
   },
   "repository": {
     "type": "git",

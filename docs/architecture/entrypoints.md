@@ -14,6 +14,28 @@ lo puedo mover?".
 | `publicar.html` | Redirect de compatibilidad hacia `panel.html#publish` (meta refresh + `location.replace`). Sin lógica propia. | Todavía no. Pendiente confirmar que no haya enlaces externos (bio, bookmarks) apuntando a esta URL antes de moverlo. |
 | `tools/archivo-x-curator.html` | Fallback **activo en producción**: es lo que sirve `scripts/dev/archive-curator-server.js` (ruta catch-all) cuando se visita el servicio de Render (`archivo-x-curator.onrender.com`, definido en `render.yaml`) fuera de las rutas de API. `panel.html` usa esa misma URL como backend por defecto. | Todavía no. Moverlo requiere actualizar el `path.join(...)` en `archive-curator-server.js` y `REQUIRED_FILES` en `doctor.js` en el mismo cambio — no es un simple mover de archivo. |
 
+## Cómo servir cada cosa en local
+
+`panel.html` es el panel principal — el resto (`index.html`, la API de Archivo X) existe para
+que `panel.html` funcione. En local hacen falta **dos procesos**:
+
+```bash
+# Terminal 1 — API del curador (Archivo X)
+npm run curate:archivo-x   # levanta SOLO la API + el fallback legacy, en http://localhost:5177
+
+# Terminal 2 — el panel
+npm run panel              # sirve panel.html e index.html en http://localhost:5173/panel.html
+```
+
+- `npm run curate:archivo-x` **no sirve el panel completo** — es un servidor de API (con
+  credenciales de Google Sheets) que además sirve `tools/archivo-x-curator.html` como fallback.
+  Mezclarlo con servir `panel.html` acoplaría un frontend público a un backend con credenciales.
+- `index.html` sigue siendo el motor de render/preview: `panel.html` lo carga en un `<iframe>`
+  oculto, y ambos quedan en el mismo origen (`localhost:5173`) al levantarlos con `npm run panel`.
+- **No abrir `panel.html` con doble clic ni `file://`** — el navegador manda `Origin: null`, que
+  no pasa el CORS de `archive-curator-server.js`, y las llamadas a la API fallan con
+  "Failed to fetch".
+
 ## Datos y artefactos
 
 | Ruta | Contenido | Notas |
