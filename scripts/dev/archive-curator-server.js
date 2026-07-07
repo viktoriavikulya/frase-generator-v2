@@ -17,6 +17,15 @@ const PORT = Number(process.env.PORT || process.env.CURATOR_PORT || 5177);
 const HOST = process.env.HOST || "127.0.0.1";
 const CURATOR_TOKEN = process.env.CURATOR_TOKEN;
 
+// tools/archivo-x-curator.html queda como legacy (no se borra ni se mueve todavía),
+// pero ya no se sirve directamente: tanto la raíz como su propia ruta redirigen al
+// panel principal real. 302 temporal a propósito, para poder revertir sin fricción.
+const PANEL_CURATE_URL = "https://imgifra.github.io/frase-generator-v2/panel.html#curate";
+
+function redirectToPanelCurate(_req, res) {
+  res.redirect(302, PANEL_CURATE_URL);
+}
+
 const REQUIRED_HEADERS = [
   "id",
   "frase_original",
@@ -389,6 +398,7 @@ async function main() {
   });
 
   app.use(express.json({ limit: "256kb" }));
+  app.get("/archivo-x-curator.html", redirectToPanelCurate);
   app.use(express.static(path.join(ROOT, "tools")));
 
   // Middleware de protección con token (solo para API /api/*)
@@ -661,9 +671,8 @@ async function main() {
     }
   });
 
-  app.use((_req, res) => {
-    res.sendFile(path.join(ROOT, "tools", "archivo-x-curator.html"));
-  });
+  // Catch-all: cualquier otra ruta no reconocida también va al panel principal.
+  app.use(redirectToPanelCurate);
 
   app.use((err, _req, res, _next) => {
     console.error(err);
