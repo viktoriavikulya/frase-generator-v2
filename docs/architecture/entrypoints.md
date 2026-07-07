@@ -11,27 +11,21 @@ lo puedo mover?".
 | --- | --- | --- |
 | `panel.html` | Panel principal de trabajo diario (GitHub Pages). Publicar, curar frases, agregar frases, armar carruseles, preview. | No — es un entrypoint de GitHub Pages y lo exige `scripts/dev/doctor.js`. |
 | `index.html` | Motor visual/render. Lo usa Playwright (`scripts/libs/render-lib.js`) para generar el PNG de producción, y `panel.html` lo carga en un `<iframe>` oculto para su preview (`postMessage` + `canvas.toDataURL()`). | No — `serve-static` lo sirve desde la raíz del repo y el iframe de `panel.html` depende de esa ruta. |
-| `publicar.html` | Redirect de compatibilidad hacia `panel.html#publish` (meta refresh + `location.replace`). Sin lógica propia. | Todavía no. Pendiente confirmar que no haya enlaces externos (bio, bookmarks) apuntando a esta URL antes de moverlo. |
 
-## Archivos de compatibilidad que NO se deben mover todavía
+## HTML eliminados (histórico)
 
-Este ya tiene un comentario HTML al inicio del propio archivo con la misma advertencia,
-para que quede visible incluso si alguien abre el archivo sin pasar por este doc:
-
-- **`publicar.html`** — redirect de compatibilidad hacia `panel.html#publish`, sin lógica propia.
-  Se queda en la raíz por si hay links externos, bookmarks o accesos guardados apuntando a esta
-  URL — algo que no se puede confirmar ni descartar solo auditando el repo. No mover sin antes
-  confirmar eso.
-
-## `tools/archivo-x-curator.html` — eliminado en la Fase C5
-
-Este archivo **ya no existe físicamente en el repo**. Era la UI legacy de curaduría
-("Curaduría" + "Publicar carruseles"); en la Fase C3 dejó de ser el fallback visible
-(`scripts/dev/archive-curator-server.js` empezó a redirigir en vez de servirlo), y en la Fase C5
-se borró del todo con `git rm`. La URL `/archivo-x-curator.html` **se conserva** como redirect
-(302) hacia `panel.html#curate` — igual que la raíz del servicio — así que ningún link viejo
-queda roto, solo redirige en vez de mostrar la UI vieja. `scripts/dev/doctor.js` ya no la exige
-en `REQUIRED_FILES`.
+- **`publicar.html`** — **eliminado en la Fase C6**. Era un redirect de compatibilidad hacia
+  `panel.html#publish`, sin lógica propia. La publicación vive enteramente en `panel.html#publish`
+  ahora. Se aceptó explícitamente el riesgo de que links externos viejos a `publicar.html` den
+  404 en GitHub Pages — no se mantiene compatibilidad con esa URL. `scripts/dev/doctor.js` ya no
+  la exige en `REQUIRED_FILES`.
+- **`tools/archivo-x-curator.html`** — **eliminado en la Fase C5**. Era la UI legacy de curaduría
+  ("Curaduría" + "Publicar carruseles"); en la Fase C3 dejó de ser el fallback visible
+  (`scripts/dev/archive-curator-server.js` empezó a redirigir en vez de servirlo), y en la Fase C5
+  se borró del todo con `git rm`. A diferencia de `publicar.html`, acá **sí se conserva** la URL
+  `/archivo-x-curator.html` como redirect (302) hacia `panel.html#curate` — igual que la raíz del
+  servicio — porque ese backend está desplegado en Render y sigue siendo alcanzable en producción.
+  `scripts/dev/doctor.js` ya no la exige en `REQUIRED_FILES`.
 
 ## Cómo servir cada cosa en local
 

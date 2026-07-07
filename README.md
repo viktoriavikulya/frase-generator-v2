@@ -206,7 +206,6 @@ scripts/
 
 panel.html             # entrada unificada para publicar y curar Archivo X
 index.html             # generador visual (sirve Playwright y el preview oculto del panel)
-publicar.html          # redireccion de compatibilidad a panel.html#publish
 ```
 
 ---

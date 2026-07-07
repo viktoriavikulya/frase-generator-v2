@@ -191,7 +191,9 @@ Daily/manual entry points are split by deployment plane:
   `Curar Frases`, `Agregar Frases` and `Armar Carruseles` (the native Archivo X UI, split into raw
   intake, curation and carousel-assembly views), and `Preview` (a standalone render tester for any
   text/mode/color).
-- `publicar.html` is a compatibility redirect to `panel.html#publish`.
+- `publicar.html` was deleted in Phase C6 — publishing lives entirely in `panel.html#publish` now.
+  Old links to `publicar.html` are not kept working (404 on GitHub Pages); that risk was accepted
+  explicitly when removing it.
 - The Publish and Preview tabs' previews use a hidden iframe pointed at `index.html` and
   communicate via `postMessage`, so they ask the real renderer for a `canvas.toDataURL()` instead
   of keeping a copied renderer.
@@ -203,7 +205,7 @@ Daily/manual entry points are split by deployment plane:
   legacy UI never exposed the `Agregar Frases` raw-intake form anyway, only the daily `panel.html`
   UI does).
 
-Do not copy render functions into `publicar.html` or `panel.html`. If the visual output changes, update `js/mode-retro3d.js` / `js/config.js` and verify through `index.html` or `render-preview.js`.
+Do not copy render functions into `panel.html`. If the visual output changes, update `js/mode-retro3d.js` / `js/config.js` and verify through `index.html` or `render-preview.js`.
 
 ## Archivo X (manual curation flow)
 

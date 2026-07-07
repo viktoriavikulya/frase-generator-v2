@@ -10,7 +10,6 @@ const REQUIRED_FILES = [
   "package.json",
   ".github/workflows/publish.yml",
   "panel.html",
-  "publicar.html",
   "index.html",
   "scripts/libs/upload-lib.js",
   "scripts/libs/threads-lib.js",

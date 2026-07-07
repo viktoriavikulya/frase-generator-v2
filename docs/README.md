@@ -10,7 +10,7 @@ complementaria, más operativa.
 ## Lectura recomendada (en este orden)
 
 1. [`architecture/entrypoints.md`](architecture/entrypoints.md) — qué es cada HTML de la raíz
-   (`panel.html`, `index.html`, `publicar.html`) y cuáles se pueden mover.
+   (`panel.html`, `index.html`) y cuáles se pueden mover.
 2. [`architecture/mapa-del-proyecto.md`](architecture/mapa-del-proyecto.md) — cómo se conectan
    las piezas, mapa de riesgo por tipo de cambio, checklist antes de modificar código.
 3. [`operations/scripts.md`](operations/scripts.md) — inventario de todos los comandos
