@@ -169,15 +169,20 @@ this does NOT skip render/upload, so it works for a freshly-registered pending c
 
 Daily/manual entry points are split by deployment plane:
 
-- `panel.html` is the GitHub Pages entry point, with four tabs: `Publicar Ahora` (publish form),
-  `Curar Frases` and `Armar Carruseles` (the native Archivo X UI, split into curation and
-  carousel-assembly views), and `Preview` (a standalone render tester for any text/mode/color).
+- `panel.html` is the GitHub Pages entry point, with five tabs: `Publicar Ahora` (publish form),
+  `Curar Frases`, `Agregar Frases` and `Armar Carruseles` (the native Archivo X UI, split into raw
+  intake, curation and carousel-assembly views), and `Preview` (a standalone render tester for any
+  text/mode/color).
 - `publicar.html` is a compatibility redirect to `panel.html#publish`.
 - The Publish and Preview tabs' previews use a hidden iframe pointed at `index.html` and
   communicate via `postMessage`, so they ask the real renderer for a `canvas.toDataURL()` instead
   of keeping a copied renderer.
 - `index.html` is still the render engine used by Playwright and by the preview iframe.
-- Render runs `scripts/dev/archive-curator-server.js` and exposes `/api/phrases`, `/api/taxonomy`, and `/api/plan-carruseles`. `panel.html` calls those APIs directly from GitHub Pages; `tools/archivo-x-curator.html` remains as a legacy/fallback UI served by the same server.
+- Render runs `scripts/dev/archive-curator-server.js` and exposes `/api/phrases`, `/api/taxonomy`,
+  `/api/raw-phrases`, and `/api/plan-carruseles`. `panel.html` calls those APIs directly from
+  GitHub Pages; `tools/archivo-x-curator.html` remains as a legacy/fallback UI served by the same
+  server (it does not expose the `Agregar Frases` raw-intake form, only the daily `panel.html` UI
+  does).
 
 Do not copy render functions into `publicar.html` or `panel.html`. If the visual output changes, update `js/mode-retro3d.js` / `js/config.js` and verify through `index.html` or `render-preview.js`.
 
@@ -186,8 +191,10 @@ Do not copy render functions into `publicar.html` or `panel.html`. If the visual
 100% manual, no automated scoring/classification:
 
 ```
-data/tweets-guardados-x.txt
-  -> npm run import:saved-tweets        (sheet tab "archivo_x", decision_editorial = pendiente)
+Two equivalent ways in, both land in sheet tab "archivo_x" with decision_editorial = pendiente:
+  data/tweets-guardados-x.txt -> npm run import:saved-tweets
+  panel.html#raw ("Agregar Frases")  -> POST /api/raw-phrases
+
   -> panel.html#curate / panel.html#carousel   (GitHub Pages, daily UI)
      or npm run curate:archivo-x        (http://localhost:5177 legacy/fallback)
        "Curar Frases" / legacy "Curaduría" tab: approve/discard/edit frase_final, assign
@@ -204,13 +211,32 @@ data/tweets-guardados-x.txt
 `estado`, `prioridad`, `calidad`, `riesgo`, `recomendacion_auto`, `accion`, `clasificado_manual`
 are legacy and unused by the current flow.
 
+### `panel.html#raw` ("Agregar Frases") and `POST /api/raw-phrases`
+
+Manual raw-phrase intake, parallel to `npm run import:saved-tweets` but driven from the UI instead
+of `data/tweets-guardados-x.txt`. Body: `{ phrases: string[], notes?: string }`. For each phrase
+the server writes a new `archivo_x` row with `decision_editorial = "pendiente"`, `frase_final = ""`,
+`grupo_carrusel = ""`, `temporalidad = "atemporal"`, `notas` = the shared notes field, `fuente =
+"manual_panel"`, and `id` computed by the same `buildArchiveId()` (sha1 of the normalized text) used
+by `import-saved-tweets-to-sheet.js` — so a phrase pasted manually and the same phrase later
+imported from the txt file resolve to the same id and dedup against each other. Dedup reuses that
+module's exported `normalizeForDedup()` against both the existing sheet rows and the rest of the
+pasted batch; phrases under 3 characters or blank lines are skipped. Response reports
+`{ inserted, duplicates, skippedEmpty, skippedShort }`; nothing is auto-approved or added to any
+carousel plan — new rows only show up under the curator's "Pendientes" filter.
+
 ### `decision_editorial` values
 
 `pendiente` (default on import) -> `aprobada` (via curator "Aprobar") -> `publicada` (set
 automatically once registered into Hoja 2 via "Publicar carruseles"). `descartada` means the
-curator rejected the phrase. Only `aprobada` rows are eligible for "Publicar carruseles"; once a
-row is `publicada` it no longer appears there or in the curator's
-Pendientes/Aprobadas/Descartadas filters (only "Todas" shows it).
+curator rejected the phrase. `indeterminada` (via curator "No sé") is a holding state for phrases
+the curator can't classify yet — it removes them from the `pendiente` queue without approving or
+discarding them; they're reviewable later from their own "No sé / Indeterminadas" filter. Only
+`aprobada` rows are eligible for "Publicar carruseles" (so `indeterminada` rows never enter a
+carousel plan). Once a row is `publicada` it no longer appears there or in the curator's
+Pendientes/Aprobadas/Descartadas/No sé filters (only "Todas" shows it).
+`archive-curator-server.js` also accepts `indeterminado` / `no_se` / `no sé` / `no se` as input
+aliases and normalizes them to `indeterminada` before writing to the Sheet.
 
 **Known gap:** `getSummary()` in `archive-curator-server.js` (used by `GET /api/phrases`) only
 buckets rows into `aprobada` / `descartada` / else-`pendiente`, so `publicada` rows are currently

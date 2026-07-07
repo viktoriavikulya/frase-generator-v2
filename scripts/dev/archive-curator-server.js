@@ -8,6 +8,7 @@ const { getSheetsAuth } = require("../auth/google-auth");
 const { colToLetter, nowIsoLocal } = require("../utils/common");
 const { DISPLAY_ORDER, TAXONOMY, normalizeGroupName } = require("../jobs/inspiration/taxonomy");
 const { registerFrases } = require("../pipeline/register-from-form");
+const { normalizeForDedup, buildArchiveId } = require("../jobs/inspiration/import-saved-tweets-to-sheet");
 
 const ROOT = path.resolve(__dirname, "..", "..");
 const SHEET_ID = process.env.SHEET_ID;
@@ -64,6 +65,21 @@ async function getSheetsClient() {
 
 function normalizeValue(value) {
   return String(value || "").trim();
+}
+
+const ALLOWED_DECISIONS = ["pendiente", "aprobada", "descartada", "indeterminada"];
+
+// Alias de entrada que se normalizan a "indeterminada" (no se guardan tal cual en el Sheet).
+const DECISION_ALIASES = {
+  indeterminado: "indeterminada",
+  no_se: "indeterminada",
+  "no sé": "indeterminada",
+  "no se": "indeterminada"
+};
+
+function normalizeDecision(value) {
+  const normalized = String(value || "").trim().toLowerCase();
+  return DECISION_ALIASES[normalized] || normalized;
 }
 
 function buildHeaderMap(headers) {
@@ -198,6 +214,7 @@ function getSummary(items) {
     pendiente: 0,
     aprobada: 0,
     descartada: 0,
+    indeterminada: 0,
     byGroup: {},
     byDecision: {}
   };
@@ -208,6 +225,7 @@ function getSummary(items) {
 
     if (decision === "aprobada") summary.aprobada += 1;
     else if (decision === "descartada") summary.descartada += 1;
+    else if (decision === "indeterminada") summary.indeterminada += 1;
     else summary.pendiente += 1;
 
     summary.byGroup[group] = (summary.byGroup[group] || 0) + 1;
@@ -241,10 +259,9 @@ function buildUpdates(rowNumber, headerMap, patch) {
 
   // Validar decision_editorial si se intenta cambiar
   if (nextPatch.decision_editorial) {
-    const allowedDecisions = ["pendiente", "aprobada", "descartada"];
-    const normalized = nextPatch.decision_editorial.toLowerCase();
-    if (!allowedDecisions.includes(normalized)) {
-      throw new Error(`decision_editorial debe ser uno de: ${allowedDecisions.join(", ")}`);
+    const normalized = normalizeDecision(nextPatch.decision_editorial);
+    if (!ALLOWED_DECISIONS.includes(normalized)) {
+      throw new Error(`decision_editorial debe ser uno de: ${ALLOWED_DECISIONS.join(", ")}`);
     }
     nextPatch.decision_editorial = normalized;
   }
@@ -290,6 +307,53 @@ async function updateRow(sheets, rowNumber, patch) {
   const row = rows[rowNumber - 1] || [];
 
   return rowToPhrase(row, headerMap, rowNumber);
+}
+
+function getRawPhraseBatchId() {
+  return `manual_${new Date().toISOString().replace(/[-:T.Z]/g, "").slice(0, 14)}`;
+}
+
+// Misma forma de fila que arma import-saved-tweets-to-sheet.js al importar
+// data/tweets-guardados-x.txt, para que ambas vías queden 100% equivalentes
+// (mismo esquema de "id" -> mismo dedup) frente al resto del flujo de curaduría.
+function buildRawPhraseRow(text, headerMap, notes, batchId, capturedAt) {
+  const width = Math.max(...Object.values(headerMap)) + 1;
+  const values = Array(width).fill("");
+
+  const set = (field, value) => {
+    if (headerMap[field] !== undefined) {
+      values[headerMap[field]] = value ?? "";
+    }
+  };
+
+  set("id", buildArchiveId(text));
+  set("frase_original", text);
+  set("frase_final", "");
+  set("decision_editorial", "pendiente");
+  set("grupo_carrusel", "");
+  set("notas", notes);
+  set("temporalidad", "atemporal");
+  set("temporada", "");
+  set("capturado_en", capturedAt);
+  set("actualizado_en", "");
+  set("lote_importacion", batchId);
+  set("fuente", "manual_panel");
+
+  return values;
+}
+
+async function appendRawPhraseRows(sheets, rows) {
+  if (!rows.length) return;
+
+  const width = Math.max(...rows.map((row) => row.length), REQUIRED_HEADERS.length);
+
+  await sheets.spreadsheets.values.append({
+    spreadsheetId: SHEET_ID,
+    range: `${WORKSHEET_NAME}!A:${colToLetter(width)}`,
+    valueInputOption: "USER_ENTERED",
+    insertDataOption: "INSERT_ROWS",
+    requestBody: { values: rows }
+  });
 }
 
 async function main() {
@@ -357,6 +421,78 @@ async function main() {
     }
   });
 
+  app.post("/api/raw-phrases", async (req, res, next) => {
+    try {
+      const { phrases, notes } = req.body || {};
+
+      if (!Array.isArray(phrases) || phrases.length === 0) {
+        res.status(400).json({ error: "phrases debe ser un array no vacio" });
+        return;
+      }
+
+      if (phrases.length > 300) {
+        res.status(400).json({ error: "Maximo 300 frases por lote" });
+        return;
+      }
+
+      const { headerMap, items } = await loadArchive(sheets);
+      const existingIds = new Set(items.map((item) => item.id));
+      const existingTextKeys = new Set(
+        items.map((item) => normalizeForDedup(item.frase_original)).filter(Boolean)
+      );
+
+      const seenInBatch = new Set();
+      let skippedEmpty = 0;
+      let skippedShort = 0;
+      let duplicates = 0;
+      const toInsert = [];
+
+      for (const raw of phrases) {
+        const text = normalizeValue(raw).replace(/\s+/g, " ");
+
+        if (!text) {
+          skippedEmpty += 1;
+          continue;
+        }
+
+        if (text.length < 3) {
+          skippedShort += 1;
+          continue;
+        }
+
+        const textKey = normalizeForDedup(text);
+        const archiveId = buildArchiveId(text);
+
+        if (!textKey || seenInBatch.has(textKey) || existingTextKeys.has(textKey) || existingIds.has(archiveId)) {
+          duplicates += 1;
+          continue;
+        }
+
+        seenInBatch.add(textKey);
+        toInsert.push(text);
+      }
+
+      const batchId = getRawPhraseBatchId();
+      const capturedAt = nowIsoLocal();
+      const cleanNotes = normalizeValue(notes);
+      const rows = toInsert.map((text) => buildRawPhraseRow(text, headerMap, cleanNotes, batchId, capturedAt));
+
+      if (rows.length) {
+        await appendRawPhraseRows(sheets, rows);
+      }
+
+      res.json({
+        ok: true,
+        inserted: rows.length,
+        duplicates,
+        skippedEmpty,
+        skippedShort
+      });
+    } catch (err) {
+      next(err);
+    }
+  });
+
   app.patch("/api/phrases/:rowNumber", async (req, res, next) => {
     try {
       const rowNumber = Number(req.params.rowNumber);
@@ -379,11 +515,10 @@ async function main() {
 
       // Validar decision_editorial si se proporciona
       if (patch.decision_editorial) {
-        const allowedDecisions = ["pendiente", "aprobada", "descartada"];
-        const normalized = patch.decision_editorial.toLowerCase();
-        if (!allowedDecisions.includes(normalized)) {
+        const normalized = normalizeDecision(patch.decision_editorial);
+        if (!ALLOWED_DECISIONS.includes(normalized)) {
           res.status(400).json({
-            error: `decision_editorial debe ser uno de: ${allowedDecisions.join(", ")}`
+            error: `decision_editorial debe ser uno de: ${ALLOWED_DECISIONS.join(", ")}`
           });
           return;
         }
@@ -538,7 +673,7 @@ async function main() {
     console.log(`Curador archivo_x: http://localhost:${PORT}`);
     console.log(`Pestaña: ${WORKSHEET_NAME}`);
     console.log("Flujo: Curaduría 100% manual");
-    console.log("Decisiones editoriales: pendiente, aprobada, descartada");
+    console.log("Decisiones editoriales: pendiente, aprobada, descartada, indeterminada");
     if (process.env.CURATOR_TOKEN) {
       console.log("⚠️  CURATOR_TOKEN está establecido - protección habilitada");
     } else {

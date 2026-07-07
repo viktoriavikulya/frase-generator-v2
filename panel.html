@@ -589,7 +589,7 @@
 
     .decision-buttons {
       display: grid;
-      grid-template-columns: repeat(3, 1fr);
+      grid-template-columns: repeat(4, 1fr);
       gap: 10px;
       padding: 18px 0;
       border-bottom: 1px solid var(--border);
@@ -622,6 +622,16 @@
 
     .decision-buttons .rejected.active {
       background: var(--status-err);
+      color: var(--bg);
+    }
+
+    .decision-buttons .indeterminate {
+      color: var(--muted);
+      border-color: var(--muted);
+    }
+
+    .decision-buttons .indeterminate.active {
+      background: var(--muted);
       color: var(--bg);
     }
 
@@ -768,6 +778,7 @@
       <div class="tabs" role="tablist" aria-label="Secciones del panel">
         <button class="tab active" type="button" data-tab="publish">Publicar Ahora</button>
         <button class="tab" type="button" data-tab="curate">Curar Frases</button>
+        <button class="tab" type="button" data-tab="raw">Agregar Frases</button>
         <button class="tab" type="button" data-tab="carousel">Armar Carruseles</button>
         <button class="tab" type="button" data-tab="preview">Preview</button>
       </div>
@@ -874,6 +885,7 @@
               <option value="pending">Pendientes</option>
               <option value="approved">Aprobadas</option>
               <option value="rejected">Descartadas</option>
+              <option value="indeterminate">No sé / Indeterminadas</option>
               <option value="all">Todas</option>
             </select>
             <select class="field-input" id="archive-group-filter" aria-label="Grupo">
@@ -886,6 +898,35 @@
           <section class="archive-panel" id="archive-phrase-panel">
             <div class="archive-empty">Cargando frases...</div>
           </section>
+        </div>
+      </section>
+
+      <section class="view archive-view" id="raw-view">
+        <div class="archive-shell">
+          <div class="archive-head">
+            <div>
+              <p class="eyebrow">entrada cruda</p>
+              <h2 class="page-title">Agregar frases</h2>
+              <p class="field-hint">Pega ideas o frases sueltas. Quedan guardadas como <strong>pendientes</strong> en el mismo archivo que usa "Curar Frases" — no se aprueban ni se publican solas.</p>
+            </div>
+          </div>
+
+          <div class="field field-wide">
+            <label class="field-label" for="raw-phrases-input">Frases crudas</label>
+            <textarea class="field-input archive-final-input" id="raw-phrases-input" rows="10" placeholder="Pega aqui frases crudas, una por linea..."></textarea>
+          </div>
+          <div class="field field-wide">
+            <label class="field-label" for="raw-phrases-notes">Notas / contexto / fuente</label>
+            <textarea class="field-input" id="raw-phrases-notes" rows="2" placeholder="Opcional: de donde salieron, contexto, etc."></textarea>
+          </div>
+
+          <div class="archive-actions">
+            <div class="action-group"></div>
+            <p class="status" id="raw-phrases-status"></p>
+            <button class="btn-main" type="button" id="raw-phrases-save">Guardar frases</button>
+          </div>
+
+          <div id="raw-phrases-result"></div>
         </div>
       </section>
 
@@ -988,6 +1029,7 @@
     const tabs = Array.from(document.querySelectorAll("[data-tab]"));
     const publishView = document.getElementById("publish-view");
     const curateView = document.getElementById("curate-view");
+    const rawView = document.getElementById("raw-view");
     const carouselView = document.getElementById("carousel-view");
     const previewView = document.getElementById("preview-view");
     const curatorUrlInput = document.getElementById("archive-api-url");
@@ -1034,6 +1076,7 @@
 
       publishView.classList.toggle("active", name === "publish");
       curateView.classList.toggle("active", name === "curate");
+      rawView.classList.toggle("active", name === "raw");
       carouselView.classList.toggle("active", name === "carousel");
       previewView.classList.toggle("active", name === "preview");
       location.hash = name;
@@ -1461,11 +1504,12 @@
     }
 
     function renderArchiveStats() {
-      const summary = { total: archiveState.items.length, pendiente: 0, aprobada: 0, descartada: 0 };
+      const summary = { total: archiveState.items.length, pendiente: 0, aprobada: 0, descartada: 0, indeterminada: 0 };
       for (const item of archiveState.items) {
         const decision = clean(item.decision_editorial).toLowerCase() || "pendiente";
         if (decision === "aprobada") summary.aprobada += 1;
         else if (decision === "descartada") summary.descartada += 1;
+        else if (decision === "indeterminada") summary.indeterminada += 1;
         else summary.pendiente += 1;
       }
       document.getElementById("archive-stats").innerHTML = [
@@ -1473,6 +1517,7 @@
         ["Pendientes", summary.pendiente],
         ["Aprobadas", summary.aprobada],
         ["Descartadas", summary.descartada],
+        ["No sé", summary.indeterminada],
         ["Vista", archiveState.filtered.length]
       ].map(([label, value]) => `<span class="chip"><strong>${value}</strong>&nbsp;${label}</span>`).join("");
     }
@@ -1490,24 +1535,26 @@
       select.value = current;
     }
 
-    function applyArchiveFilters() {
+    function archiveMatchesFilter(item) {
       const filter = document.getElementById("archive-filter").value;
       const group = document.getElementById("archive-group-filter").value;
       const search = clean(document.getElementById("archive-search").value).toLowerCase();
 
-      archiveState.filtered = archiveState.items.filter((item) => {
-        const decision = clean(item.decision_editorial).toLowerCase() || "pendiente";
-        if (filter === "pending" && decision !== "pendiente") return false;
-        if (filter === "approved" && decision !== "aprobada") return false;
-        if (filter === "rejected" && decision !== "descartada") return false;
-        if (group && item.grupo_carrusel !== group) return false;
-        if (search) {
-          const haystack = `${item.frase_original || ""} ${item.frase_final || ""} ${item.notas || ""}`.toLowerCase();
-          if (!haystack.includes(search)) return false;
-        }
-        return true;
-      });
+      const decision = clean(item.decision_editorial).toLowerCase() || "pendiente";
+      if (filter === "pending" && decision !== "pendiente") return false;
+      if (filter === "approved" && decision !== "aprobada") return false;
+      if (filter === "rejected" && decision !== "descartada") return false;
+      if (filter === "indeterminate" && decision !== "indeterminada") return false;
+      if (group && item.grupo_carrusel !== group) return false;
+      if (search) {
+        const haystack = `${item.frase_original || ""} ${item.frase_final || ""} ${item.notas || ""}`.toLowerCase();
+        if (!haystack.includes(search)) return false;
+      }
+      return true;
+    }
 
+    function applyArchiveFilters() {
+      archiveState.filtered = archiveState.items.filter(archiveMatchesFilter);
       archiveState.index = Math.min(archiveState.index, Math.max(0, archiveState.filtered.length - 1));
       renderArchivePhrase();
     }
@@ -1605,6 +1652,7 @@
           <button class="btn-ghost pending ${archiveState.selectedDecision === "pendiente" ? "active" : ""}" type="button" data-decision="pendiente">Pendiente</button>
           <button class="btn-ghost approved ${archiveState.selectedDecision === "aprobada" ? "active" : ""}" type="button" data-decision="aprobada">Aprobar</button>
           <button class="btn-ghost rejected ${archiveState.selectedDecision === "descartada" ? "active" : ""}" type="button" data-decision="descartada">Descartar</button>
+          <button class="btn-ghost indeterminate ${archiveState.selectedDecision === "indeterminada" ? "active" : ""}" type="button" data-decision="indeterminada">No sé</button>
         </div>
         <div class="editor">
           <div class="field field-wide">
@@ -1682,7 +1730,15 @@
         });
         const idx = archiveState.items.findIndex((row) => row.rowNumber === item.rowNumber);
         if (idx >= 0) archiveState.items[idx] = data.item;
-        archiveState.index = Math.min(archiveState.index + 1, Math.max(0, archiveState.filtered.length - 1));
+
+        // Si el item sigue calzando con el filtro activo, avanzamos al siguiente.
+        // Si ya no calza (p.ej. se aprobó/descartó/marcó "No sé" estando en la
+        // vista de Pendientes), desaparece de `filtered` y el resto de la lista
+        // se recorre un puesto hacia atrás, así que el índice actual ya apunta
+        // a la siguiente frase disponible sin necesidad de incrementarlo.
+        if (archiveMatchesFilter(data.item)) {
+          archiveState.index += 1;
+        }
         archiveState.saving = false;
         applyArchiveFilters();
       } catch (err) {
@@ -1704,6 +1760,82 @@
 
     function showArchiveError(err) {
       document.getElementById("archive-phrase-panel").innerHTML = `<div class="archive-empty">${escapeHtml(err.message || String(err))}</div>`;
+    }
+
+    let rawPhrasesSaving = false;
+
+    function setRawPhrasesStatus(message, cls = "") {
+      const el = document.getElementById("raw-phrases-status");
+      el.textContent = message || "";
+      el.className = `status ${cls}`;
+    }
+
+    async function saveRawPhrases() {
+      if (rawPhrasesSaving) return;
+
+      const textarea = document.getElementById("raw-phrases-input");
+      const notesInput = document.getElementById("raw-phrases-notes");
+      const result = document.getElementById("raw-phrases-result");
+
+      // Dedup y filtrado basico en el cliente; el servidor vuelve a validar
+      // contra el Sheet (fuente de verdad) antes de escribir.
+      const lines = textarea.value.split("\n").map((line) => clean(line));
+      const seen = new Set();
+      const phrases = [];
+
+      for (const line of lines) {
+        if (!line || line.length < 3) continue;
+        const key = line.toLowerCase().replace(/\s+/g, " ");
+        if (seen.has(key)) continue;
+        seen.add(key);
+        phrases.push(line);
+      }
+
+      if (!phrases.length) {
+        setRawPhrasesStatus("Pega al menos una frase de 3 caracteres o mas.", "error");
+        return;
+      }
+
+      rawPhrasesSaving = true;
+      setRawPhrasesStatus("Guardando...");
+      result.innerHTML = "";
+
+      try {
+        const data = await archiveFetch("/api/raw-phrases", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ phrases, notes: clean(notesInput.value) })
+        });
+
+        setRawPhrasesStatus("");
+        result.innerHTML = `
+          <div class="result-box ok">
+            Guardadas <strong>${data.inserted}</strong> frase(s) como pendientes.
+            ${data.duplicates ? `${data.duplicates} duplicada(s) omitida(s).` : ""}
+            ${data.skippedEmpty ? `${data.skippedEmpty} linea(s) vacia(s) omitida(s).` : ""}
+            ${data.skippedShort ? `${data.skippedShort} muy corta(s) omitida(s).` : ""}
+          </div>
+          <button class="btn-ghost" type="button" id="raw-phrases-goto-curate">Ir a curar pendientes</button>
+        `;
+
+        const gotoBtn = document.getElementById("raw-phrases-goto-curate");
+        if (gotoBtn) {
+          gotoBtn.addEventListener("click", () => {
+            archiveState.loaded = false;
+            setActiveTab("curate");
+          });
+        }
+
+        if (data.inserted > 0) {
+          textarea.value = "";
+          notesInput.value = "";
+          archiveState.loaded = false; // fuerza recarga la proxima vez que se abra "Curar Frases"
+        }
+      } catch (err) {
+        setRawPhrasesStatus(err.message || String(err), "error");
+      } finally {
+        rawPhrasesSaving = false;
+      }
     }
 
     function initArchiveColors() {
@@ -1898,6 +2030,7 @@
     document.getElementById("archive-group-filter").addEventListener("change", applyArchiveFilters);
     document.getElementById("archive-search").addEventListener("input", applyArchiveFilters);
     document.getElementById("archive-reload").addEventListener("click", () => loadArchive().catch(showArchiveError));
+    document.getElementById("raw-phrases-save").addEventListener("click", saveRawPhrases);
     document.getElementById("plan-caption").addEventListener("input", updatePlanCounter);
     document.getElementById("plan-reload").addEventListener("click", () => loadPlanCarruseles().catch((err) => {
       document.getElementById("plan-list").innerHTML = `<div class="archive-empty">${escapeHtml(err.message || String(err))}</div>`;
@@ -1933,7 +2066,7 @@
     drawPreviewPlaceholder(previewToolCtx, "Escribe una frase", "#D4A017");
 
     const initialTab = location.hash.replace("#", "");
-    setActiveTab(["publish", "curate", "carousel", "preview"].includes(initialTab) ? initialTab : "publish");
+    setActiveTab(["publish", "curate", "raw", "carousel", "preview"].includes(initialTab) ? initialTab : "publish");
   </script>
 </body>
 </html>
