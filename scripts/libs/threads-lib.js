@@ -206,6 +206,64 @@ async function waitUntilContainerReady(containerId) {
 }
 
 // ---------------------------------------------------------------------------
+// Publish con retry de propagación
+// ---------------------------------------------------------------------------
+// Un contenedor puede reportar FINISHED y aun así no estar disponible para
+// threads_publish durante unos segundos (consistencia eventual entre backends
+// de Meta). En ese caso el publish falla con "Media Not Found" (code=24,
+// subcode=4279009, is_transient=false) aunque el media exista — lo acabamos de
+// ver FINISHED. Ese error solo es seguro de reintentar AQUÍ, justo después de
+// un FINISHED confirmado; en cualquier otro contexto es un error permanente
+// legítimo, por eso NO se agrega a isTransientError (retry global).
+
+const PARENT_PUBLISH_DELAY_MS      = 8000;
+const PROPAGATION_RETRY_ATTEMPTS   = 5;
+const PROPAGATION_RETRY_DELAYS_MS  = [5000, 10000, 15000, 20000];
+
+function isThreadsMediaNotFound(error) {
+  const graphError = error?.graphError || {};
+  const message = graphError.message || error?.message || "";
+  return (
+    graphError.code === 24 &&
+    graphError.error_subcode === 4279009 &&
+    (
+      graphError.error_user_title === "Media Not Found" ||
+      message.includes("requested resource does not exist") ||
+      message.includes("Media Not Found")
+    )
+  );
+}
+
+async function publishThreadsContainerWithPropagationRetry(creationId, context = {}) {
+  for (let attempt = 1; attempt <= PROPAGATION_RETRY_ATTEMPTS; attempt++) {
+    try {
+      return await threadsPost(`${THREADS_USER_ID}/threads_publish`, {
+        creation_id:  creationId,
+        access_token: THREADS_ACCESS_TOKEN
+      });
+    } catch (error) {
+      if (!isThreadsMediaNotFound(error) || attempt >= PROPAGATION_RETRY_ATTEMPTS) {
+        throw error;
+      }
+
+      const delayMs = PROPAGATION_RETRY_DELAYS_MS[Math.min(attempt - 1, PROPAGATION_RETRY_DELAYS_MS.length - 1)];
+      logger.warn("Threads media todavía no está disponible para publish; reintentando", {
+        ...context,
+        creationId,
+        attempt,
+        maxAttempts: PROPAGATION_RETRY_ATTEMPTS,
+        delayMs,
+        code: error?.graphError?.code,
+        error_subcode: error?.graphError?.error_subcode,
+        fbtrace_id: error?.graphError?.fbtrace_id
+      });
+
+      await sleep(delayMs);
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Public API
 // ---------------------------------------------------------------------------
 
@@ -283,9 +341,15 @@ async function publishThreadsCarouselPost({ imageUrls, caption }) {
 
   await waitUntilContainerReady(parent.id);
 
-  const published = await threadsPost(`${THREADS_USER_ID}/threads_publish`, {
-    creation_id:  parent.id,
-    access_token: THREADS_ACCESS_TOKEN
+  logger.info("Threads parent container listo; esperando propagación antes de publicar", {
+    containerId: parent.id,
+    delayMs: PARENT_PUBLISH_DELAY_MS
+  });
+  await sleep(PARENT_PUBLISH_DELAY_MS);
+
+  const published = await publishThreadsContainerWithPropagationRetry(parent.id, {
+    job: "publish-threads-carousel",
+    slides: imageUrls.length
   });
 
   if (!published.id) throw new Error("No se recibió id del carrusel publicado en Threads.");
