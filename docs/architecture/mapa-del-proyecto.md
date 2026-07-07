@@ -9,7 +9,7 @@ El proyecto publica frases como imagenes retro 3D en Instagram, Facebook y Threa
 ```mermaid
 flowchart TD
   Z[panel.html<br/>Entrada unificada<br/>Formulario manual] --> A[GitHub Actions<br/>publish.yml]
-  Z --> Y[index.html<br/>Motor visual]
+  Z --> Y[panel.html?renderEngine=1<br/>Motor visual]
   Z --> X[Archivo X<br/>Render]
   A --> C[register-from-form.js<br/>registra filas pending]
 
@@ -20,7 +20,7 @@ flowchart TD
 
   F --> G[render job]
   G --> H[render-lib.js<br/>Playwright]
-  H --> I[index.html]
+  H --> I[panel.html?renderEngine=1]
   I --> J[js/app.js]
   J --> K[js/mode-retro3d.js<br/>drawRetro3D]
   K --> L[PNG en output/]
@@ -38,10 +38,11 @@ flowchart TD
 
 ## Fuente de verdad visual
 
-El render real de produccion sale de `index.html` + `js/`.
+El render real de produccion sale de `panel.html?renderEngine=1` + `js/` (`index.html` fue
+eliminado en la Fase C7B).
 
 ```txt
-index.html
+panel.html?renderEngine=1
   -> js/app.js
     -> draw()
       -> drawRetro3D()
@@ -73,7 +74,7 @@ El proyecto vive en tres planos distintos. La confusion normal viene de que los 
 flowchart TD
   A[GitHub Pages<br/>HTML estatico] --> B[panel.html]
   B --> C[Publish tab<br/>registrar y disparar workflow]
-  B --> D[index.html<br/>motor visual]
+  B --> D[panel.html?renderEngine=1<br/>motor visual]
   B --> G[/api/phrases]
   B --> H[/api/plan-carruseles]
 
@@ -94,8 +95,8 @@ Reglas:
 GitHub Pages: interfaz estatica unificada y preview.
 Render: backend/API de Archivo X.
 GitHub Actions: publicacion real.
-index.html: motor de render real.
-panel.html: puerta de entrada diaria, no motor de render.
+panel.html: puerta de entrada diaria; con ?renderEngine=1 es tambien el motor de render real
+(index.html fue eliminado en la Fase C7B).
 ```
 
 ## Piezas principales
@@ -103,7 +104,7 @@ panel.html: puerta de entrada diaria, no motor de render.
 ```mermaid
 flowchart LR
   subgraph Render["Render visual"]
-    A[index.html]
+    A[panel.html?renderEngine=1]
     B[js/app.js]
     C[js/config.js]
     D[js/mode-retro3d.js]
@@ -197,13 +198,13 @@ js/app.js
 
 `panel.html` es la entrada unificada. Contiene la UI de publicar y la UI nativa de Archivo X.
 
-La previsualizacion del panel usa un `iframe` oculto con `index.html` y `postMessage`, para pedirle al render real un PNG.
+La previsualizacion del panel usa un `iframe` oculto con `panel.html?renderEngine=1` y `postMessage`, para pedirle al render real un PNG.
 
 Flujo:
 
 ```txt
 panel.html
-  -> iframe index.html
+  -> iframe panel.html?renderEngine=1
     -> js/app.js escucha render-request
     -> draw()
     -> canvas.toDataURL()
@@ -407,7 +408,7 @@ error_message
 Revisar que el preview siga usando el render real:
 
 ```txt
-iframe#index.html
+iframe panel.html?renderEngine=1
 render-request
 render-response
 canvas.toDataURL()

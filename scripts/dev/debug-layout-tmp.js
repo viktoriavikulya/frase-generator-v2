@@ -66,7 +66,7 @@ const PHRASES = [
 
 function startServer() {
   return new Promise((resolve) => {
-    const serve = serveStatic(ROOT_DIR, { index: ["index.html"] });
+    const serve = serveStatic(ROOT_DIR, { index: false });
     const server = http.createServer((req, res) => serve(req, res, finalhandler(req, res)));
     server.listen(PORT, "127.0.0.1", () => resolve(server));
   });
@@ -78,7 +78,7 @@ async function main() {
   const browser = await chromium.launch({ headless: true });
   const page = await browser.newPage({ viewport: { width: 1080, height: 1350 } });
 
-  // Fase C7A: panel.html en modo renderEngine=1 reemplaza a index.html como motor de render.
+  // El motor de render es panel.html?renderEngine=1 (index.html fue eliminado en la Fase C7B).
   await page.goto(`${url}/panel.html?renderEngine=1&text=x&mode=retro3d&bg=%230a1628`, { waitUntil: "domcontentloaded" });
   await page.waitForFunction(() => window.renderReady === true, { timeout: 30000 });
 

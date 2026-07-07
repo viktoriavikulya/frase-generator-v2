@@ -5,10 +5,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Panel monacastrosa</title>
 
-  <!-- Fase C7A: si panel.html?renderEngine=1, este documento actua como motor de
-       render (reemplaza a index.html) en vez de mostrar el panel administrativo.
-       Se detecta lo antes posible para que el CSS de mas abajo pueda ocultar/mostrar
-       lo que corresponde sin parpadeo. -->
+  <!-- Si panel.html?renderEngine=1, este documento actua como motor de render
+       (reemplazo del antiguo index.html, eliminado en la Fase C7B) en vez de mostrar
+       el panel administrativo. Se detecta lo antes posible para que el CSS de mas
+       abajo pueda ocultar/mostrar lo que corresponde sin parpadeo. -->
   <script>
     window.__RENDER_ENGINE_MODE__ = new URLSearchParams(location.search).get("renderEngine") === "1";
     if (window.__RENDER_ENGINE_MODE__) {
@@ -16,8 +16,9 @@
     }
   </script>
 
-  <!-- Fuentes que necesita el motor de render (identicas a index.html) para que
-       document.fonts.ready espere las mismas fuentes y el render se vea igual. -->
+  <!-- Fuentes que necesita el motor de render (heredadas del antiguo index.html)
+       para que document.fonts.ready espere las mismas fuentes y el render se vea
+       igual. -->
   <link href="https://fonts.cdnfonts.com/css/felt-tip-roman" rel="stylesheet">
   <link href="https://fonts.googleapis.com/css2?family=Noto+Serif:wght@700&display=swap" rel="stylesheet">
   <link rel="preload"
@@ -1054,12 +1055,12 @@
     </main>
   </div>
 
-  <!-- Fase C7A: DOM minimo equivalente al de index.html, para que js/config.js
-       (document.getElementById("previewCanvas"/"textInput"/"bgColor"/"modeSelect"/
-       "downloadBtn")) y js/app.js (document.querySelector(".control-panel")) lo
-       encuentren igual que en index.html. Siempre oculto salvo en renderEngine=1
-       (ver CSS en el <head>). No tiene estilos propios: nunca se ve, ni siquiera
-       dentro del iframe que lo carga. -->
+  <!-- DOM minimo del motor de render (contrato heredado del antiguo index.html,
+       eliminado en la Fase C7B): js/config.js espera document.getElementById
+       ("previewCanvas"/"textInput"/"bgColor"/"modeSelect"/"downloadBtn") y
+       js/app.js espera document.querySelector(".control-panel"). Siempre oculto
+       salvo en renderEngine=1 (ver CSS en el <head>). No tiene estilos propios:
+       nunca se ve, ni siquiera dentro del iframe que lo carga. -->
   <div id="render-engine-root">
     <canvas id="previewCanvas" width="1080" height="1350"></canvas>
     <select id="modeSelect">
@@ -1075,13 +1076,14 @@
 
   <script src="js/palettes.js"></script>
   <script>
-    // Fase C7A: en modo motor de render, cargar el resto de la cadena de
-    // index.html (config, utils, modos, branding, app) en el mismo orden que
-    // index.html. "js/palettes.js" ya se cargo arriba con el <script> estatico
-    // de siempre (es un archivo de datos puro, sin dependencia de config.js en
-    // ningun sentido, asi que el orden entre ambos no afecta nada) — cargarlo
-    // de nuevo aca duplicaria "const RETRO_PALETTES" y rompería con un error de
-    // redeclaracion, por eso no se repite.
+    // En modo motor de render, cargar la cadena de scripts del renderer
+    // (config, utils, modos, branding, app) en este orden — el mismo que usaba
+    // el antiguo index.html (eliminado en la Fase C7B). "js/palettes.js" ya se
+    // cargo arriba con el <script> estatico de siempre (es un archivo de datos
+    // puro, sin dependencia de config.js en ningun sentido, asi que el orden
+    // entre ambos no afecta nada) — cargarlo de nuevo aca duplicaria
+    // "const RETRO_PALETTES" y romperia con un error de redeclaracion, por eso
+    // no se repite.
     if (window.__RENDER_ENGINE_MODE__) {
       [
         "js/config.js",

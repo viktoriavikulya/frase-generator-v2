@@ -125,7 +125,7 @@ npm run import:saved-tweets  # importa data/tweets-guardados-x.txt a la pestaña
 npm run curate:archivo-x     # abre el backend/API de Archivo X en http://localhost:5177; panel.html#curate usa esas APIs
 
 # Panel local (ver "Panel local (desarrollo)" más arriba)
-npm run panel                # sirve panel.html/index.html en http://localhost:5173 (no abrir con file://)
+npm run panel                # sirve panel.html en http://localhost:5173 (no abrir con file://)
 ```
 
 ### Flujo editorial de archivo_x
@@ -204,8 +204,8 @@ scripts/
                        # render-utils, pipeline-runner, pipeline-utils
   dev/                 # herramientas locales (preview, sync-palettes)
 
-panel.html             # entrada unificada para publicar y curar Archivo X
-index.html             # generador visual (sirve Playwright y el preview oculto del panel)
+panel.html             # entrada unificada para publicar y curar Archivo X; con ?renderEngine=1
+                       # es también el motor de render (Playwright y el preview oculto del panel)
 ```
 
 ---

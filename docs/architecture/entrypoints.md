@@ -9,10 +9,18 @@ lo puedo mover?".
 
 | Archivo | Rol | ¿Se puede mover? |
 | --- | --- | --- |
-| `panel.html` | Panel principal de trabajo diario (GitHub Pages). Publicar, curar frases, agregar frases, armar carruseles, preview. | No — es un entrypoint de GitHub Pages y lo exige `scripts/dev/doctor.js`. |
-| `index.html` | Motor visual/render. Lo usa Playwright (`scripts/libs/render-lib.js`) para generar el PNG de producción, y `panel.html` lo carga en un `<iframe>` oculto para su preview (`postMessage` + `canvas.toDataURL()`). | No — `serve-static` lo sirve desde la raíz del repo y el iframe de `panel.html` depende de esa ruta. |
+| `panel.html` | **La única página HTML principal.** Panel de trabajo diario (GitHub Pages): publicar, curar frases, agregar frases, armar carruseles, preview. Además, con `?renderEngine=1` actúa como **motor de render**: lo usa Playwright (`scripts/libs/render-lib.js`) para el PNG de producción y su propio `<iframe>` oculto para el preview (`postMessage` + `canvas.toDataURL()`). La entrada oficial es `/panel.html` — la raíz pelada de GitHub Pages ya no se mantiene como entrada (da 404 desde C7B). | No — es el entrypoint de GitHub Pages, el motor de render, y lo exige `scripts/dev/doctor.js`. |
 
 ## HTML eliminados (histórico)
+
+- **`index.html`** — **eliminado en la Fase C7B**. Era el motor visual/render original. En la
+  Fase C7A el motor se migró a `panel.html?renderEngine=1` (mismo DOM mínimo, misma cadena de
+  scripts `js/`, mismas fuentes), y en C7B se borró el archivo con `git rm`. `render-lib.js` y
+  `debug-layout-tmp.js` ya navegan a `/panel.html?renderEngine=1&...` explícitamente y su
+  `serveStatic` usa `index: false` — nada depende ya de un directory-index. Se aceptó
+  explícitamente que la raíz pelada de GitHub Pages (`https://.../frase-generator-v2/`) dé 404;
+  la entrada oficial es `/panel.html`. `scripts/dev/doctor.js` ya no lo exige en
+  `REQUIRED_FILES`.
 
 - **`publicar.html`** — **eliminado en la Fase C6**. Era un redirect de compatibilidad hacia
   `panel.html#publish`, sin lógica propia. La publicación vive enteramente en `panel.html#publish`
@@ -29,23 +37,24 @@ lo puedo mover?".
 
 ## Cómo servir cada cosa en local
 
-`panel.html` es el panel principal — el resto (`index.html`, la API de Archivo X) existe para
-que `panel.html` funcione. En local hacen falta **dos procesos**:
+`panel.html` es el panel principal — la API de Archivo X existe para que `panel.html` funcione.
+En local hacen falta **dos procesos**:
 
 ```bash
 # Terminal 1 — API del curador (Archivo X)
 npm run curate:archivo-x   # levanta SOLO la API en http://localhost:5177
 
 # Terminal 2 — el panel
-npm run panel              # sirve panel.html e index.html en http://localhost:5173/panel.html
+npm run panel              # sirve panel.html en http://localhost:5173/panel.html
 ```
 
 - `npm run curate:archivo-x` **no sirve el panel completo** — es un servidor de API (con
   credenciales de Google Sheets). Visitar su raíz (`/`) o `/archivo-x-curator.html` en el
   navegador redirige (302) a `panel.html#curate` en vez de mostrar una UI ahí. Mezclarlo con
   servir `panel.html` acoplaría un frontend público a un backend con credenciales.
-- `index.html` sigue siendo el motor de render/preview: `panel.html` lo carga en un `<iframe>`
-  oculto, y ambos quedan en el mismo origen (`localhost:5173`) al levantarlos con `npm run panel`.
+- El motor de render/preview es el propio `panel.html` en modo `?renderEngine=1`: el panel lo
+  carga en un `<iframe>` oculto, y ambos quedan en el mismo origen (`localhost:5173`) al
+  levantarlos con `npm run panel`.
 - **No abrir `panel.html` con doble clic ni `file://`** — el navegador manda `Origin: null`, que
   no pasa el CORS de `archive-curator-server.js`, y las llamadas a la API fallan con
   "Failed to fetch".

@@ -60,8 +60,11 @@ async function ensureServer() {
       };
     }
 
+    // Sin directory-index: el motor de render es panel.html?renderEngine=1
+    // (index.html fue eliminado en la Fase C7B), y buildRenderUrl navega a esa
+    // ruta explícita — la raíz "/" no necesita servir nada.
     const serve = serveStatic(ROOT_DIR, {
-      index: ["index.html"]
+      index: false
     });
 
     serverInstance = http.createServer((req, res) => {
@@ -161,9 +164,8 @@ function buildRenderUrl({ text, mode, bg }) {
     bg
   });
 
-  // Fase C7A: panel.html en modo renderEngine=1 reemplaza a index.html como
-  // motor de render — ya no depende de que "/" sirva index.html como
-  // directory-index.
+  // El motor de render es panel.html en modo renderEngine=1 (index.html fue
+  // eliminado en la Fase C7B).
   return `${GENERATOR_URL}/panel.html?${params.toString()}`;
 }
 
