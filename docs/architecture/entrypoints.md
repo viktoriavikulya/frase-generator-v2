@@ -1,7 +1,7 @@
 # Entrypoints del proyecto
 
 Mapa rápido de "qué es cada cosa" en la raíz del repo, para no perder el hilo cuando se
-acumulan HTML y archivos sueltos. Complementa a [`docs/mapa-del-proyecto.md`](../mapa-del-proyecto.md)
+acumulan HTML y archivos sueltos. Complementa a [`docs/architecture/mapa-del-proyecto.md`](mapa-del-proyecto.md)
 (que explica el porqué y los riesgos); este documento solo responde "¿qué es este archivo y
 lo puedo mover?".
 

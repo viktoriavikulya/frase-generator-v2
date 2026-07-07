@@ -47,7 +47,7 @@ const CHECKED_JS_FILES = [
 const STALE_DOC_PATTERNS = [
   { file: "README.md", pattern: /cloudinary_url|npm run check-palettes(?!-sync)/ },
   { file: "CLAUDE.md", pattern: /cloudinary_url|npm run check-palettes(?!-sync)|3 veces al dia|3 veces al día/ },
-  { file: "docs/orden para ejecucion.txt", pattern: /-p 8080/ }
+  { file: "docs/operations/orden-para-ejecucion.md", pattern: /-p 8080/ }
 ];
 
 const results = [];

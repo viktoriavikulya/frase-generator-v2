@@ -215,7 +215,7 @@ publicar.html          # redireccion de compatibilidad a panel.html#publish
 | Documento | Contenido |
 |---|---|
 | [`CLAUDE.md`](CLAUDE.md) | Mapa completo del sistema: arquitectura, cada capa, modelo de datos, reglas críticas, flujo Archivo X |
-| [`docs/mapa-del-proyecto.md`](docs/mapa-del-proyecto.md) | Guia visual para entender piezas, riesgos y verificaciones antes de cambiar codigo |
+| [`docs/architecture/mapa-del-proyecto.md`](docs/architecture/mapa-del-proyecto.md) | Guia visual para entender piezas, riesgos y verificaciones antes de cambiar codigo |
 
 ---
 
