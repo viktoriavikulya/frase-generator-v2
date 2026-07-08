@@ -44,6 +44,9 @@ on:
         required: false
         default: ''
 
+  repository_dispatch:
+    types: [publish-posts]
+
 concurrency:
   group: publish-posts
   cancel-in-progress: false
@@ -78,6 +81,16 @@ jobs:
       TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
       TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
 
+      DISPATCH_FRASES: ${{ github.event_name == 'repository_dispatch' && github.event.client_payload.frases || github.event_name == 'workflow_dispatch' && inputs.frases || '' }}
+      DISPATCH_CAPTION: ${{ github.event_name == 'repository_dispatch' && github.event.client_payload.caption || github.event_name == 'workflow_dispatch' && inputs.caption || '' }}
+      DISPATCH_TIPO: ${{ github.event_name == 'repository_dispatch' && github.event.client_payload.tipo || github.event_name == 'workflow_dispatch' && inputs.tipo || 'auto' }}
+      DISPATCH_SOLO_REGISTRAR: ${{ github.event_name == 'repository_dispatch' && github.event.client_payload.solo_registrar || github.event_name == 'workflow_dispatch' && inputs.solo_registrar || 'false' }}
+      DISPATCH_REINTENTAR: ${{ github.event_name == 'repository_dispatch' && github.event.client_payload.reintentar || github.event_name == 'workflow_dispatch' && inputs.reintentar || 'false' }}
+      DISPATCH_COLOR: ${{ github.event_name == 'repository_dispatch' && github.event.client_payload.color || github.event_name == 'workflow_dispatch' && inputs.color || '' }}
+      DISPATCH_PUBLISH_ONLY: ${{ github.event_name == 'repository_dispatch' && github.event.client_payload.publish_only || github.event_name == 'workflow_dispatch' && inputs.publish_only || '' }}
+      DISPATCH_UNLOCK_ID: ${{ github.event_name == 'repository_dispatch' && github.event.client_payload.unlock_id || github.event_name == 'workflow_dispatch' && inputs.unlock_id || '' }}
+      DISPATCH_TARGET_CAROUSEL_ID: ${{ github.event_name == 'repository_dispatch' && github.event.client_payload.target_carousel_id || github.event_name == 'workflow_dispatch' && inputs.target_carousel_id || '' }}
+
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
@@ -97,7 +110,7 @@ jobs:
         run: npm ci
 
       - name: Cache Playwright browsers
-        if: ${{ github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.unlock_id == '' && inputs.publish_only == '' && inputs.solo_registrar != 'true') }}
+        if: ${{ github.event_name == 'schedule' || ((github.event_name == 'workflow_dispatch' || github.event_name == 'repository_dispatch') && env.DISPATCH_UNLOCK_ID == '' && env.DISPATCH_PUBLISH_ONLY == '' && env.DISPATCH_SOLO_REGISTRAR != 'true') }}
         uses: actions/cache@v4
         with:
           path: ~/.cache/ms-playwright
@@ -106,51 +119,51 @@ jobs:
             ${{ runner.os }}-playwright-
 
       - name: Install Playwright Chromium
-        if: ${{ github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.unlock_id == '' && inputs.publish_only == '' && inputs.solo_registrar != 'true') }}
+        if: ${{ github.event_name == 'schedule' || ((github.event_name == 'workflow_dispatch' || github.event_name == 'repository_dispatch') && env.DISPATCH_UNLOCK_ID == '' && env.DISPATCH_PUBLISH_ONLY == '' && env.DISPATCH_SOLO_REGISTRAR != 'true') }}
         run: npx playwright install chromium --with-deps
 
       - name: Desbloquear fila manualmente
-        if: ${{ github.event_name == 'workflow_dispatch' && inputs.unlock_id != '' }}
+        if: ${{ (github.event_name == 'workflow_dispatch' || github.event_name == 'repository_dispatch') && env.DISPATCH_UNLOCK_ID != '' }}
         env:
-          UNLOCK_ID: ${{ inputs.unlock_id }}
+          UNLOCK_ID: ${{ env.DISPATCH_UNLOCK_ID }}
         run: node scripts/pipeline/unlock-row.js
 
       - name: Registrar frases si vienen del formulario
-        if: ${{ github.event_name == 'workflow_dispatch' && inputs.frases != '' && inputs.unlock_id == '' }}
+        if: ${{ (github.event_name == 'workflow_dispatch' || github.event_name == 'repository_dispatch') && env.DISPATCH_FRASES != '' && env.DISPATCH_UNLOCK_ID == '' }}
         env:
-          FRASES_INPUT: ${{ inputs.frases }}
-          CAPTION_INPUT: ${{ inputs.caption }}
-          TIPO_INPUT: ${{ inputs.tipo }}
-          COLOR_INPUT: ${{ inputs.color }}
+          FRASES_INPUT: ${{ env.DISPATCH_FRASES }}
+          CAPTION_INPUT: ${{ env.DISPATCH_CAPTION }}
+          TIPO_INPUT: ${{ env.DISPATCH_TIPO }}
+          COLOR_INPUT: ${{ env.DISPATCH_COLOR }}
         run: node scripts/pipeline/register-from-form.js
 
 
       - name: Run pipeline formulario
-        if: ${{ github.event_name == 'workflow_dispatch' && inputs.frases != '' && inputs.solo_registrar != 'true' && inputs.unlock_id == '' }}
+        if: ${{ (github.event_name == 'workflow_dispatch' || github.event_name == 'repository_dispatch') && env.DISPATCH_FRASES != '' && env.DISPATCH_SOLO_REGISTRAR != 'true' && env.DISPATCH_UNLOCK_ID == '' }}
         env:
           FORM_MODE: "true"
-          TIPO_INPUT: ${{ inputs.tipo }}
+          TIPO_INPUT: ${{ env.DISPATCH_TIPO }}
         run: node scripts/pipeline/run-once.js
 
       - name: Run publish-only
-        if: ${{ github.event_name == 'workflow_dispatch' && inputs.publish_only != '' && inputs.frases == '' && inputs.unlock_id == '' }}
+        if: ${{ (github.event_name == 'workflow_dispatch' || github.event_name == 'repository_dispatch') && env.DISPATCH_PUBLISH_ONLY != '' && env.DISPATCH_FRASES == '' && env.DISPATCH_UNLOCK_ID == '' }}
         env:
           PUBLISH_ONLY: "true"
-          PUBLISH_ONLY_ID: ${{ inputs.publish_only }}
-          TIPO_INPUT: ${{ inputs.tipo }}
+          PUBLISH_ONLY_ID: ${{ env.DISPATCH_PUBLISH_ONLY }}
+          TIPO_INPUT: ${{ env.DISPATCH_TIPO }}
         run: node scripts/pipeline/run-once.js
 
       - name: Run pipeline reintentar
-        if: ${{ github.event_name == 'workflow_dispatch' && inputs.reintentar == 'true' && inputs.frases == '' && inputs.publish_only == '' && inputs.unlock_id == '' }}
+        if: ${{ (github.event_name == 'workflow_dispatch' || github.event_name == 'repository_dispatch') && env.DISPATCH_REINTENTAR == 'true' && env.DISPATCH_FRASES == '' && env.DISPATCH_PUBLISH_ONLY == '' && env.DISPATCH_UNLOCK_ID == '' }}
         env:
-          TIPO_INPUT: ${{ inputs.tipo }}
+          TIPO_INPUT: ${{ env.DISPATCH_TIPO }}
         run: node scripts/pipeline/run-once.js
 
       - name: Run pipeline carrusel especifico
-        if: ${{ github.event_name == 'workflow_dispatch' && inputs.target_carousel_id != '' && inputs.frases == '' && inputs.publish_only == '' && inputs.reintentar != 'true' && inputs.unlock_id == '' }}
+        if: ${{ (github.event_name == 'workflow_dispatch' || github.event_name == 'repository_dispatch') && env.DISPATCH_TARGET_CAROUSEL_ID != '' && env.DISPATCH_FRASES == '' && env.DISPATCH_PUBLISH_ONLY == '' && env.DISPATCH_REINTENTAR != 'true' && env.DISPATCH_UNLOCK_ID == '' }}
         env:
           TIPO_INPUT: carousel
-          TARGET_CAROUSEL_ID: ${{ inputs.target_carousel_id }}
+          TARGET_CAROUSEL_ID: ${{ env.DISPATCH_TARGET_CAROUSEL_ID }}
         run: node scripts/pipeline/run-once.js
 
       - name: Run pipeline programado
