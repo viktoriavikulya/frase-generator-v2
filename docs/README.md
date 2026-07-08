@@ -7,6 +7,15 @@ Para el mapa completo de arquitectura/pipeline/modelo de datos, la referencia pr
 siendo [`CLAUDE.md`](../CLAUDE.md) en la raíz del repo. Lo de acá abajo es documentación
 complementaria, más operativa.
 
+## Estado actual
+
+- Entrada oficial: `https://imgifra.github.io/frase-generator-v2/panel.html`.
+- Unico HTML versionado: `panel.html`.
+- Motor de render: `panel.html?renderEngine=1`.
+- `publish.yml` se dispara por `schedule` y `repository_dispatch` (`event_type: publish-posts`).
+- `workflow_dispatch` fue eliminado de `publish.yml`; no usar **Run workflow** manual como flujo normal.
+- Tags estables: `v-panel-unico-stable`, `v-panel-operations-stable`, `v-panel-repository-dispatch-stable`.
+
 ## Lectura recomendada (en este orden)
 
 1. [`architecture/entrypoints.md`](architecture/entrypoints.md) — qué es `panel.html` (la única

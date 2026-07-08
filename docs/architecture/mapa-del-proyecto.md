@@ -8,7 +8,7 @@ El proyecto publica frases como imagenes retro 3D en Instagram, Facebook y Threa
 
 ```mermaid
 flowchart TD
-  Z[panel.html<br/>Entrada unificada<br/>Formulario manual] --> A[GitHub Actions<br/>publish.yml]
+  Z[panel.html<br/>Entrada unificada<br/>repository_dispatch] --> A[GitHub Actions<br/>publish.yml]
   Z --> Y[panel.html?renderEngine=1<br/>Motor visual]
   Z --> X[Archivo X<br/>Render]
   A --> C[register-from-form.js<br/>registra filas pending]
@@ -73,7 +73,7 @@ El proyecto vive en tres planos distintos. La confusion normal viene de que los 
 ```mermaid
 flowchart TD
   A[GitHub Pages<br/>HTML estatico] --> B[panel.html]
-  B --> C[Publish tab<br/>registrar y disparar workflow]
+  B --> C[Publicar Ahora / Operaciones<br/>repository_dispatch]
   B --> D[panel.html?renderEngine=1<br/>motor visual]
   B --> G[/api/phrases]
   B --> H[/api/plan-carruseles]
@@ -94,7 +94,7 @@ Reglas:
 ```txt
 GitHub Pages: interfaz estatica unificada y preview.
 Render: backend/API de Archivo X.
-GitHub Actions: publicacion real.
+GitHub Actions: publicacion real por schedule o repository_dispatch.
 panel.html: puerta de entrada diaria; con ?renderEngine=1 es tambien el motor de render real
 (index.html fue eliminado en la Fase C7B).
 ```

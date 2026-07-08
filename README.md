@@ -1,97 +1,141 @@
 # frase-generator-v2
 
-Sistema automatizado de publicación de contenido para Instagram, Facebook y Threads. Toma frases ingresadas vía formulario web, las renderiza como imágenes con estilo retro 3D, las sube a Cloudinary y las publica en las tres redes. Corre automáticamente dos veces al día vía GitHub Actions.
+Sistema automatizado de publicacion para Instagram, Facebook y Threads. El panel oficial vive en GitHub Pages:
 
----
+https://imgifra.github.io/frase-generator-v2/panel.html
 
-## Cómo funciona
+`panel.html` es el unico HTML versionado. Tambien contiene el motor de render cuando se abre como `panel.html?renderEngine=1`; Playwright usa esa URL para generar los PNG de produccion.
 
+## Como Funciona
+
+1. El usuario opera desde `panel.html`.
+2. El panel dispara GitHub Actions con `repository_dispatch`.
+3. `publish.yml` registra frases, renderiza, sube a Cloudinary y publica en Instagram, Facebook y Threads.
+4. Google Sheets guarda todo el estado del pipeline.
+5. Telegram avisa exitos y errores.
+6. `metrics.yml` trae metricas los domingos.
+
+`publish.yml` se dispara por:
+- `schedule`: `0 15 * * *` y `0 23 * * *`, aprox. 10:00 a.m. y 6:00 p.m. en Colombia.
+- `repository_dispatch`: `event_type: publish-posts`, enviado por el panel.
+
+Ya no existe `workflow_dispatch` en `publish.yml`. El formulario manual **Run workflow** fue eliminado; GitHub Actions queda como vista de seguimiento/debug, no como interfaz principal de operacion.
+
+## Panel
+
+Entrada oficial:
+
+```text
+https://imgifra.github.io/frase-generator-v2/panel.html
 ```
-ENTRADA          PIPELINE              SERVICIOS EXTERNOS
-─────────        ─────────             ──────────────────
-formulario  ──►  render                Google Sheets (estado)
-  web            upload                Cloudinary (imágenes)
-  (GitHub        publish               Instagram API
-  Actions)       métricas              Facebook API
-                                       Threads API
-                                       Telegram (alertas)
+
+Pestanas actuales:
+- Publicar Ahora
+- Curar Frases
+- Agregar Frases
+- Armar Carruseles
+- Preview
+- Operaciones
+
+### Publicar
+
+Desde **Publicar Ahora**:
+- 1 frase crea un single.
+- 2 a 10 frases crean un carrusel.
+- Guardar en Sheet registra contenido sin publicarlo inmediatamente.
+
+### Operaciones
+
+La pestana **Operaciones** permite:
+- reintentar posts en error
+- republicar sin re-renderizar por `row_id` o `carousel_id`
+- desbloquear una fila atascada
+- abrir GitHub Actions
+- abrir el run recien disparado
+
+## Dispatch Del Pipeline
+
+El panel usa:
+
+```http
+POST https://api.github.com/repos/imgifra/frase-generator-v2/dispatches
 ```
 
-1. Escribes una frase en `panel.html` (GitHub Pages)
-2. El formulario dispara el workflow `publish.yml` en GitHub Actions
-3. El pipeline renderiza → sube → publica en IG, FB y Threads
-4. El estado de cada post vive en Google Sheets
-5. Los domingos, `metrics.yml` trae métricas de los últimos 30 días
-6. Telegram avisa de cada publicación exitosa o error
+Payload:
 
----
+```json
+{
+  "event_type": "publish-posts",
+  "client_payload": {
+    "frases": "",
+    "caption": "",
+    "tipo": "auto",
+    "solo_registrar": "false",
+    "reintentar": "false",
+    "color": "",
+    "publish_only": "",
+    "unlock_id": "",
+    "target_carousel_id": ""
+  }
+}
+```
 
-## Uso diario
+El token de GitHub se escribe en el campo **Token de GitHub** del panel. No se guarda en `localStorage`, no debe versionarse y no debe ponerse en archivos. Para `repository_dispatch`, un fine-grained PAT necesita permiso `Contents: write` sobre este repo; un classic PAT necesita scope `repo`.
 
-### Publicar contenido
-Abri `panel.html` como entrada principal. Desde ahi puedes publicar frases nuevas y curar Archivo X. Con 1 frase se publica un **single**, con 2-10 frases se publica un **carrusel**.
+## Panel Local
 
-En producción esto es GitHub Pages, no hace falta nada más. Para probar `panel.html` **en local**, ver la sección siguiente.
-
-### Panel local (desarrollo)
-
-`panel.html` es una página estática: para probarla en tu máquina necesitas dos terminales.
+Para probar el panel en local se usan dos procesos:
 
 ```bash
-# Terminal 1 — API del curador de Archivo X
+# Terminal 1: API de Archivo X
 npm run curate:archivo-x
-# levanta http://localhost:5177
+# http://localhost:5177
 
-# Terminal 2 — el panel en sí
+# Terminal 2: panel
 npm run panel
-# sirve http://localhost:5173/panel.html
+# http://localhost:5173/panel.html
 ```
 
-Abrí **`http://localhost:5173/panel.html`** en el navegador. **No abras `panel.html` con doble clic ni con `file://`** — el panel hace `fetch` hacia la API del curador, y esas llamadas fallan con "Failed to fetch" cuando el origen es `file://` (no pasa el CORS del backend). Sirviéndolo por `http://localhost:5173` sí funciona, porque ese origen ya está permitido en `scripts/dev/archive-curator-server.js`.
+No abrir `panel.html` con doble clic ni con `file://`; el panel hace `fetch` hacia la API del curador y esas llamadas fallan desde origen `file://`.
 
-### Workflows disponibles en GitHub Actions
+## Flujo Operativo Recomendado
 
-Entrá a tu repo → pestaña **Actions** → elegí el workflow.
+- Publicar: `Publicar Ahora`.
+- Guardar sin publicar: `Publicar Ahora` -> guardar en Sheet.
+- Reintentar errores: `Operaciones` -> `Reintentar ahora`.
+- Republicar sin re-renderizar: `Operaciones` -> pegar `row_id` o `carousel_id`.
+- Desbloquear: `Operaciones` -> pegar ID y confirmar.
+- Ver ejecucion: abrir el run desde el enlace del panel.
 
-#### `Publish Posts` — el principal
-Se dispara solo dos veces al día (10am y 6pm Bogotá), pero también podés correrlo manualmente con estos inputs:
+## Cuando Algo Falla
 
-| Input | Para qué | Ejemplo |
-|---|---|---|
-| `frases` | Frases nuevas separadas por `\|\|` | `la vida es corta\|\|aprovechá cada día` |
-| `caption` | Caption del post | `🖤 monacastrosa` |
-| `tipo` | Tipo de post | `carousel` o `single` |
-| `color` | Color de fondo en hex | `#1a1a2e` (vacío = aleatorio) |
-| `solo_registrar` | Guardar sin publicar ahora | `true` |
-| `reintentar` | Reintentar posts que fallaron | `true` |
-| `publish_only` | Republicar sin re-renderizar | pegar el `row_id` o `carousel_id` del sheet |
-| `unlock_id` | Desbloquear una fila atascada | pegar el `row_id` o `carousel_id` del sheet |
+Si Telegram avisa de un error:
 
-#### `Actualizar Métricas` — los domingos
-Corre solo los domingos, pero podés lanzarlo manualmente cuando quieras con el input `days` (cuántos días hacia atrás procesar, por defecto 30).
+1. Abrir el Google Sheet y buscar la fila con `estado_general = error`.
+2. Revisar `instagram_error`, `facebook_error` y `threads_error`.
+3. Si ya hay `media_url`, usar **Operaciones** para republicar sin re-renderizar.
+4. Si fallo antes, usar **Operaciones** -> `Reintentar ahora`.
 
-Trae para cada post: views, reach, saves, likes, comments, replies y calcula un `performance_score`.
+Si una fila queda con `lock_status = locked`:
+- esperar unos 10 minutos para que `releaseStaleLocks` la libere, o
+- usar **Operaciones** -> desbloquear fila.
 
----
+## Archivo X
 
-## Qué hacer cuando algo falla
+El flujo editorial es 100% manual:
 
-**Telegram te avisó de un error:**
-1. Abrí el Google Sheet y buscá la fila con `estado_general = error`
-2. Fijate en las columnas `instagram_error`, `facebook_error`, `threads_error` para ver qué plataforma falló
-3. Si la imagen ya estaba subida (tiene `media_url`), usá el input `publish_only` con el `row_id` para republicar sin re-renderizar
-4. Si falló desde el render, usá `reintentar: true` para que el pipeline lo tome de nuevo
+1. Importar frases crudas con `npm run import:saved-tweets` o pegarlas en **Agregar Frases**.
+2. Curar frase por frase en **Curar Frases**.
+3. Armar carruseles en **Armar Carruseles**.
 
-**Una fila quedó bloqueada (`lock_status = locked`):**
-- Opción A: esperá ~10 minutos, el sistema la libera automáticamente
-- Opción B: en GitHub Actions → `Publish Posts` → Run workflow → campo `unlock_id` → pegá el `row_id` o `carousel_id`
+Solo las frases con `decision_editorial = aprobada` entran al armado de carruseles.
 
----
+Render sigue sirviendo las APIs de curaduria (`/api/phrases`, `/api/raw-phrases`, `/api/plan-carruseles`, `/api/taxonomy`) y redirige rutas legacy hacia `panel.html#curate` cuando aplica. Render no sirve el panel principal; el panel principal esta en GitHub Pages.
 
-## Scripts disponibles
+## Scripts
 
 ```bash
-# Pipeline completo (auto: carousel primero, cae a single si no hay)
+# Pipeline completo local
 node scripts/pipeline/run-once.js
 
 # Solo un tipo
@@ -105,145 +149,63 @@ npm run upload:single
 npm run upload:carousel
 npm run publish:single
 npm run publish:carousel
-npm run build:carousel-plan  # genera output/carousel-plan.json y actualiza "plan_carruseles"
 
 # Desarrollo
-npm run render                               # preview rápido de una frase
-node scripts/dev/render-all-retro-colors.js # previsualiza las 30 paletas
+npm run render
+npm run panel
+npm run curate:archivo-x
 
-# Sincronizar paletas (después de editar retro-palettes.js)
-npm run sync-palettes
-npm run check-palettes-sync  # verificar que están sincronizadas
-
-# Diagnóstico rápido
-npm run doctor        # valida archivos, exports, sintaxis, docs y paletas
-npm run doctor:sheet  # audita columnas y estados del Google Sheet
-
-# Inspiración viral
-npm run fetch:inspiration    # llena la pestaña "inspiracion" con candidatos para revisar
-npm run import:saved-tweets  # importa data/tweets-guardados-x.txt a la pestaña "archivo_x" (script activo: scripts/jobs/inspiration/import-saved-tweets-to-sheet.js)
-npm run curate:archivo-x     # abre el backend/API de Archivo X en http://localhost:5177; panel.html#curate usa esas APIs
-
-# Panel local (ver "Panel local (desarrollo)" más arriba)
-npm run panel                # sirve panel.html en http://localhost:5173 (no abrir con file://)
+# Diagnostico
+npm run doctor
+npm run doctor:sheet
 ```
 
-### Flujo editorial de archivo_x
-
-El flujo es **100% manual**. Ver referencia técnica completa en [`CLAUDE.md`](CLAUDE.md) — sección "Archivo X (manual curation flow)".
-
-#### 1. Importar frases crudas
-```bash
-npm run import:saved-tweets
-```
-Lee `data/tweets-guardados-x.txt`, deduplica y agrega cada frase al Sheet con:
-- `decision_editorial = pendiente`
-- `grupo_carrusel` vacío
-- `frase_final` vacío
-
-No hay scoring automático, no hay clasificación, no hay recomendaciones.
-
-#### 2. Curar frase por frase
-```bash
-panel.html#curate
-# la API que consume corre con: npm run curate:archivo-x -> http://localhost:5177
-# (visitar esa URL directo en el navegador redirige a panel.html#curate, no muestra una UI ahí)
-```
-Interfaz web para revisar cada frase. Para cada una podés:
-
-| Acción | Efecto |
-|---|---|
-| Botón **Aprobar** | `decision_editorial = aprobada` |
-| Botón **Descartar** | `decision_editorial = descartada` |
-| Botón **Pendiente** | `decision_editorial = pendiente` |
-| Elegir grupo en sidebar | Asigna `grupo_carrusel` — **no aprueba automáticamente** |
-| Editar `frase_final` | Guarda texto corregido — **no aprueba automáticamente** |
-
-Solo las frases con `decision_editorial = aprobada` entran al plan de carruseles.
-
-#### 3. Registrar carruseles
-Desde `panel.html#carousel` ("Armar Carruseles"), elige exactamente 10 frases aprobadas de un mismo grupo, define caption/color y registra el carrusel en Hoja 2 como `pending`.
-
-`npm run build:carousel-plan` queda como herramienta legacy de planeación/export; no es el flujo principal del panel.
-
-#### Columnas principales de `archivo_x`
-
-| Columna | Descripción |
-|---|---|
-| `decision_editorial` | `pendiente`, `aprobada` o `descartada` — la única decisión que importa |
-| `grupo_carrusel` | Uno de los 20 grupos definidos en [`scripts/jobs/inspiration/taxonomy.js`](scripts/jobs/inspiration/taxonomy.js) |
-| `frase_final` | Texto corregido o reescrito (opcional) |
-| `frase_original` | Texto crudo importado — solo lectura |
-| `notas` | Observaciones del curador |
-| `temporalidad` | `atemporal`, `temporada`, `coyuntural` o `fecha_especial` |
-
-> Las columnas `sirve`, `estado`, `prioridad`, `calidad`, `riesgo`, `recomendacion_auto` y `clasificado_manual` son **legacy**: se conservan en el Sheet por compatibilidad pero el flujo actual no las usa ni las escribe.
-
-En `plan_carruseles`, revisá principalmente `usar`, `estado`, `revisar`, `grupo`, `orden`, `frase_final` y `notas`.
-
-La lista vigente de grupos está en [`scripts/jobs/inspiration/taxonomy.js`](scripts/jobs/inspiration/taxonomy.js).
-
----
+`npm run doctor` valida archivos, exports, sintaxis, docs y paletas. Correlo antes de tocar piezas del pipeline.
 
 ## Estructura
 
-```
+```text
 .github/workflows/
-  publish.yml          # pipeline principal (2x día + manual)
-  metrics.yml          # métricas (domingos + manual)
+  publish.yml          # schedule + repository_dispatch
+  metrics.yml          # metricas dominicales + trigger manual propio
 
-js/                    # generador visual (frontend / Playwright)
-scripts/
-  core/                # sheets.js, status.js
-  libs/                # graph-client, instagram, facebook, threads,
-  |                    # cloudinary, render, telegram
-  jobs/                # render, upload, publish — carousel y single
-  pipeline/            # run-once, run-carousel, run-single,
-  |                    # register-from-form, unlock-row
-  utils/               # logger, common, carousel-utils,
-                       # render-utils, pipeline-runner, pipeline-utils
-  dev/                 # herramientas locales (preview, sync-palettes)
-
-panel.html             # entrada unificada para publicar y curar Archivo X; con ?renderEngine=1
-                       # es también el motor de render (Playwright y el preview oculto del panel)
+panel.html             # unico HTML versionado; panel y motor ?renderEngine=1
+js/                    # generador visual usado por Playwright
+scripts/               # pipeline, jobs, libs, utilidades y API de curaduria
+docs/                  # documentacion tecnica y operativa
 ```
 
----
+HTML eliminados/historicos:
+- `index.html`
+- `publicar.html`
+- `tools/archivo-x-curator.html`
 
-## Documentación técnica
+No describirlos como paginas activas ni recrearlos como entrypoints.
+
+## Playwright
+
+El workflow usa Playwright Chromium con cache. Ya no instala `chromium-browser` por apt/snap.
+
+## Puntos De Restauracion
+
+- `v-panel-unico-stable`: arquitectura de panel unico.
+- `v-panel-operations-stable`: panel unico + pestana Operaciones.
+- `v-panel-repository-dispatch-stable`: estado final con `repository_dispatch` y sin `workflow_dispatch`.
+
+## Que No Hacer
+
+- No usar `file://` para abrir el panel.
+- No editar secrets en frontend.
+- No volver a crear `index.html`, `publicar.html` ni `tools/archivo-x-curator.html` como entrypoints.
+- No usar **Run workflow** manual como flujo normal.
+- No tocar `publish.yml` sin correr `npm run doctor` y probar `repository_dispatch`.
+
+## Documentacion Tecnica
 
 | Documento | Contenido |
 |---|---|
-| [`docs/README.md`](docs/README.md) | Índice de toda la documentación en `docs/` — qué leer primero y según qué necesites |
-| [`CLAUDE.md`](CLAUDE.md) | Mapa completo del sistema: arquitectura, cada capa, modelo de datos, reglas críticas, flujo Archivo X |
-| [`docs/architecture/mapa-del-proyecto.md`](docs/architecture/mapa-del-proyecto.md) | Guia visual para entender piezas, riesgos y verificaciones antes de cambiar codigo |
-| [`docs/operations/scripts.md`](docs/operations/scripts.md) | Inventario de todos los comandos (`npm run ...` y `node ...`): para qué sirve cada uno, riesgo y cuáles publican/tocan el Sheet de verdad |
-
----
-
-## Secrets requeridos en GitHub
-
-| Secret | Para qué |
-|---|---|
-| `SHEET_ID` | ID del Google Sheet de estado |
-| `WORKSHEET_NAME` | Nombre de la hoja dentro del sheet |
-| `SERVICE_ACCOUNT_JSON` | Credenciales de la cuenta de servicio de Google |
-| `CLOUDINARY_CLOUD_NAME` / `API_KEY` / `API_SECRET` | Subida de imágenes |
-| `IG_USER_ID` / `IG_ACCESS_TOKEN` | Publicación en Instagram |
-| `FB_PAGE_ID` / `FB_PAGE_ACCESS_TOKEN` | Publicación en Facebook |
-| `THREADS_USER_ID` / `THREADS_ACCESS_TOKEN` | Publicación en Threads |
-| `GRAPH_API_VERSION` | Versión de la Graph API de Meta |
-| `GENERATOR_URL` / `GENERATOR_PORT` | URL del servidor de render en Actions |
-| `TELEGRAM_BOT_TOKEN` / `TELEGRAM_CHAT_ID` | Notificaciones de éxito y error |
-| `X_BEARER_TOKEN` | Opcional: búsqueda reciente de posts en X para inspiración. X puede requerir créditos activos |
-| `INSPIRATION_SOURCE` | Opcional: fuentes para inspiración. Ej: `auto`, `x`, `bluesky`, `x,bluesky` |
-| `INSPIRATION_QUALITY_MODE` | Opcional: `viral` exige más señal; `explore` permite más descubrimiento. El radar busca amor/ex, plata, trabajo, U, Bogotá/Colombia, WhatsApp, chisme y vida adulta |
-| `INSPIRATION_MIN_LIKES` / `INSPIRATION_MIN_SCORE` | Opcional: mínimos de engagement. Defaults en `viral`: `20` likes y `30` score |
-| `INSPIRATION_MAX_TEXT_LENGTH` | Opcional: máximo de texto. Default: `150` caracteres |
-| `INSPIRATION_DRY_RUN` | Opcional: `true` prueba la búsqueda sin guardar filas |
-| `BLUESKY_IDENTIFIER` / `BLUESKY_APP_PASSWORD` | Opcional: fallback autenticado para Bluesky si el endpoint público devuelve 403 |
-| `SAVED_TWEETS_INPUT` | Opcional: archivo local para importar al Sheet. Default: `data/tweets-guardados-x.txt` |
-| `SAVED_TWEETS_WORKSHEET_NAME` | Opcional: pestaña destino para el archivo de X. Default: `archivo_x` |
-| `SAVED_TWEETS_DRY_RUN` | Opcional: `true` evalúa el archivo local sin guardar filas |
-| `SAVED_TWEETS_IMPORT_MODE` | ⚠️ Deprecated: ya no tiene efecto en el flujo manual. Se conserva por compatibilidad |
-
+| [`docs/README.md`](docs/README.md) | Indice de documentacion |
+| [`CLAUDE.md`](CLAUDE.md) | Mapa completo del sistema y reglas criticas |
+| [`docs/architecture/entrypoints.md`](docs/architecture/entrypoints.md) | Entrypoints activos e historicos |
+| [`docs/architecture/mapa-del-proyecto.md`](docs/architecture/mapa-del-proyecto.md) | Mapa visual y checklist de riesgos |
+| [`docs/operations/scripts.md`](docs/operations/scripts.md) | Inventario de comandos |

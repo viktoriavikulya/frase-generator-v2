@@ -1,74 +1,55 @@
-# Entrypoints del proyecto
+# Entrypoints Del Proyecto
 
-Mapa rápido de "qué es cada cosa" en la raíz del repo, para no perder el hilo cuando se
-acumulan HTML y archivos sueltos. Complementa a [`docs/architecture/mapa-del-proyecto.md`](mapa-del-proyecto.md)
-(que explica el porqué y los riesgos); este documento solo responde "¿qué es este archivo y
-lo puedo mover?".
+Mapa rapido de que archivo o ruta es activa, historica o solo backend.
 
-## HTML
+## HTML Activo
 
-| Archivo | Rol | ¿Se puede mover? |
+| Archivo | Rol | Se puede mover? |
 | --- | --- | --- |
-| `panel.html` | **La única página HTML principal.** Panel de trabajo diario (GitHub Pages): publicar, curar frases, agregar frases, armar carruseles, preview. Además, con `?renderEngine=1` actúa como **motor de render**: lo usa Playwright (`scripts/libs/render-lib.js`) para el PNG de producción y su propio `<iframe>` oculto para el preview (`postMessage` + `canvas.toDataURL()`). La entrada oficial es `/panel.html` — la raíz pelada de GitHub Pages ya no se mantiene como entrada (da 404 desde C7B). | No — es el entrypoint de GitHub Pages, el motor de render, y lo exige `scripts/dev/doctor.js`. |
+| `panel.html` | Unica pagina HTML versionada. Panel de trabajo diario en GitHub Pages: Publicar Ahora, Curar Frases, Agregar Frases, Armar Carruseles, Preview y Operaciones. Con `?renderEngine=1` tambien es el motor de render usado por Playwright y por el iframe de preview del propio panel. Entrada oficial: `https://imgifra.github.io/frase-generator-v2/panel.html`. | No. Es el entrypoint de GitHub Pages, el motor de render y un archivo requerido por `scripts/dev/doctor.js`. |
 
-## HTML eliminados (histórico)
+## HTML Eliminados Historicos
 
-- **`index.html`** — **eliminado en la Fase C7B**. Era el motor visual/render original. En la
-  Fase C7A el motor se migró a `panel.html?renderEngine=1` (mismo DOM mínimo, misma cadena de
-  scripts `js/`, mismas fuentes), y en C7B se borró el archivo con `git rm`. `render-lib.js` y
-  `debug-layout-tmp.js` ya navegan a `/panel.html?renderEngine=1&...` explícitamente y su
-  `serveStatic` usa `index: false` — nada depende ya de un directory-index. Se aceptó
-  explícitamente que la raíz pelada de GitHub Pages (`https://.../frase-generator-v2/`) dé 404;
-  la entrada oficial es `/panel.html`. `scripts/dev/doctor.js` ya no lo exige en
-  `REQUIRED_FILES`.
+- `index.html`: eliminado en la Fase C7B. Era el motor visual/render original. El motor vive ahora en `panel.html?renderEngine=1`. La raiz pelada de GitHub Pages puede dar 404; la URL oficial es `/panel.html`.
+- `publicar.html`: eliminado en la Fase C6. La publicacion vive en `panel.html` -> `Publicar Ahora`.
+- `tools/archivo-x-curator.html`: eliminado en la Fase C5. Era la UI legacy de curaduria. La ruta `/archivo-x-curator.html` se conserva como redirect del backend de Render hacia `panel.html#curate` cuando aplica, pero el archivo fisico ya no existe.
 
-- **`publicar.html`** — **eliminado en la Fase C6**. Era un redirect de compatibilidad hacia
-  `panel.html#publish`, sin lógica propia. La publicación vive enteramente en `panel.html#publish`
-  ahora. Se aceptó explícitamente el riesgo de que links externos viejos a `publicar.html` den
-  404 en GitHub Pages — no se mantiene compatibilidad con esa URL. `scripts/dev/doctor.js` ya no
-  la exige en `REQUIRED_FILES`.
-- **`tools/archivo-x-curator.html`** — **eliminado en la Fase C5**. Era la UI legacy de curaduría
-  ("Curaduría" + "Publicar carruseles"); en la Fase C3 dejó de ser el fallback visible
-  (`scripts/dev/archive-curator-server.js` empezó a redirigir en vez de servirlo), y en la Fase C5
-  se borró del todo con `git rm`. A diferencia de `publicar.html`, acá **sí se conserva** la URL
-  `/archivo-x-curator.html` como redirect (302) hacia `panel.html#curate` — igual que la raíz del
-  servicio — porque ese backend está desplegado en Render y sigue siendo alcanzable en producción.
-  `scripts/dev/doctor.js` ya no la exige en `REQUIRED_FILES`.
+No describir esos archivos como paginas activas ni recrearlos como entrypoints.
 
-## Cómo servir cada cosa en local
+## GitHub Pages Vs Render
 
-`panel.html` es el panel principal — la API de Archivo X existe para que `panel.html` funcione.
-En local hacen falta **dos procesos**:
+- GitHub Pages sirve el panel principal: `panel.html`.
+- Render sirve las APIs de curaduria (`/api/phrases`, `/api/raw-phrases`, `/api/plan-carruseles`, `/api/taxonomy`) desde `scripts/dev/archive-curator-server.js`.
+- Render puede redirigir rutas legacy hacia `panel.html#curate`; no sirve el panel principal.
+
+## GitHub Actions
+
+`publish.yml` se dispara por:
+
+- `schedule`: `0 15 * * *` y `0 23 * * *`, aprox. 10:00 a.m. y 6:00 p.m. en Colombia.
+- `repository_dispatch`: `event_type: publish-posts`, enviado por `panel.html`.
+
+`workflow_dispatch` fue eliminado de `publish.yml`. El formulario manual **Run workflow** ya no es parte del flujo normal.
+
+## Panel Local
+
+En local hacen falta dos procesos:
 
 ```bash
-# Terminal 1 — API del curador (Archivo X)
-npm run curate:archivo-x   # levanta SOLO la API en http://localhost:5177
-
-# Terminal 2 — el panel
-npm run panel              # sirve panel.html en http://localhost:5173/panel.html
+npm run curate:archivo-x   # API en http://localhost:5177
+npm run panel              # panel en http://localhost:5173/panel.html
 ```
 
-- `npm run curate:archivo-x` **no sirve el panel completo** — es un servidor de API (con
-  credenciales de Google Sheets). Visitar su raíz (`/`) o `/archivo-x-curator.html` en el
-  navegador redirige (302) a `panel.html#curate` en vez de mostrar una UI ahí. Mezclarlo con
-  servir `panel.html` acoplaría un frontend público a un backend con credenciales.
-- El motor de render/preview es el propio `panel.html` en modo `?renderEngine=1`: el panel lo
-  carga en un `<iframe>` oculto, y ambos quedan en el mismo origen (`localhost:5173`) al
-  levantarlos con `npm run panel`.
-- **No abrir `panel.html` con doble clic ni `file://`** — el navegador manda `Origin: null`, que
-  no pasa el CORS de `archive-curator-server.js`, y las llamadas a la API fallan con
-  "Failed to fetch".
+No abrir `panel.html` con `file://`: las llamadas `fetch` a la API de curaduria fallan por CORS.
 
-## Datos y artefactos
+## Datos Y Artefactos
 
 | Ruta | Contenido | Notas |
 | --- | --- | --- |
-| `data/exports/` | Exports/snapshots de las hojas de Google Sheets (`archivo_x`, Hoja 2) y CSV auxiliares similares. No son insumos que lea ningún script — son backups puntuales. | `catalogador-frases - Hoja 2.csv` está versionado en git (movido con `git mv`, conserva historial). `catalogador-frases - archivo_x.csv` está cubierto por `.gitignore` (`*.csv`) y no se fuerza su tracking. |
-| `archive/repomix/` | Dumps generados por la herramienta [Repomix](https://github.com/yamadashy/repomix) para darle contexto del repo a un LLM. No es código fuente ni se usa en ningún script. | Cubierto por `.gitignore` (`repomix-output.xml`); si vuelves a correr `repomix`, recuerda apuntar la salida a esta carpeta o moverla después. |
-| `data/tweets-guardados-x.txt` | Insumo real de `npm run import:saved-tweets`. | Este sí es un archivo vivo del pipeline — no confundir con `data/exports/`. |
+| `data/exports/` | Snapshots/exports de Google Sheets y CSV auxiliares. | No son insumos leidos por scripts. |
+| `archive/repomix/` | Dumps generados por Repomix para contexto de LLM. | Cubierto por `.gitignore` si se genera la salida esperada. |
+| `data/tweets-guardados-x.txt` | Insumo real de `npm run import:saved-tweets`. | Archivo vivo del flujo editorial. |
 
-## Regla general
+## Regla General
 
-Ningún archivo listado como "No" o "Todavía no" se mueve sin antes revisar referencias con
-`rg` y actualizar en el mismo cambio: `scripts/dev/doctor.js` (`REQUIRED_FILES`), cualquier
-`path.join(ROOT, ...)` en código, y las menciones en `README.md` / `CLAUDE.md`.
+Antes de mover o renombrar una ruta activa, buscar referencias con `rg`, actualizar docs y correr `npm run doctor`.
