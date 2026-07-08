@@ -25,9 +25,10 @@ No abrir `panel.html` con `file://`.
 - Reintentar errores: `Operaciones` -> `Reintentar ahora`.
 - Republicar sin re-renderizar: `Operaciones` -> pegar `row_id` o `carousel_id`.
 - Desbloquear fila: `Operaciones` -> pegar ID y confirmar.
+- Actualizar metricas: `Operaciones` -> `Actualizar metricas ahora` (`Dias a consultar`, default 30, rango 1 a 365).
 - Ver ejecucion: abrir GitHub Actions o el run recien disparado desde el enlace del panel.
 
-El panel dispara `publish.yml` con `repository_dispatch` (`event_type: publish-posts`). `publish.yml` ya no tiene `workflow_dispatch`; no usar **Run workflow** manual como flujo normal.
+El panel dispara `publish.yml` con `repository_dispatch` (`event_type: publish-posts`) y `metrics.yml` con `repository_dispatch` (`event_type: update-metrics`, payload `{ "days": "30" }`). Ninguno de los dos tiene ya `workflow_dispatch`; no usar **Run workflow** manual como flujo normal — Publish Posts y Actualizar Metricas se operan desde `panel.html#operations`.
 
 ## Pipeline Local
 
@@ -79,7 +80,7 @@ npm run doctor
 npm run doctor:sheet
 ```
 
-Antes de tocar `publish.yml`, correr `npm run doctor` y validar un disparo `repository_dispatch` desde el panel.
+Antes de tocar `publish.yml` o `metrics.yml`, correr `npm run doctor` y validar un disparo `repository_dispatch` desde el panel.
 
 ## Paletas
 

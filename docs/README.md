@@ -13,8 +13,15 @@ complementaria, más operativa.
 - Unico HTML versionado: `panel.html`.
 - Motor de render: `panel.html?renderEngine=1`.
 - `publish.yml` se dispara por `schedule` y `repository_dispatch` (`event_type: publish-posts`).
-- `workflow_dispatch` fue eliminado de `publish.yml`; no usar **Run workflow** manual como flujo normal.
-- Tags estables: `v-panel-unico-stable`, `v-panel-operations-stable`, `v-panel-repository-dispatch-stable`.
+- `metrics.yml` se dispara por `schedule` semanal (`0 15 * * 0`, domingo ~10:00 a.m. Colombia) y
+  `repository_dispatch` (`event_type: update-metrics`) desde `panel.html#operations` →
+  "Actualizar métricas" (input `Días a consultar`, default 30, rango 1-365).
+- `workflow_dispatch` fue eliminado de `publish.yml` y de `metrics.yml`; no usar **Run workflow**
+  manual como flujo normal. Publish Posts y Actualizar Métricas se operan desde
+  `panel.html#operations`.
+- Tags estables: `v-panel-unico-stable`, `v-panel-operations-stable`,
+  `v-panel-repository-dispatch-stable`, `v-panel-repository-dispatch-docs`,
+  `v-panel-operations-metrics-stable`.
 
 ## Lectura recomendada (en este orden)
 

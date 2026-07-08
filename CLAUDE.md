@@ -78,12 +78,22 @@ correctness check and should be run after touching the pipeline, docs, or palett
 - Only versioned HTML: `panel.html`.
 - Render engine: `panel.html?renderEngine=1`.
 - `publish.yml` runs through `schedule` and `repository_dispatch` (`event_type: publish-posts`).
-- `workflow_dispatch` was removed; do not use GitHub Actions **Run workflow** as a normal flow.
+- `metrics.yml` runs through a weekly `schedule` (`0 15 * * 0`, ~Sunday 10:00 a.m. Colombia) and
+  `repository_dispatch` (`event_type: update-metrics`, payload `{ "days": "30" }`), sent from
+  `panel.html#operations` -> "Actualizar métricas" (input `Días a consultar`, default 30,
+  documented range 1-365; `metrics.yml` reads it as
+  `METRICS_DAYS: ${{ github.event.client_payload.days || '30' }}`).
+- `workflow_dispatch` was removed from both `publish.yml` and `metrics.yml`; do not use GitHub
+  Actions **Run workflow** as a normal flow. Publish Posts and Actualizar Métricas are operated
+  from `panel.html#operations`.
 - The GitHub token is entered in the panel's `Token de GitHub` field and is not stored in
   `localStorage`. For `repository_dispatch`, fine-grained PATs need `Contents: write` on this repo;
-  classic PATs need `repo`.
+  classic PATs need `repo`. The same token works for both the Publish Posts (`publish-posts`) and
+  Actualizar Métricas (`update-metrics`) dispatches.
 - Stable tags: `v-panel-unico-stable`, `v-panel-operations-stable`,
-  `v-panel-repository-dispatch-stable`.
+  `v-panel-repository-dispatch-stable`, `v-panel-repository-dispatch-docs` (previous documented
+  state), `v-panel-operations-metrics-stable` (metrics operated from Operaciones, no
+  `workflow_dispatch` in `metrics.yml`).
 
 ## Repo layout
 
@@ -122,7 +132,8 @@ scripts/
                        carousel/build-carousel-plan.js
     inspiration/       Archivo X flow: fetch-inspiration, import-saved-tweets-to-sheet,
                        taxonomy
-    metrics/           fetch-metrics.js — runs Sundays, computes performance_score
+    metrics/           fetch-metrics.js — runs Sundays (or on demand from panel Operaciones),
+                       computes performance_score
   utils/
     pipeline-runner.js executes render -> upload -> publish steps in order
     pipeline-utils.js  runStep (4 min timeout, child process) + releaseStaleLocks (frees rows
@@ -147,7 +158,8 @@ tools/archivo-x-curator.html   REMOVED in Phase C5 — was the legacy curaduría
                                 archive-curator-server.js; the physical file no longer exists.
 data/tweets-guardados-x.txt    input for import:saved-tweets
 .github/workflows/publish.yml  main pipeline (schedule 10am/6pm Bogota + repository_dispatch)
-.github/workflows/metrics.yml  Sunday metrics job (+ manual `days` input)
+.github/workflows/metrics.yml  Sunday metrics job (schedule + repository_dispatch update-metrics;
+                               days window via client_payload.days, default 30)
 ```
 
 ## State model: the Google Sheet
@@ -173,8 +185,10 @@ render+upload), `unlock_id` (row_id/carousel_id, frees a stuck row immediately),
 `target_carousel_id` (runs the full render+upload+publish pipeline immediately for one specific
 `carousel_id`, used by panel.html's "Registrar y publicar ahora" button -- unlike `publish_only`,
 this does NOT skip render/upload, so it works for a freshly-registered pending carousel with no
-`media_url` yet). `workflow_dispatch` was removed from `publish.yml`; the GitHub Actions manual
-Run workflow form is no longer part of normal operation.
+`media_url` yet). `panel.html#operations` also sends `repository_dispatch`
+(`event_type: update-metrics`, `client_payload: { days }`) to `metrics.yml` via the "Actualizar
+métricas" button. `workflow_dispatch` was removed from both `publish.yml` and `metrics.yml`; the
+GitHub Actions manual Run workflow form is no longer part of normal operation.
 
 ## Critical rules
 
@@ -210,7 +224,7 @@ Daily panel and backend entry points are split by deployment plane:
 - `panel.html` is the **only main HTML page** and the GitHub Pages entry point, with six tabs:
   `Publicar Ahora` (publish form), `Curar Frases`, `Agregar Frases`, `Armar Carruseles`,
   `Preview` (a standalone render tester for any text/mode/color), and `Operaciones` (retry,
-  publish-only, unlock, and links to GitHub Actions/the newly-triggered run). The official entry
+  publish-only, unlock, metrics update, and links to GitHub Actions/the newly-triggered run). The official entry
   URL is `/panel.html` --
   the bare GitHub Pages root is no longer kept as an entry point (it 404s since `index.html` was
   deleted in Phase C7B; that was accepted explicitly).
@@ -315,4 +329,7 @@ legacy until confirmed nothing else depends on them.
   `Reintentar ahora`.
 - **A row is stuck (`lock_status = locked`):** wait ~10 min for `releaseStaleLocks`, or use
   `panel.html` -> `Operaciones` -> unlock with the `row_id`/`carousel_id`.
+- **Metrics need a refresh before Sunday:** use `panel.html` -> `Operaciones` -> `Actualizar
+  métricas` with the days window (1-365, default 30) — do not trigger `metrics.yml` manually from
+  GitHub Actions (its **Run workflow** button no longer exists).
 

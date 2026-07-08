@@ -29,7 +29,12 @@ No describir esos archivos como paginas activas ni recrearlos como entrypoints.
 - `schedule`: `0 15 * * *` y `0 23 * * *`, aprox. 10:00 a.m. y 6:00 p.m. en Colombia.
 - `repository_dispatch`: `event_type: publish-posts`, enviado por `panel.html`.
 
-`workflow_dispatch` fue eliminado de `publish.yml`. El formulario manual **Run workflow** ya no es parte del flujo normal.
+`metrics.yml` se dispara por:
+
+- `schedule`: `0 15 * * 0`, aprox. domingo 10:00 a.m. en Colombia.
+- `repository_dispatch`: `event_type: update-metrics`, enviado desde `panel.html#operations` con `client_payload.days` (default `30`, rango 1 a 365).
+
+`workflow_dispatch` fue eliminado de `publish.yml` y de `metrics.yml`. El formulario manual **Run workflow** ya no es parte del flujo normal en ninguno de los dos; Publish Posts y Actualizar Metricas se operan desde `panel.html#operations`.
 
 ## Panel Local
 

@@ -13,13 +13,17 @@ https://imgifra.github.io/frase-generator-v2/panel.html
 3. `publish.yml` registra frases, renderiza, sube a Cloudinary y publica en Instagram, Facebook y Threads.
 4. Google Sheets guarda todo el estado del pipeline.
 5. Telegram avisa exitos y errores.
-6. `metrics.yml` trae metricas los domingos.
+6. `metrics.yml` trae metricas los domingos y tambien se dispara a demanda desde **Operaciones**.
 
 `publish.yml` se dispara por:
 - `schedule`: `0 15 * * *` y `0 23 * * *`, aprox. 10:00 a.m. y 6:00 p.m. en Colombia.
 - `repository_dispatch`: `event_type: publish-posts`, enviado por el panel.
 
-Ya no existe `workflow_dispatch` en `publish.yml`. El formulario manual **Run workflow** fue eliminado; GitHub Actions queda como vista de seguimiento/debug, no como interfaz principal de operacion.
+`metrics.yml` se dispara por:
+- `schedule`: `0 15 * * 0`, aprox. domingo 10:00 a.m. en Colombia.
+- `repository_dispatch`: `event_type: update-metrics`, enviado por el panel desde **Operaciones**.
+
+Ya no existe `workflow_dispatch` ni en `publish.yml` ni en `metrics.yml`. El formulario manual **Run workflow** fue eliminado en ambos; GitHub Actions queda como vista de seguimiento/debug, no como interfaz principal de operacion. Publish Posts y Actualizar Metricas se operan desde `panel.html#operations`.
 
 ## Panel
 
@@ -50,8 +54,8 @@ La pestana **Operaciones** permite:
 - reintentar posts en error
 - republicar sin re-renderizar por `row_id` o `carousel_id`
 - desbloquear una fila atascada
-- abrir GitHub Actions
-- abrir el run recien disparado
+- actualizar metricas (campo `Dias a consultar`, default 30, rango 1 a 365)
+- abrir los workflows y runs en GitHub Actions (incluido el run recien disparado)
 
 ## Dispatch Del Pipeline
 
@@ -80,7 +84,22 @@ Payload:
 }
 ```
 
-El token de GitHub se escribe en el campo **Token de GitHub** del panel. No se guarda en `localStorage`, no debe versionarse y no debe ponerse en archivos. Para `repository_dispatch`, un fine-grained PAT necesita permiso `Contents: write` sobre este repo; un classic PAT necesita scope `repo`.
+### Actualizar Metricas
+
+Desde **Operaciones**, el boton `Actualizar metricas ahora` usa el mismo endpoint de dispatches con:
+
+```json
+{
+  "event_type": "update-metrics",
+  "client_payload": {
+    "days": "30"
+  }
+}
+```
+
+`days` sale del campo `Dias a consultar` (default `30`, rango 1 a 365). `metrics.yml` lo lee con `METRICS_DAYS: ${{ github.event.client_payload.days || '30' }}`.
+
+El token de GitHub se escribe en el campo **Token de GitHub** del panel. No se guarda en `localStorage`, no debe versionarse y no debe ponerse en archivos. Para `repository_dispatch`, un fine-grained PAT necesita permiso `Contents: write` sobre este repo; un classic PAT necesita scope `repo`. El mismo token sirve para disparar Publish Posts (`publish-posts`) y Actualizar Metricas (`update-metrics`).
 
 ## Panel Local
 
@@ -105,6 +124,7 @@ No abrir `panel.html` con doble clic ni con `file://`; el panel hace `fetch` hac
 - Reintentar errores: `Operaciones` -> `Reintentar ahora`.
 - Republicar sin re-renderizar: `Operaciones` -> pegar `row_id` o `carousel_id`.
 - Desbloquear: `Operaciones` -> pegar ID y confirmar.
+- Actualizar metricas: `Operaciones` -> `Actualizar metricas ahora`.
 - Ver ejecucion: abrir el run desde el enlace del panel.
 
 ## Cuando Algo Falla
@@ -166,8 +186,8 @@ npm run doctor:sheet
 
 ```text
 .github/workflows/
-  publish.yml          # schedule + repository_dispatch
-  metrics.yml          # metricas dominicales + trigger manual propio
+  publish.yml          # schedule + repository_dispatch (publish-posts)
+  metrics.yml          # schedule dominical + repository_dispatch (update-metrics)
 
 panel.html             # unico HTML versionado; panel y motor ?renderEngine=1
 js/                    # generador visual usado por Playwright
@@ -190,15 +210,17 @@ El workflow usa Playwright Chromium con cache. Ya no instala `chromium-browser` 
 
 - `v-panel-unico-stable`: arquitectura de panel unico.
 - `v-panel-operations-stable`: panel unico + pestana Operaciones.
-- `v-panel-repository-dispatch-stable`: estado final con `repository_dispatch` y sin `workflow_dispatch`.
+- `v-panel-repository-dispatch-stable`: `publish.yml` con `repository_dispatch` y sin `workflow_dispatch`.
+- `v-panel-repository-dispatch-docs`: estado documentado previo (docs alineadas a `repository_dispatch`).
+- `v-panel-operations-metrics-stable`: metricas operadas desde Operaciones y `metrics.yml` sin `workflow_dispatch`.
 
 ## Que No Hacer
 
 - No usar `file://` para abrir el panel.
 - No editar secrets en frontend.
 - No volver a crear `index.html`, `publicar.html` ni `tools/archivo-x-curator.html` como entrypoints.
-- No usar **Run workflow** manual como flujo normal.
-- No tocar `publish.yml` sin correr `npm run doctor` y probar `repository_dispatch`.
+- No usar **Run workflow** manual como flujo normal (ya no existe ni en `publish.yml` ni en `metrics.yml`); publicar y actualizar metricas desde **Operaciones**.
+- No tocar `publish.yml` ni `metrics.yml` sin correr `npm run doctor` y probar `repository_dispatch`.
 
 ## Documentacion Tecnica
 

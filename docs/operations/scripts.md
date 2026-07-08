@@ -110,6 +110,11 @@ Llama a la Meta Graph API real y escribe en Hoja 2 — mismo efecto que espera a
 corra `metrics.yml`. No hace falta confirmación especial, pero no correrlo repetidamente sin
 necesidad (gasta cuota de la API de insights).
 
+Para dispararlo remoto sin entorno local, usar `panel.html#operations` → «Actualizar métricas»
+(`repository_dispatch` con `event_type: update-metrics` y `days` 1-365, default 30). `metrics.yml`
+ya no tiene `workflow_dispatch`, así que el botón **Run workflow** de GitHub Actions no existe
+para métricas.
+
 ## Comandos de validación (siempre seguros)
 
 ```bash
