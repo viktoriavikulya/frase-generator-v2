@@ -1102,6 +1102,18 @@
             <button class="btn-main" type="button" id="operations-unlock-btn">Desbloquear</button>
           </div>
 
+          <hr class="divider">
+
+          <p class="eyebrow">Actualizar métricas</p>
+          <p class="field-hint">Recalcula métricas de posts publicados en los últimos N días.</p>
+          <div class="field">
+            <label class="field-label" for="operations-metrics-days">Días a consultar</label>
+            <input class="field-input" type="number" id="operations-metrics-days" min="1" max="365" value="30">
+          </div>
+          <div class="btns">
+            <button class="btn-main" type="button" id="operations-metrics-btn">Actualizar métricas ahora</button>
+          </div>
+
           <p class="status" id="operations-status"></p>
           <p class="field-hint" id="operations-actions-link"></p>
         </div>
@@ -1473,6 +1485,20 @@
     }
 
     async function dispatchWorkflow(inputs) {
+      return dispatchRepositoryEvent("publish-posts", {
+        frases: inputs.frases || "",
+        caption: inputs.caption || "",
+        tipo: inputs.tipo || "auto",
+        solo_registrar: inputs.solo_registrar || "false",
+        reintentar: inputs.reintentar || "false",
+        color: inputs.color || "",
+        publish_only: inputs.publish_only || "",
+        unlock_id: inputs.unlock_id || "",
+        target_carousel_id: inputs.target_carousel_id || ""
+      });
+    }
+
+    async function dispatchRepositoryEvent(eventType, clientPayload) {
       const token = document.getElementById("token").value.trim();
       if (!token) {
         throw new Error('Falta el token de GitHub (campo "Token de GitHub" del tab Publicar Ahora).');
@@ -1487,20 +1513,7 @@
             "Accept": "application/vnd.github+json",
             "Content-Type": "application/json"
           },
-          body: JSON.stringify({
-            event_type: "publish-posts",
-            client_payload: {
-              frases: inputs.frases || "",
-              caption: inputs.caption || "",
-              tipo: inputs.tipo || "auto",
-              solo_registrar: inputs.solo_registrar || "false",
-              reintentar: inputs.reintentar || "false",
-              color: inputs.color || "",
-              publish_only: inputs.publish_only || "",
-              unlock_id: inputs.unlock_id || "",
-              target_carousel_id: inputs.target_carousel_id || ""
-            }
-          })
+          body: JSON.stringify({ event_type: eventType, client_payload: clientPayload })
         }
       );
 
@@ -1511,6 +1524,10 @@
         }
         throw new Error(data.message || `Error ${res.status}`);
       }
+    }
+
+    async function dispatchMetricsWorkflow(days) {
+      return dispatchRepositoryEvent("update-metrics", { days: String(days) });
     }
 
     async function publicar(soloSheet) {
@@ -1605,22 +1622,22 @@
       if (el) el.innerHTML = html;
     }
 
-    function getWorkflowUrl() {
-      return `https://github.com/${OWNER}/${REPO}/actions/workflows/${WORKFLOW}`;
+    function getWorkflowUrl(workflow = WORKFLOW) {
+      return `https://github.com/${OWNER}/${REPO}/actions/workflows/${workflow}`;
     }
 
     function wait(ms) {
       return new Promise(resolve => setTimeout(resolve, ms));
     }
 
-    async function fetchLatestWorkflowRunUrl(dispatchStartedAt) {
+    async function fetchLatestWorkflowRunUrl(dispatchStartedAt, workflow = WORKFLOW) {
       const token = document.getElementById("token").value.trim();
       if (!token) return "";
 
       await wait(7000);
 
       const res = await fetch(
-        `https://api.github.com/repos/${OWNER}/${REPO}/actions/workflows/${WORKFLOW}/runs?branch=main&event=repository_dispatch&per_page=5`,
+        `https://api.github.com/repos/${OWNER}/${REPO}/actions/workflows/${workflow}/runs?branch=main&event=repository_dispatch&per_page=5`,
         {
           headers: {
             "Authorization": `Bearer ${token}`,
@@ -1645,22 +1662,22 @@
       return run && run.html_url ? run.html_url : "";
     }
 
-    function renderOperationsLinks(runUrl = "") {
-      const workflowUrl = getWorkflowUrl();
+    function renderOperationsLinks(runUrl = "", workflow = WORKFLOW, label = "Abrir Publish Posts en GitHub Actions", runLabel = "Abrir run recién disparado") {
+      const workflowUrl = getWorkflowUrl(workflow);
       const runLink = runUrl
-        ? ` · <a href="${runUrl}" target="_blank" rel="noopener">Abrir run recién disparado</a>`
+        ? ` &middot; <a href="${runUrl}" target="_blank" rel="noopener">${runLabel}</a>`
         : "";
       setOperationsLink(
-        `<a href="${workflowUrl}" target="_blank" rel="noopener">Abrir Publish Posts en GitHub Actions</a>${runLink}`
+        `<a href="${workflowUrl}" target="_blank" rel="noopener">${label}</a>${runLink}`
       );
     }
 
-    async function updateOperationsRunLinkBestEffort(dispatchStartedAt) {
+    async function updateOperationsRunLinkBestEffort(dispatchStartedAt, workflow = WORKFLOW, label = "Abrir Publish Posts en GitHub Actions", runLabel = "Abrir run recién disparado") {
       try {
-        const runUrl = await fetchLatestWorkflowRunUrl(dispatchStartedAt);
-        renderOperationsLinks(runUrl);
+        const runUrl = await fetchLatestWorkflowRunUrl(dispatchStartedAt, workflow);
+        renderOperationsLinks(runUrl, workflow, label, runLabel);
       } catch (err) {
-        renderOperationsLinks();
+        renderOperationsLinks("", workflow, label, runLabel);
       }
     }
 
@@ -1750,6 +1767,32 @@
         renderOperationsLinks();
         updateOperationsRunLinkBestEffort(dispatchStartedAt);
         input.value = "";
+      } catch (err) {
+        setOperationsStatus(`Error: ${err.message}`, "error");
+      } finally {
+        btn.disabled = false;
+      }
+    }
+
+    async function operacionesActualizarMetricas() {
+      const btn = document.getElementById("operations-metrics-btn");
+      const input = document.getElementById("operations-metrics-days");
+      const days = Number(input.value);
+
+      if (!Number.isInteger(days) || days < 1 || days > 365) {
+        setOperationsStatus("Los días a consultar deben ser un entero entre 1 y 365.", "error");
+        return;
+      }
+
+      btn.disabled = true;
+      setOperationsStatus("Disparando actualización de métricas...");
+      setOperationsLink("");
+      try {
+        const dispatchStartedAt = new Date();
+        await dispatchMetricsWorkflow(days);
+        setOperationsStatus(`Actualización de métricas disparada para los últimos ${days} días.`, "ok");
+        renderOperationsLinks("", "metrics.yml", "Abrir workflow de métricas en GitHub Actions", "Abrir run de métricas recién disparado");
+        updateOperationsRunLinkBestEffort(dispatchStartedAt, "metrics.yml", "Abrir workflow de métricas en GitHub Actions", "Abrir run de métricas recién disparado");
       } catch (err) {
         setOperationsStatus(`Error: ${err.message}`, "error");
       } finally {
@@ -2328,6 +2371,7 @@
     document.getElementById("operations-retry-btn").addEventListener("click", operacionesReintentar);
     document.getElementById("operations-publish-only-btn").addEventListener("click", operacionesPublishOnly);
     document.getElementById("operations-unlock-btn").addEventListener("click", operacionesUnlock);
+    document.getElementById("operations-metrics-btn").addEventListener("click", operacionesActualizarMetricas);
     document.getElementById("carousel-prev").addEventListener("click", () => carouselNav(-1));
     document.getElementById("carousel-next").addEventListener("click", () => carouselNav(1));
     document.getElementById("archive-save-config").addEventListener("click", () => {
