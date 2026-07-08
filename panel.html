@@ -822,6 +822,7 @@
         <button class="tab" type="button" data-tab="raw">Agregar Frases</button>
         <button class="tab" type="button" data-tab="carousel">Armar Carruseles</button>
         <button class="tab" type="button" data-tab="preview">Preview</button>
+        <button class="tab" type="button" data-tab="operations">Operaciones</button>
       </div>
     </header>
 
@@ -1052,6 +1053,58 @@
           </div>
         </div>
       </section>
+
+      <section class="view archive-view" id="operations-view">
+        <div class="archive-shell">
+          <div class="archive-head">
+            <div>
+              <p class="eyebrow">operaciones</p>
+              <h2 class="page-title">Operaciones</h2>
+              <p class="field-hint">Acciones técnicas que antes obligaban a entrar a GitHub Actions. Todas usan el <strong>Token de GitHub</strong> del tab Publicar Ahora (no se guarda en ningún lado).</p>
+            </div>
+          </div>
+
+          <p class="eyebrow">Reintentar posts en error</p>
+          <p class="field-hint">Vuelve a correr el pipeline para las filas con <code>estado_general = error</code> (no duplica lo ya publicado: las plataformas con ID guardado se saltan).</p>
+          <div class="field">
+            <label class="field-label" for="operations-retry-tipo">Tipo</label>
+            <select class="field-input" id="operations-retry-tipo">
+              <option value="auto">Auto (carrusel primero, luego single)</option>
+              <option value="carousel">Carrusel</option>
+              <option value="single">Single</option>
+            </select>
+          </div>
+          <div class="btns">
+            <button class="btn-main" type="button" id="operations-retry-btn">Reintentar ahora</button>
+          </div>
+
+          <hr class="divider">
+
+          <p class="eyebrow">Republicar sin re-renderizar</p>
+          <p class="field-hint">Si falló el publish pero render y upload están bien (hay <code>media_url</code>), pega el <code>row_id</code> o <code>carousel_id</code>.</p>
+          <div class="field">
+            <label class="field-label" for="operations-publish-only-id">ID a republicar</label>
+            <input class="field-input" type="text" id="operations-publish-only-id" placeholder="row_id o carousel_id">
+          </div>
+          <div class="btns">
+            <button class="btn-main" type="button" id="operations-publish-only-btn">Republicar ahora</button>
+          </div>
+
+          <hr class="divider">
+
+          <p class="eyebrow">Desbloquear fila atascada</p>
+          <p class="field-hint">Libera una fila con <code>lock_status = locked</code> sin esperar los 10 minutos del release automático. La fila queda en <code>error</code> para que el próximo ciclo la reintente. Pide confirmación antes de disparar.</p>
+          <div class="field">
+            <label class="field-label" for="operations-unlock-id">ID a desbloquear</label>
+            <input class="field-input" type="text" id="operations-unlock-id" placeholder="row_id o carousel_id">
+          </div>
+          <div class="btns">
+            <button class="btn-main" type="button" id="operations-unlock-btn">Desbloquear</button>
+          </div>
+
+          <p class="status" id="operations-status"></p>
+        </div>
+      </section>
     </main>
   </div>
 
@@ -1119,6 +1172,7 @@
     const rawView = document.getElementById("raw-view");
     const carouselView = document.getElementById("carousel-view");
     const previewView = document.getElementById("preview-view");
+    const operationsView = document.getElementById("operations-view");
     const curatorUrlInput = document.getElementById("archive-api-url");
     const archiveTokenInput = document.getElementById("archive-token");
     const previewCanvas = document.getElementById("preview-canvas");
@@ -1166,6 +1220,7 @@
       rawView.classList.toggle("active", name === "raw");
       carouselView.classList.toggle("active", name === "carousel");
       previewView.classList.toggle("active", name === "preview");
+      operationsView.classList.toggle("active", name === "operations");
       location.hash = name;
       if (name === "curate" && !archiveState.loaded) {
         loadArchive().catch(showArchiveError);
@@ -1527,6 +1582,123 @@
         }
       } catch (err) {
         setStatusRepublish(`Error: ${err.message}`, "error");
+      } finally {
+        btn.disabled = false;
+      }
+    }
+
+    /* ========= OPERACIONES (workflow_dispatch tecnico) =========
+       Mismo patron que publicar()/republicar(): el token de GitHub lo escribe
+       el usuario en el campo #token del tab Publicar Ahora — nunca se guarda
+       en localStorage ni en ningun archivo. */
+
+    function setOperationsStatus(message, cls = "") {
+      const el = document.getElementById("operations-status");
+      el.textContent = message || "";
+      el.className = `status ${cls}`;
+    }
+
+    async function dispatchWorkflow(inputs) {
+      const token = document.getElementById("token").value.trim();
+      if (!token) {
+        throw new Error('Falta el token de GitHub (campo "Token de GitHub" del tab Publicar Ahora).');
+      }
+
+      const res = await fetch(
+        `https://api.github.com/repos/${OWNER}/${REPO}/actions/workflows/${WORKFLOW}/dispatches`,
+        {
+          method: "POST",
+          headers: {
+            "Authorization": `Bearer ${token}`,
+            "Accept": "application/vnd.github+json",
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({ ref: "main", inputs })
+        }
+      );
+
+      if (res.status !== 204) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.message || `Error ${res.status}`);
+      }
+    }
+
+    async function operacionesReintentar() {
+      const btn = document.getElementById("operations-retry-btn");
+      const tipo = document.getElementById("operations-retry-tipo").value || "auto";
+
+      btn.disabled = true;
+      setOperationsStatus("Disparando reintento...");
+      try {
+        await dispatchWorkflow({
+          reintentar: "true",
+          frases: "",
+          publish_only: "",
+          unlock_id: "",
+          tipo
+        });
+        setOperationsStatus("Reintento disparado. Revisa Telegram/Actions en 2-3 minutos.", "ok");
+      } catch (err) {
+        setOperationsStatus(`Error: ${err.message}`, "error");
+      } finally {
+        btn.disabled = false;
+      }
+    }
+
+    async function operacionesPublishOnly() {
+      const btn = document.getElementById("operations-publish-only-btn");
+      const input = document.getElementById("operations-publish-only-id");
+      const id = input.value.trim();
+
+      if (!id) { setOperationsStatus("Falta el row_id o carousel_id a republicar.", "error"); return; }
+
+      btn.disabled = true;
+      setOperationsStatus("Disparando republicacion...");
+      try {
+        await dispatchWorkflow({
+          publish_only: id,
+          tipo: "auto",
+          frases: "",
+          caption: "",
+          color: "",
+          solo_registrar: "false",
+          reintentar: "false"
+        });
+        setOperationsStatus("Republicacion disparada. En 1-2 minutos deberia llegar la notificacion de Telegram.", "ok");
+        input.value = "";
+      } catch (err) {
+        setOperationsStatus(`Error: ${err.message}`, "error");
+      } finally {
+        btn.disabled = false;
+      }
+    }
+
+    async function operacionesUnlock() {
+      const btn = document.getElementById("operations-unlock-btn");
+      const input = document.getElementById("operations-unlock-id");
+      const id = input.value.trim();
+
+      if (!id) { setOperationsStatus("Falta el row_id o carousel_id a desbloquear.", "error"); return; }
+
+      const confirmed = window.confirm(
+        `¿Desbloquear "${id}"?\n\nLa fila quedara en estado error y el proximo ciclo la reintentara. ` +
+        "Solo hazlo si estas seguro de que no hay un pipeline corriendo sobre ella ahora mismo."
+      );
+      if (!confirmed) { setOperationsStatus("Desbloqueo cancelado.", ""); return; }
+
+      btn.disabled = true;
+      setOperationsStatus("Disparando desbloqueo...");
+      try {
+        await dispatchWorkflow({
+          unlock_id: id,
+          frases: "",
+          publish_only: "",
+          reintentar: "false"
+        });
+        setOperationsStatus("Desbloqueo disparado. Verifica en el Sheet en ~1 minuto.", "ok");
+        input.value = "";
+      } catch (err) {
+        setOperationsStatus(`Error: ${err.message}`, "error");
       } finally {
         btn.disabled = false;
       }
@@ -2116,6 +2288,9 @@
     document.getElementById("btn-publicar").addEventListener("click", () => publicar(false));
     document.getElementById("btn-guardar").addEventListener("click", () => publicar(true));
     document.getElementById("btn-republish").addEventListener("click", republicar);
+    document.getElementById("operations-retry-btn").addEventListener("click", operacionesReintentar);
+    document.getElementById("operations-publish-only-btn").addEventListener("click", operacionesPublishOnly);
+    document.getElementById("operations-unlock-btn").addEventListener("click", operacionesUnlock);
     document.getElementById("carousel-prev").addEventListener("click", () => carouselNav(-1));
     document.getElementById("carousel-next").addEventListener("click", () => carouselNav(1));
     document.getElementById("archive-save-config").addEventListener("click", () => {
@@ -2165,7 +2340,7 @@
     drawPreviewPlaceholder(previewToolCtx, "Escribe una frase", "#D4A017");
 
     const initialTab = location.hash.replace("#", "");
-    setActiveTab(["publish", "curate", "raw", "carousel", "preview"].includes(initialTab) ? initialTab : "publish");
+    setActiveTab(["publish", "curate", "raw", "carousel", "preview", "operations"].includes(initialTab) ? initialTab : "publish");
     }
   </script>
 </body>
