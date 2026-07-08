@@ -1116,6 +1116,16 @@
 
           <p class="status" id="operations-status"></p>
           <p class="field-hint" id="operations-actions-link"></p>
+
+          <hr class="divider">
+
+          <p class="eyebrow">Historial de ejecuciones</p>
+          <p class="field-hint">Consulta los últimos runs de publicación y métricas.</p>
+          <div class="btns">
+            <button class="btn-main" type="button" id="operations-history-btn">Actualizar historial</button>
+          </div>
+          <p class="status" id="operations-history-status"></p>
+          <div id="operations-history-list"></div>
         </div>
       </section>
     </main>
@@ -1800,6 +1810,120 @@
       }
     }
 
+    /* ========= HISTORIAL DE EJECUCIONES =========
+       Lee los ultimos runs de publish.yml y metrics.yml con el mismo token del
+       tab Publicar Ahora. Sin filtros de event/branch: el historial debe incluir
+       tanto repository_dispatch como schedule. */
+
+    const HISTORY_WORKFLOWS = ["publish.yml", "metrics.yml"];
+    const HISTORY_WORKFLOW_LABELS = {
+      "publish.yml": "Publish Posts",
+      "metrics.yml": "Actualizar Métricas"
+    };
+
+    function setOperationsHistoryStatus(message, cls = "") {
+      const el = document.getElementById("operations-history-status");
+      el.textContent = message || "";
+      el.className = `status ${cls}`;
+    }
+
+    async function fetchWorkflowRuns(workflow, perPage = 5) {
+      const token = document.getElementById("token").value.trim();
+
+      const res = await fetch(
+        `https://api.github.com/repos/${OWNER}/${REPO}/actions/workflows/${workflow}/runs?per_page=${perPage}`,
+        {
+          headers: {
+            "Authorization": `Bearer ${token}`,
+            "Accept": "application/vnd.github+json"
+          }
+        }
+      );
+
+      if (!res.ok) {
+        if (res.status === 401) {
+          throw new Error("Token inválido o vencido.");
+        }
+        if (res.status === 403) {
+          throw new Error("Token sin permiso para leer GitHub Actions. Para fine-grained PAT agrega Actions: read.");
+        }
+        const data = await res.json().catch(() => ({}));
+        throw new Error(`Error ${res.status}: ${data.message || "no se pudo leer el historial"}`);
+      }
+
+      const data = await res.json().catch(() => ({}));
+      const runs = Array.isArray(data.workflow_runs) ? data.workflow_runs : [];
+      return runs.map(run => ({
+        workflow,
+        workflowLabel: HISTORY_WORKFLOW_LABELS[workflow] || workflow,
+        status: run.status || "",
+        conclusion: run.conclusion,
+        event: run.event || "",
+        branch: run.head_branch || "",
+        sha: String(run.head_sha || "").slice(0, 7),
+        createdAt: run.created_at || "",
+        updatedAt: run.updated_at || "",
+        url: run.html_url || ""
+      }));
+    }
+
+    function formatHistoryDate(iso) {
+      const date = new Date(iso);
+      return Number.isNaN(date.getTime()) ? "-" : date.toLocaleString();
+    }
+
+    function renderOperationsHistory(runs) {
+      const list = document.getElementById("operations-history-list");
+      if (!runs.length) {
+        list.innerHTML = "";
+        setOperationsHistoryStatus("No se encontraron ejecuciones recientes.");
+        return;
+      }
+      list.innerHTML = runs.map(run => {
+        const conclusion = run.conclusion ? run.conclusion : "en progreso";
+        const cls = run.conclusion === "success" ? "ok" : (run.conclusion ? "err" : "warn");
+        return `<div class="result-box ${cls}">` +
+          `<strong>${escapeHtml(run.workflowLabel)}</strong>` +
+          ` &middot; ${escapeHtml(run.status)} / ${escapeHtml(conclusion)}` +
+          ` &middot; ${escapeHtml(run.event)} &middot; ${escapeHtml(run.branch)} &middot; <code>${escapeHtml(run.sha)}</code><br>` +
+          `Creado: ${escapeHtml(formatHistoryDate(run.createdAt))}` +
+          ` &middot; Actualizado: ${escapeHtml(formatHistoryDate(run.updatedAt))}` +
+          ` &middot; <a href="${escapeHtml(run.url)}" target="_blank" rel="noopener">Abrir run</a>` +
+          `</div>`;
+      }).join("");
+    }
+
+    async function operacionesActualizarHistorial() {
+      const btn = document.getElementById("operations-history-btn");
+      const token = document.getElementById("token").value.trim();
+
+      if (!token) {
+        setOperationsHistoryStatus("Ingresa el token de GitHub para consultar el historial.", "error");
+        return;
+      }
+
+      btn.disabled = true;
+      setOperationsHistoryStatus("Consultando historial...");
+      try {
+        const results = await Promise.all(
+          HISTORY_WORKFLOWS.map(workflow => fetchWorkflowRuns(workflow, 5))
+        );
+        const runs = results
+          .flat()
+          .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+          .slice(0, 10);
+        renderOperationsHistory(runs);
+        if (runs.length) {
+          setOperationsHistoryStatus(`Mostrando ${runs.length} ejecuciones recientes.`, "ok");
+        }
+      } catch (err) {
+        document.getElementById("operations-history-list").innerHTML = "";
+        setOperationsHistoryStatus(`Error: ${err.message}`, "error");
+      } finally {
+        btn.disabled = false;
+      }
+    }
+
     function clean(value) {
       return String(value || "").trim();
     }
@@ -2372,6 +2496,7 @@
     document.getElementById("operations-publish-only-btn").addEventListener("click", operacionesPublishOnly);
     document.getElementById("operations-unlock-btn").addEventListener("click", operacionesUnlock);
     document.getElementById("operations-metrics-btn").addEventListener("click", operacionesActualizarMetricas);
+    document.getElementById("operations-history-btn").addEventListener("click", operacionesActualizarHistorial);
     document.getElementById("carousel-prev").addEventListener("click", () => carouselNav(-1));
     document.getElementById("carousel-next").addEventListener("click", () => carouselNav(1));
     document.getElementById("archive-save-config").addEventListener("click", () => {
