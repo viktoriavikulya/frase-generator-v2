@@ -96,6 +96,8 @@ GitHub Pages: interfaz estatica unificada y preview.
 Render: backend/API de Archivo X.
 GitHub Actions: publicacion real y metricas por schedule o repository_dispatch
 (publish.yml: publish-posts; metrics.yml: update-metrics; ninguno tiene workflow_dispatch).
+El panel ademas lee el historial de runs de ambos workflows por API
+(Historial de ejecuciones en Operaciones).
 panel.html: puerta de entrada diaria; con ?renderEngine=1 es tambien el motor de render real
 (index.html fue eliminado en la Fase C7B).
 ```

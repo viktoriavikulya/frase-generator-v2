@@ -36,6 +36,8 @@ No describir esos archivos como paginas activas ni recrearlos como entrypoints.
 
 `workflow_dispatch` fue eliminado de `publish.yml` y de `metrics.yml`. El formulario manual **Run workflow** ya no es parte del flujo normal en ninguno de los dos; Publish Posts y Actualizar Metricas se operan desde `panel.html#operations`.
 
+`panel.html#operations` tambien lee los ultimos runs de ambos workflows (bloque "Historial de ejecuciones", boton `Actualizar historial`) via `GET /repos/imgifra/frase-generator-v2/actions/workflows/{workflow}/runs?per_page=5`, sin filtrar por event ni branch — por eso pueden aparecer runs historicos de `workflow_dispatch` aunque ese trigger ya no exista. Requiere el token del panel; un fine-grained PAT necesita `Actions: read` para esta lectura (el scope `repo` de un classic PAT ya la cubre).
+
 ## Panel Local
 
 En local hacen falta dos procesos:

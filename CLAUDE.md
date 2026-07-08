@@ -84,16 +84,26 @@ correctness check and should be run after touching the pipeline, docs, or palett
   documented range 1-365; `metrics.yml` reads it as
   `METRICS_DAYS: ${{ github.event.client_payload.days || '30' }}`).
 - `workflow_dispatch` was removed from both `publish.yml` and `metrics.yml`; do not use GitHub
-  Actions **Run workflow** as a normal flow. Publish Posts and Actualizar Métricas are operated
-  from `panel.html#operations`.
+  Actions **Run workflow** as a normal flow. GitHub Actions remains the execution engine and run
+  log, but normal operation happens from `panel.html#operations` (Publish Posts, Actualizar
+  Métricas, run history).
+- `panel.html#operations` also has an "Historial de ejecuciones" block ("Actualizar historial"
+  button): lists up to 10 recent runs of `publish.yml` and `metrics.yml` merged, via
+  `GET /actions/workflows/{workflow}/runs?per_page=5`, showing workflow, status/conclusion,
+  event, branch, short SHA, dates and a link to the run. It does NOT filter by event or branch —
+  it includes `repository_dispatch`, `schedule` and historical runs, so old `workflow_dispatch`
+  runs may appear even though that trigger no longer exists.
 - The GitHub token is entered in the panel's `Token de GitHub` field and is not stored in
   `localStorage`. For `repository_dispatch`, fine-grained PATs need `Contents: write` on this repo;
   classic PATs need `repo`. The same token works for both the Publish Posts (`publish-posts`) and
-  Actualizar Métricas (`update-metrics`) dispatches.
+  Actualizar Métricas (`update-metrics`) dispatches. Reading the run history additionally needs
+  `Actions: read` on fine-grained PATs (a classic PAT's `repo` scope already covers it). The
+  history block requires the token.
 - Stable tags: `v-panel-unico-stable`, `v-panel-operations-stable`,
   `v-panel-repository-dispatch-stable`, `v-panel-repository-dispatch-docs` (previous documented
   state), `v-panel-operations-metrics-stable` (metrics operated from Operaciones, no
-  `workflow_dispatch` in `metrics.yml`).
+  `workflow_dispatch` in `metrics.yml`), `v-panel-operations-history-stable` (Operaciones with
+  the run history block).
 
 ## Repo layout
 
@@ -224,7 +234,8 @@ Daily panel and backend entry points are split by deployment plane:
 - `panel.html` is the **only main HTML page** and the GitHub Pages entry point, with six tabs:
   `Publicar Ahora` (publish form), `Curar Frases`, `Agregar Frases`, `Armar Carruseles`,
   `Preview` (a standalone render tester for any text/mode/color), and `Operaciones` (retry,
-  publish-only, unlock, metrics update, and links to GitHub Actions/the newly-triggered run). The official entry
+  publish-only, unlock, metrics update, run history, and links to GitHub Actions/the
+  newly-triggered run). The official entry
   URL is `/panel.html` --
   the bare GitHub Pages root is no longer kept as an entry point (it 404s since `index.html` was
   deleted in Phase C7B; that was accepted explicitly).
@@ -332,4 +343,7 @@ legacy until confirmed nothing else depends on them.
 - **Metrics need a refresh before Sunday:** use `panel.html` -> `Operaciones` -> `Actualizar
   métricas` with the days window (1-365, default 30) — do not trigger `metrics.yml` manually from
   GitHub Actions (its **Run workflow** button no longer exists).
+- **Want to know what ran recently:** use `panel.html` -> `Operaciones` -> `Actualizar historial`
+  (last 10 merged runs of `publish.yml` + `metrics.yml`; unfiltered, so scheduled runs and old
+  `workflow_dispatch` runs also appear).
 

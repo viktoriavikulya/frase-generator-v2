@@ -26,6 +26,7 @@ No abrir `panel.html` con `file://`.
 - Republicar sin re-renderizar: `Operaciones` -> pegar `row_id` o `carousel_id`.
 - Desbloquear fila: `Operaciones` -> pegar ID y confirmar.
 - Actualizar metricas: `Operaciones` -> `Actualizar metricas ahora` (`Dias a consultar`, default 30, rango 1 a 365).
+- Ver historial de ejecuciones: `Operaciones` -> `Actualizar historial` (hasta 10 runs recientes mezclados de `publish.yml` y `metrics.yml`; incluye `repository_dispatch`, `schedule` e historicos porque no filtra por event ni branch).
 - Ver ejecucion: abrir GitHub Actions o el run recien disparado desde el enlace del panel.
 
 El panel dispara `publish.yml` con `repository_dispatch` (`event_type: publish-posts`) y `metrics.yml` con `repository_dispatch` (`event_type: update-metrics`, payload `{ "days": "30" }`). Ninguno de los dos tiene ya `workflow_dispatch`; no usar **Run workflow** manual como flujo normal — Publish Posts y Actualizar Metricas se operan desde `panel.html#operations`.

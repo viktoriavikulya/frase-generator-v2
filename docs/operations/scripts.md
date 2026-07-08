@@ -113,7 +113,8 @@ necesidad (gasta cuota de la API de insights).
 Para dispararlo remoto sin entorno local, usar `panel.html#operations` → «Actualizar métricas»
 (`repository_dispatch` con `event_type: update-metrics` y `days` 1-365, default 30). `metrics.yml`
 ya no tiene `workflow_dispatch`, así que el botón **Run workflow** de GitHub Actions no existe
-para métricas.
+para métricas. El resultado se puede seguir desde el bloque «Historial de ejecuciones» del mismo
+tab (botón «Actualizar historial»), que lista los últimos runs de `publish.yml` y `metrics.yml`.
 
 ## Comandos de validación (siempre seguros)
 

@@ -23,7 +23,7 @@ https://imgifra.github.io/frase-generator-v2/panel.html
 - `schedule`: `0 15 * * 0`, aprox. domingo 10:00 a.m. en Colombia.
 - `repository_dispatch`: `event_type: update-metrics`, enviado por el panel desde **Operaciones**.
 
-Ya no existe `workflow_dispatch` ni en `publish.yml` ni en `metrics.yml`. El formulario manual **Run workflow** fue eliminado en ambos; GitHub Actions queda como vista de seguimiento/debug, no como interfaz principal de operacion. Publish Posts y Actualizar Metricas se operan desde `panel.html#operations`.
+Ya no existe `workflow_dispatch` ni en `publish.yml` ni en `metrics.yml`. El formulario manual **Run workflow** fue eliminado en ambos; GitHub Actions sigue siendo el motor y el registro de ejecucion, pero la operacion normal se hace desde `panel.html#operations` (Publish Posts, Actualizar Metricas y el seguimiento basico via Historial de ejecuciones).
 
 ## Panel
 
@@ -55,6 +55,7 @@ La pestana **Operaciones** permite:
 - republicar sin re-renderizar por `row_id` o `carousel_id`
 - desbloquear una fila atascada
 - actualizar metricas (campo `Dias a consultar`, default 30, rango 1 a 365)
+- consultar el historial de ejecuciones (ultimos runs de `publish.yml` y `metrics.yml`)
 - abrir los workflows y runs en GitHub Actions (incluido el run recien disparado)
 
 ## Dispatch Del Pipeline
@@ -99,7 +100,17 @@ Desde **Operaciones**, el boton `Actualizar metricas ahora` usa el mismo endpoin
 
 `days` sale del campo `Dias a consultar` (default `30`, rango 1 a 365). `metrics.yml` lo lee con `METRICS_DAYS: ${{ github.event.client_payload.days || '30' }}`.
 
-El token de GitHub se escribe en el campo **Token de GitHub** del panel. No se guarda en `localStorage`, no debe versionarse y no debe ponerse en archivos. Para `repository_dispatch`, un fine-grained PAT necesita permiso `Contents: write` sobre este repo; un classic PAT necesita scope `repo`. El mismo token sirve para disparar Publish Posts (`publish-posts`) y Actualizar Metricas (`update-metrics`).
+### Historial De Ejecuciones
+
+El boton `Actualizar historial` de **Operaciones** lista hasta 10 ejecuciones recientes mezcladas de `publish.yml` (Publish Posts) y `metrics.yml` (Actualizar Metricas), leyendo:
+
+```http
+GET https://api.github.com/repos/imgifra/frase-generator-v2/actions/workflows/{workflow}/runs?per_page=5
+```
+
+Por cada run muestra workflow, status/conclusion, event, branch, SHA corto, fechas y el enlace `Abrir run`. No filtra por `event` ni `branch`, para incluir `repository_dispatch`, `schedule` e historicos — por eso puede aparecer algun `workflow_dispatch` viejo aunque ese trigger ya no exista en los workflows. Exige el token de GitHub del panel.
+
+El token de GitHub se escribe en el campo **Token de GitHub** del panel. No se guarda en `localStorage`, no debe versionarse y no debe ponerse en archivos. Para `repository_dispatch`, un fine-grained PAT necesita permiso `Contents: write` sobre este repo; un classic PAT necesita scope `repo`. El mismo token sirve para disparar Publish Posts (`publish-posts`) y Actualizar Metricas (`update-metrics`). Para leer el historial de ejecuciones, un fine-grained PAT necesita ademas `Actions: read`; el scope `repo` de un classic PAT ya cubre esa lectura.
 
 ## Panel Local
 
@@ -125,6 +136,7 @@ No abrir `panel.html` con doble clic ni con `file://`; el panel hace `fetch` hac
 - Republicar sin re-renderizar: `Operaciones` -> pegar `row_id` o `carousel_id`.
 - Desbloquear: `Operaciones` -> pegar ID y confirmar.
 - Actualizar metricas: `Operaciones` -> `Actualizar metricas ahora`.
+- Ver historial de ejecuciones: `Operaciones` -> `Actualizar historial`.
 - Ver ejecucion: abrir el run desde el enlace del panel.
 
 ## Cuando Algo Falla
@@ -213,6 +225,7 @@ El workflow usa Playwright Chromium con cache. Ya no instala `chromium-browser` 
 - `v-panel-repository-dispatch-stable`: `publish.yml` con `repository_dispatch` y sin `workflow_dispatch`.
 - `v-panel-repository-dispatch-docs`: estado documentado previo (docs alineadas a `repository_dispatch`).
 - `v-panel-operations-metrics-stable`: metricas operadas desde Operaciones y `metrics.yml` sin `workflow_dispatch`.
+- `v-panel-operations-history-stable`: estado con Historial de ejecuciones en Operaciones.
 
 ## Que No Hacer
 

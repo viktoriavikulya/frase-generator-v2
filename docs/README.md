@@ -19,9 +19,13 @@ complementaria, más operativa.
 - `workflow_dispatch` fue eliminado de `publish.yml` y de `metrics.yml`; no usar **Run workflow**
   manual como flujo normal. Publish Posts y Actualizar Métricas se operan desde
   `panel.html#operations`.
+- `panel.html#operations` incluye "Historial de ejecuciones" ("Actualizar historial"): hasta 10
+  runs recientes mezclados de `publish.yml` y `metrics.yml`, sin filtro de event/branch — incluye
+  `repository_dispatch`, `schedule` e históricos (pueden aparecer `workflow_dispatch` viejos).
+  Requiere el token del panel; fine-grained PAT necesita `Actions: read` para esta lectura.
 - Tags estables: `v-panel-unico-stable`, `v-panel-operations-stable`,
   `v-panel-repository-dispatch-stable`, `v-panel-repository-dispatch-docs`,
-  `v-panel-operations-metrics-stable`.
+  `v-panel-operations-metrics-stable`, `v-panel-operations-history-stable`.
 
 ## Lectura recomendada (en este orden)
 
