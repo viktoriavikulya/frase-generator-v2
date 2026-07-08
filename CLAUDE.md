@@ -93,6 +93,12 @@ correctness check and should be run after touching the pipeline, docs, or palett
   event, branch, short SHA, dates and a link to the run. It does NOT filter by event or branch —
   it includes `repository_dispatch`, `schedule` and historical runs, so old `workflow_dispatch`
   runs may appear even though that trigger no longer exists.
+- GitHub API errors in `panel.html#operations` have unified handling for both dispatch and run
+  history: 401 → invalid/expired token, 403 distinguishes rate limit from missing permissions
+  when possible, 404 → token without access to the repo (or missing resource), other statuses
+  fall back to GitHub's message. If querying only one of `publish.yml`/`metrics.yml` fails, the
+  history still renders the other workflow's runs plus a warning naming the one that could not
+  be queried. URLs/labels interpolated into JS-generated links are HTML-escaped.
 - The GitHub token is entered in the panel's `Token de GitHub` field and is not stored in
   `localStorage`. For `repository_dispatch`, fine-grained PATs need `Contents: write` on this repo;
   classic PATs need `repo`. The same token works for both the Publish Posts (`publish-posts`) and
@@ -103,7 +109,8 @@ correctness check and should be run after touching the pipeline, docs, or palett
   `v-panel-repository-dispatch-stable`, `v-panel-repository-dispatch-docs` (previous documented
   state), `v-panel-operations-metrics-stable` (metrics operated from Operaciones, no
   `workflow_dispatch` in `metrics.yml`), `v-panel-operations-history-stable` (Operaciones with
-  the run history block).
+  the run history block), `v-panel-operations-hardening-stable` (unified GitHub API error
+  handling in Operaciones: clear 401/403/404 messages and partial run history).
 
 ## Repo layout
 

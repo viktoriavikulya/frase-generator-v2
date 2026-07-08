@@ -115,6 +115,9 @@ Para dispararlo remoto sin entorno local, usar `panel.html#operations` → «Act
 ya no tiene `workflow_dispatch`, así que el botón **Run workflow** de GitHub Actions no existe
 para métricas. El resultado se puede seguir desde el bloque «Historial de ejecuciones» del mismo
 tab (botón «Actualizar historial»), que lista los últimos runs de `publish.yml` y `metrics.yml`.
+Los errores de la API de GitHub se muestran en el propio panel con mensajes claros (token
+inválido, permisos insuficientes, rate limit, recurso inexistente); si solo uno de los dos
+workflows falla, el historial conserva los runs del otro y avisa cuál no se pudo consultar.
 
 ## Comandos de validación (siempre seguros)
 

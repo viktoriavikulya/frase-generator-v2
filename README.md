@@ -110,6 +110,8 @@ GET https://api.github.com/repos/imgifra/frase-generator-v2/actions/workflows/{w
 
 Por cada run muestra workflow, status/conclusion, event, branch, SHA corto, fechas y el enlace `Abrir run`. No filtra por `event` ni `branch`, para incluir `repository_dispatch`, `schedule` e historicos — por eso puede aparecer algun `workflow_dispatch` viejo aunque ese trigger ya no exista en los workflows. Exige el token de GitHub del panel.
 
+Los errores de la API de GitHub en **Operaciones** tienen manejo unificado (dispatch e historial): 401 se reporta como token invalido o vencido; 403 distingue cuando es posible entre limite de la API (rate limit) y permisos insuficientes; 404 indica que el token no tiene acceso al repositorio o que el recurso no existe. Si al consultar el historial falla solo uno de los dos workflows, el panel muestra igualmente los runs del que respondio, mas una advertencia indicando cual no se pudo consultar.
+
 El token de GitHub se escribe en el campo **Token de GitHub** del panel. No se guarda en `localStorage`, no debe versionarse y no debe ponerse en archivos. Para `repository_dispatch`, un fine-grained PAT necesita permiso `Contents: write` sobre este repo; un classic PAT necesita scope `repo`. El mismo token sirve para disparar Publish Posts (`publish-posts`) y Actualizar Metricas (`update-metrics`). Para leer el historial de ejecuciones, un fine-grained PAT necesita ademas `Actions: read`; el scope `repo` de un classic PAT ya cubre esa lectura.
 
 ## Panel Local
@@ -226,6 +228,7 @@ El workflow usa Playwright Chromium con cache. Ya no instala `chromium-browser` 
 - `v-panel-repository-dispatch-docs`: estado documentado previo (docs alineadas a `repository_dispatch`).
 - `v-panel-operations-metrics-stable`: metricas operadas desde Operaciones y `metrics.yml` sin `workflow_dispatch`.
 - `v-panel-operations-history-stable`: estado con Historial de ejecuciones en Operaciones.
+- `v-panel-operations-hardening-stable`: manejo unificado de errores de GitHub API en Operaciones (mensajes claros para 401/403/404 e historial parcial si un workflow falla).
 
 ## Que No Hacer
 

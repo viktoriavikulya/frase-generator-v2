@@ -23,9 +23,14 @@ complementaria, más operativa.
   runs recientes mezclados de `publish.yml` y `metrics.yml`, sin filtro de event/branch — incluye
   `repository_dispatch`, `schedule` e históricos (pueden aparecer `workflow_dispatch` viejos).
   Requiere el token del panel; fine-grained PAT necesita `Actions: read` para esta lectura.
+- Los errores de la API de GitHub en `panel.html#operations` tienen manejo unificado (dispatch e
+  historial): mensajes claros para 401/403/404, con 403 distinguiendo rate limit de falta de
+  permisos cuando es posible. Si falla la consulta de un solo workflow, el historial muestra los
+  runs del otro más una advertencia indicando cuál no se pudo consultar.
 - Tags estables: `v-panel-unico-stable`, `v-panel-operations-stable`,
   `v-panel-repository-dispatch-stable`, `v-panel-repository-dispatch-docs`,
-  `v-panel-operations-metrics-stable`, `v-panel-operations-history-stable`.
+  `v-panel-operations-metrics-stable`, `v-panel-operations-history-stable`,
+  `v-panel-operations-hardening-stable`.
 
 ## Lectura recomendada (en este orden)
 

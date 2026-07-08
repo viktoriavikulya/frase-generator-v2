@@ -97,7 +97,9 @@ Render: backend/API de Archivo X.
 GitHub Actions: publicacion real y metricas por schedule o repository_dispatch
 (publish.yml: publish-posts; metrics.yml: update-metrics; ninguno tiene workflow_dispatch).
 El panel ademas lee el historial de runs de ambos workflows por API
-(Historial de ejecuciones en Operaciones).
+(Historial de ejecuciones en Operaciones; si la consulta de un workflow falla,
+muestra los runs del otro con una advertencia, y los errores 401/403/404 de la
+API de GitHub se reportan con mensajes claros).
 panel.html: puerta de entrada diaria; con ?renderEngine=1 es tambien el motor de render real
 (index.html fue eliminado en la Fase C7B).
 ```

@@ -36,7 +36,7 @@ No describir esos archivos como paginas activas ni recrearlos como entrypoints.
 
 `workflow_dispatch` fue eliminado de `publish.yml` y de `metrics.yml`. El formulario manual **Run workflow** ya no es parte del flujo normal en ninguno de los dos; Publish Posts y Actualizar Metricas se operan desde `panel.html#operations`.
 
-`panel.html#operations` tambien lee los ultimos runs de ambos workflows (bloque "Historial de ejecuciones", boton `Actualizar historial`) via `GET /repos/imgifra/frase-generator-v2/actions/workflows/{workflow}/runs?per_page=5`, sin filtrar por event ni branch — por eso pueden aparecer runs historicos de `workflow_dispatch` aunque ese trigger ya no exista. Requiere el token del panel; un fine-grained PAT necesita `Actions: read` para esta lectura (el scope `repo` de un classic PAT ya la cubre).
+`panel.html#operations` tambien lee los ultimos runs de ambos workflows (bloque "Historial de ejecuciones", boton `Actualizar historial`) via `GET /repos/imgifra/frase-generator-v2/actions/workflows/{workflow}/runs?per_page=5`, sin filtrar por event ni branch — por eso pueden aparecer runs historicos de `workflow_dispatch` aunque ese trigger ya no exista. Requiere el token del panel; un fine-grained PAT necesita `Actions: read` para esta lectura (el scope `repo` de un classic PAT ya la cubre). Los errores de la API de GitHub (dispatch e historial) se reportan con mensajes claros para 401/403/404 — el 403 distingue rate limit de falta de permisos cuando es posible — y si falla la consulta de uno solo de los dos workflows, el historial muestra igual los runs del otro con una advertencia.
 
 ## Panel Local
 
