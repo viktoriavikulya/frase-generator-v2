@@ -1508,8 +1508,36 @@
       });
     }
 
+    function getGithubToken() {
+      return document.getElementById("token").value.trim();
+    }
+
+    /* Mapa unico de errores de la API de GitHub para dispatch e historial.
+       403 puede ser falta de permisos o rate limit: se distingue por el header
+       x-ratelimit-remaining o por el message de la respuesta. */
+    function githubApiErrorMessage(res, data, context) {
+      const message = String((data && data.message) || "");
+      if (res.status === 401) {
+        return "Token inválido o vencido.";
+      }
+      if (res.status === 403) {
+        const remaining = res.headers && res.headers.get ? res.headers.get("x-ratelimit-remaining") : null;
+        if (remaining === "0" || /rate limit/i.test(message)) {
+          return "Límite de GitHub API alcanzado. Intenta de nuevo más tarde o usa un token válido.";
+        }
+        const hint = context === "dispatch"
+          ? " Requiere Contents: write en este repo (classic PAT: scope repo)."
+          : " Para fine-grained PAT agrega Actions: read.";
+        return "Token sin permisos suficientes para esta acción." + hint;
+      }
+      if (res.status === 404) {
+        return "El token no tiene acceso a este repositorio o el recurso no existe.";
+      }
+      return message || `Error HTTP ${res.status}.`;
+    }
+
     async function dispatchRepositoryEvent(eventType, clientPayload) {
-      const token = document.getElementById("token").value.trim();
+      const token = getGithubToken();
       if (!token) {
         throw new Error('Falta el token de GitHub (campo "Token de GitHub" del tab Publicar Ahora).');
       }
@@ -1529,10 +1557,7 @@
 
       if (res.status !== 204) {
         const data = await res.json().catch(() => ({}));
-        if (res.status === 403) {
-          throw new Error("Token sin permiso para repository_dispatch. Requiere Contents: write en este repo.");
-        }
-        throw new Error(data.message || `Error ${res.status}`);
+        throw new Error(githubApiErrorMessage(res, data, "dispatch"));
       }
     }
 
@@ -1641,7 +1666,7 @@
     }
 
     async function fetchLatestWorkflowRunUrl(dispatchStartedAt, workflow = WORKFLOW) {
-      const token = document.getElementById("token").value.trim();
+      const token = getGithubToken();
       if (!token) return "";
 
       await wait(7000);
@@ -1675,10 +1700,10 @@
     function renderOperationsLinks(runUrl = "", workflow = WORKFLOW, label = "Abrir Publish Posts en GitHub Actions", runLabel = "Abrir run recién disparado") {
       const workflowUrl = getWorkflowUrl(workflow);
       const runLink = runUrl
-        ? ` &middot; <a href="${runUrl}" target="_blank" rel="noopener">${runLabel}</a>`
+        ? ` &middot; <a href="${escapeHtml(runUrl)}" target="_blank" rel="noopener">${escapeHtml(runLabel)}</a>`
         : "";
       setOperationsLink(
-        `<a href="${workflowUrl}" target="_blank" rel="noopener">${label}</a>${runLink}`
+        `<a href="${escapeHtml(workflowUrl)}" target="_blank" rel="noopener">${escapeHtml(label)}</a>${runLink}`
       );
     }
 
@@ -1828,7 +1853,7 @@
     }
 
     async function fetchWorkflowRuns(workflow, perPage = 5) {
-      const token = document.getElementById("token").value.trim();
+      const token = getGithubToken();
 
       const res = await fetch(
         `https://api.github.com/repos/${OWNER}/${REPO}/actions/workflows/${workflow}/runs?per_page=${perPage}`,
@@ -1841,14 +1866,8 @@
       );
 
       if (!res.ok) {
-        if (res.status === 401) {
-          throw new Error("Token inválido o vencido.");
-        }
-        if (res.status === 403) {
-          throw new Error("Token sin permiso para leer GitHub Actions. Para fine-grained PAT agrega Actions: read.");
-        }
         const data = await res.json().catch(() => ({}));
-        throw new Error(`Error ${res.status}: ${data.message || "no se pudo leer el historial"}`);
+        throw new Error(githubApiErrorMessage(res, data, "runs"));
       }
 
       const data = await res.json().catch(() => ({}));
@@ -1895,7 +1914,7 @@
 
     async function operacionesActualizarHistorial() {
       const btn = document.getElementById("operations-history-btn");
-      const token = document.getElementById("token").value.trim();
+      const token = getGithubToken();
 
       if (!token) {
         setOperationsHistoryStatus("Ingresa el token de GitHub para consultar el historial.", "error");
@@ -1905,15 +1924,40 @@
       btn.disabled = true;
       setOperationsHistoryStatus("Consultando historial...");
       try {
-        const results = await Promise.all(
+        /* allSettled: si un workflow falla, el historial del otro se muestra
+           igual, con una advertencia sobre el que no se pudo consultar. */
+        const results = await Promise.allSettled(
           HISTORY_WORKFLOWS.map(workflow => fetchWorkflowRuns(workflow, 5))
         );
-        const runs = results
-          .flat()
+        const failed = [];
+        const collected = [];
+        results.forEach((result, index) => {
+          if (result.status === "fulfilled") {
+            collected.push(...result.value);
+          } else {
+            const workflow = HISTORY_WORKFLOWS[index];
+            failed.push({
+              label: HISTORY_WORKFLOW_LABELS[workflow] || workflow,
+              message: (result.reason && result.reason.message) ? result.reason.message : String(result.reason)
+            });
+          }
+        });
+
+        if (failed.length === HISTORY_WORKFLOWS.length) {
+          document.getElementById("operations-history-list").innerHTML = "";
+          setOperationsHistoryStatus(`Error: no se pudo consultar el historial. ${failed[0].message}`, "error");
+          return;
+        }
+
+        const runs = collected
           .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
           .slice(0, 10);
         renderOperationsHistory(runs);
-        if (runs.length) {
+        if (failed.length) {
+          const warning = failed.map(f => `No se pudo consultar ${f.label}: ${f.message}`).join(" ");
+          const prefix = runs.length ? `Mostrando ${runs.length} ejecuciones recientes. ` : "No se encontraron ejecuciones recientes. ";
+          setOperationsHistoryStatus(prefix + warning, "error");
+        } else if (runs.length) {
           setOperationsHistoryStatus(`Mostrando ${runs.length} ejecuciones recientes.`, "ok");
         }
       } catch (err) {
