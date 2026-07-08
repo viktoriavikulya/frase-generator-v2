@@ -1472,6 +1472,47 @@
       updatePreview();
     }
 
+    async function dispatchWorkflow(inputs) {
+      const token = document.getElementById("token").value.trim();
+      if (!token) {
+        throw new Error('Falta el token de GitHub (campo "Token de GitHub" del tab Publicar Ahora).');
+      }
+
+      const res = await fetch(
+        `https://api.github.com/repos/${OWNER}/${REPO}/dispatches`,
+        {
+          method: "POST",
+          headers: {
+            "Authorization": `Bearer ${token}`,
+            "Accept": "application/vnd.github+json",
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            event_type: "publish-posts",
+            client_payload: {
+              frases: inputs.frases || "",
+              caption: inputs.caption || "",
+              tipo: inputs.tipo || "auto",
+              solo_registrar: inputs.solo_registrar || "false",
+              reintentar: inputs.reintentar || "false",
+              color: inputs.color || "",
+              publish_only: inputs.publish_only || "",
+              unlock_id: inputs.unlock_id || "",
+              target_carousel_id: inputs.target_carousel_id || ""
+            }
+          })
+        }
+      );
+
+      if (res.status !== 204) {
+        const data = await res.json().catch(() => ({}));
+        if (res.status === 403) {
+          throw new Error("Token sin permiso para repository_dispatch. Requiere Contents: write en este repo.");
+        }
+        throw new Error(data.message || `Error ${res.status}`);
+      }
+    }
+
     async function publicar(soloSheet) {
       const token = document.getElementById("token").value.trim();
       const caption = document.getElementById("caption").value.trim();
@@ -1491,44 +1532,24 @@
       setStatus(soloSheet ? "Guardando en sheet..." : "Publicando...", "");
 
       try {
-        const res = await fetch(
-          `https://api.github.com/repos/${OWNER}/${REPO}/actions/workflows/${WORKFLOW}/dispatches`,
-          {
-            method: "POST",
-            headers: {
-              "Authorization": `Bearer ${token}`,
-              "Accept": "application/vnd.github+json",
-              "Content-Type": "application/json"
-            },
-            body: JSON.stringify({
-              ref: "main",
-              inputs: {
-                frases: frases.join("||"),
-                caption,
-                tipo,
-                color: colorSeleccionado || "",
-                solo_registrar: soloSheet ? "true" : "false"
-              }
-            })
-          }
+        await dispatchWorkflow({
+          frases: frases.join("||"),
+          caption,
+          tipo,
+          color: colorSeleccionado || "",
+          solo_registrar: soloSheet ? "true" : "false"
+        });
+        setStatus(
+          soloSheet ? "Guardado en sheet. Se publicara en el proximo horario." : `Enviado como ${tipo}. En 2-3 minutos estara publicado.`,
+          "ok"
         );
-
-        if (res.status === 204) {
-          setStatus(
-            soloSheet ? "Guardado en sheet. Se publicara en el proximo horario." : `Enviado como ${tipo}. En 2-3 minutos estara publicado.`,
-            "ok"
-          );
-          document.getElementById("frases").value = "";
-          document.getElementById("caption").value = "";
-          document.getElementById("tipo-detectado").textContent = "";
-          document.getElementById("tipo-detectado").className = "tipo-tag";
-          document.getElementById("preview-wrap").classList.remove("visible");
-          currentFrases = [];
-          carouselIndex = 0;
-        } else {
-          const data = await res.json();
-          setStatus(`Error: ${data.message}`, "error");
-        }
+        document.getElementById("frases").value = "";
+        document.getElementById("caption").value = "";
+        document.getElementById("tipo-detectado").textContent = "";
+        document.getElementById("tipo-detectado").className = "tipo-tag";
+        document.getElementById("preview-wrap").classList.remove("visible");
+        currentFrases = [];
+        carouselIndex = 0;
       } catch (err) {
         setStatus(`Error: ${err.message}`, "error");
       } finally {
@@ -1550,37 +1571,17 @@
       setStatusRepublish("Enviando...", "");
 
       try {
-        const res = await fetch(
-          `https://api.github.com/repos/${OWNER}/${REPO}/actions/workflows/${WORKFLOW}/dispatches`,
-          {
-            method: "POST",
-            headers: {
-              "Authorization": `Bearer ${token}`,
-              "Accept": "application/vnd.github+json",
-              "Content-Type": "application/json"
-            },
-            body: JSON.stringify({
-              ref: "main",
-              inputs: {
-                publish_only: id,
-                tipo: "auto",
-                frases: "",
-                caption: "",
-                color: "",
-                solo_registrar: "false",
-                reintentar: "false"
-              }
-            })
-          }
-        );
-
-        if (res.status === 204) {
-          setStatusRepublish("Enviado. En 1-2 minutos deberia llegar la notificacion de Telegram.", "ok");
-          document.getElementById("publish-only-id").value = "";
-        } else {
-          const data = await res.json();
-          setStatusRepublish(`Error: ${data.message}`, "error");
-        }
+        await dispatchWorkflow({
+          publish_only: id,
+          tipo: "auto",
+          frases: "",
+          caption: "",
+          color: "",
+          solo_registrar: "false",
+          reintentar: "false"
+        });
+        setStatusRepublish("Enviado. En 1-2 minutos deberia llegar la notificacion de Telegram.", "ok");
+        document.getElementById("publish-only-id").value = "";
       } catch (err) {
         setStatusRepublish(`Error: ${err.message}`, "error");
       } finally {
@@ -1588,7 +1589,7 @@
       }
     }
 
-    /* ========= OPERACIONES (workflow_dispatch tecnico) =========
+    /* ========= OPERACIONES (repository_dispatch tecnico) =========
        Mismo patron que publicar()/republicar(): el token de GitHub lo escribe
        el usuario en el campo #token del tab Publicar Ahora — nunca se guarda
        en localStorage ni en ningun archivo. */
@@ -1619,7 +1620,7 @@
       await wait(7000);
 
       const res = await fetch(
-        `https://api.github.com/repos/${OWNER}/${REPO}/actions/workflows/${WORKFLOW}/runs?branch=main&event=workflow_dispatch&per_page=5`,
+        `https://api.github.com/repos/${OWNER}/${REPO}/actions/workflows/${WORKFLOW}/runs?branch=main&event=repository_dispatch&per_page=5`,
         {
           headers: {
             "Authorization": `Bearer ${token}`,
@@ -1635,7 +1636,7 @@
         : 0;
       const run = Array.isArray(data.workflow_runs)
         ? data.workflow_runs.find(item =>
-          item.event === "workflow_dispatch" &&
+          item.event === "repository_dispatch" &&
           item.head_branch === "main" &&
           new Date(item.created_at).getTime() >= minCreatedAt
         )
@@ -1660,31 +1661,6 @@
         renderOperationsLinks(runUrl);
       } catch (err) {
         renderOperationsLinks();
-      }
-    }
-
-    async function dispatchWorkflow(inputs) {
-      const token = document.getElementById("token").value.trim();
-      if (!token) {
-        throw new Error('Falta el token de GitHub (campo "Token de GitHub" del tab Publicar Ahora).');
-      }
-
-      const res = await fetch(
-        `https://api.github.com/repos/${OWNER}/${REPO}/actions/workflows/${WORKFLOW}/dispatches`,
-        {
-          method: "POST",
-          headers: {
-            "Authorization": `Bearer ${token}`,
-            "Accept": "application/vnd.github+json",
-            "Content-Type": "application/json"
-          },
-          body: JSON.stringify({ ref: "main", inputs })
-        }
-      );
-
-      if (res.status !== 204) {
-        const data = await res.json().catch(() => ({}));
-        throw new Error(data.message || `Error ${res.status}`);
       }
     }
 
@@ -2327,28 +2303,12 @@
 
         if (publishNow && data.carouselId) {
           status.textContent = "Disparando publicacion...";
-          const token = document.getElementById("token").value.trim();
-          const res = await fetch(
-            `https://api.github.com/repos/${OWNER}/${REPO}/actions/workflows/${WORKFLOW}/dispatches`,
-            {
-              method: "POST",
-              headers: {
-                "Authorization": `Bearer ${token}`,
-                "Accept": "application/vnd.github+json",
-                "Content-Type": "application/json"
-              },
-              body: JSON.stringify({
-                ref: "main",
-                inputs: { target_carousel_id: data.carouselId }
-              })
-            }
-          );
           status.textContent = "";
-          if (res.status === 204) {
+          try {
+            await dispatchWorkflow({ target_carousel_id: data.carouselId });
             result.innerHTML = `<div class="result-box ok">Registrado <strong>${escapeHtml(data.carouselId)}</strong> y enviado a publicar. En 2-3 minutos deberia estar publicado.</div>`;
-          } else {
-            const errData = await res.json().catch(() => ({}));
-            result.innerHTML = `<div class="result-box warn">Registrado <strong>${escapeHtml(data.carouselId)}</strong>, pero fallo el disparo de publicacion: ${escapeHtml(errData.message || String(res.status))}</div>`;
+          } catch (dispatchErr) {
+            result.innerHTML = `<div class="result-box warn">Registrado <strong>${escapeHtml(data.carouselId)}</strong>, pero fallo el disparo de publicacion: ${escapeHtml(dispatchErr.message)}</div>`;
           }
           return;
         }
