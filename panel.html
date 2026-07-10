@@ -2571,23 +2571,44 @@
       return out;
     }
 
-    /* Score de limpieza de una extraccion: favorece palabras legibles en
-       español (stopwords), patrones de frase ("decia:", citas, cierre con
-       puntuacion) y penaliza candidatas dudosas. Sirve para elegir la mejor
-       region/variante, no solo "hay candidatas". */
+    /* "Palabra real": token con >= 3 letras y al menos una vocal. Es la
+       unidad de la metrica anti-sopa: la sopa de letras del OCR sobre textura
+       ("CARR AGA TER a A JR bo...") esta llena de tokens de 1-2 letras que
+       antes contaban como "palabras limpias" y disparaban el score. */
+    function ocrRealWords(text) {
+      return String(text).split(/\s+/).filter((w) => {
+        const letters = w.replace(/[^\p{L}]/gu, "");
+        return letters.length >= 3 && /[aeiouáéíóúü]/i.test(letters);
+      });
+    }
+
     const OCR_STOPWORDS = new Set(["el","la","los","las","un","una","de","del","que","como","y","o","mi","tu","su","se","me","te","le","lo","en","con","por","para","no","si","es","al","mas","más","pero","toda","todo","vida","ser","hay","ya","muy"]);
+
+    function ocrIsStopword(w) {
+      return OCR_STOPWORDS.has(String(w).toLowerCase().replace(/[^a-záéíóúüñ]/g, ""));
+    }
+
+    /* Score de limpieza de una extraccion: favorece palabras reales y
+       estructura natural en español; penaliza migas (tokens de 1-2 letras que
+       no son stopwords). Una sopa alfabetica puntua ~0 y ya no puede ganarle
+       a una frase legible ni disparar el early-exit. */
     function scoreExtraction(candidates) {
       let total = 0;
       for (const c of candidates) {
-        const words = c.text.split(/\s+/);
-        const cleanWords = words.filter((w) => /^[\p{L}¡¿"'(),.:;!?…«»\-]+$/u.test(w)).length;
-        const stops = words.filter((w) => OCR_STOPWORDS.has(w.toLowerCase().replace(/[^a-záéíóúüñ]/g, ""))).length;
-        let s = cleanWords + stops * 2;
+        const tokens = c.text.split(/\s+/);
+        const real = ocrRealWords(c.text);
+        const crumbs = tokens.filter((w) => {
+          const letters = w.replace(/[^\p{L}]/gu, "");
+          const isReal = letters.length >= 3 && /[aeiouáéíóúü]/i.test(letters);
+          return !isReal && !ocrIsStopword(w);
+        }).length;
+        const stops = real.length >= 2 ? tokens.filter(ocrIsStopword).length : 0;
+        let s = real.length + stops * 2 - crumbs * 1.5;
         if (/dec[ií]a:?/i.test(c.text)) s += 6;
         if (/"[^"]{10,}"/.test(c.text)) s += 6;
         if (/[.!?…"]$/.test(c.text)) s += 2;
         if (c.dubious) s *= 0.4;
-        total += s;
+        total += Math.max(0, s);
       }
       return total;
     }
@@ -2601,20 +2622,36 @@
       const preferCenter = document.getElementById("ocr-center-priority").checked;
       const isVertical = full.height / full.width >= 1.3;
 
+      // Piso de calidad: por debajo de esto, mejor "sin texto util" que
+      // devolver basura marcada.
+      const MIN_SCORE = 12;
+
       if (preferCenter && isVertical) {
         try {
-          const BAND = { x0: 0.02, x1: 0.88, y0: 0.34, y1: 0.62 };  // franja tipica del texto principal
+          // El texto principal puede estar en el tercio medio (rayo, tuercas),
+          // arriba (posts tipo foto con texto sobre el cielo) o abajo (frase
+          // sobre la mitad inferior). Cada banda se prueba binarizada (overlay
+          // claro) y cruda; decide el score, no el orden.
+          const rawScale = full.width < 1000 ? 2 : 1;
           const CENTER = { x0: 0, x1: 0.88, y0: 0.20, y1: 0.78 };   // recorte amplio historico
-          const variants = [
-            makeRegionCanvas(full, BAND, 2, "thresh", 220),  // overlay blanco sobre video
-            makeRegionCanvas(full, BAND, full.width < 1000 ? 2 : 1, "raw"),
-            makeRegionCanvas(full, CENTER, 1, "raw")
-          ];
+          const specs = [];
+          for (const band of [
+            { y0: 0.34, y1: 0.62 },   // media
+            { y0: 0.08, y1: 0.40 },   // alta
+            { y0: 0.55, y1: 0.85 }    // baja
+          ]) {
+            const region = { x0: 0.02, x1: 0.88, y0: band.y0, y1: band.y1 };
+            specs.push({ region, scale: 2, mode: "thresh", thr: 220 });
+            specs.push({ region, scale: rawScale, mode: "raw" });
+          }
+          specs.push({ region: CENTER, scale: 1, mode: "raw" });
 
           let best = { score: 0, candidates: [] };
-          for (let v = 0; v < variants.length; v++) {
-            ocrState.variantLabel = ` — variante ${v + 1}/${variants.length}`;
-            const result = await worker.recognize(variants[v]);
+          for (let v = 0; v < specs.length; v++) {
+            ocrState.variantLabel = ` — variante ${v + 1}/${specs.length}`;
+            const spec = specs[v];
+            const canvas = makeRegionCanvas(full, spec.region, spec.scale, spec.mode, spec.thr);
+            const result = await worker.recognize(canvas);
             const candidates = extractCandidatePhrases(result && result.data ? result.data.text : "");
             const score = scoreExtraction(candidates);
             if (score > best.score) best = { score, candidates };
@@ -2622,7 +2659,12 @@
             if (best.score >= 30) break;
           }
           ocrState.variantLabel = "";
-          if (best.candidates.length) return best.candidates;
+          if (best.score >= MIN_SCORE && best.candidates.length) return best.candidates;
+          // Ninguna region supero el piso: probar imagen completa, con el
+          // mismo piso — si tampoco rinde, se reporta "sin texto util".
+          const fullResult = await worker.recognize(full);
+          const fullCandidates = extractCandidatePhrases(fullResult && fullResult.data ? fullResult.data.text : "");
+          return scoreExtraction(fullCandidates) >= MIN_SCORE ? fullCandidates : [];
         } catch (err) {
           ocrState.variantLabel = "";
           // Si el recorte/preproceso falla por cualquier motivo, la imagen
@@ -2679,7 +2721,16 @@
         // Lineas mayormente simbolicas (OCR de botones/iconos sobre video)
         const lineAlnum = (line.match(/[\p{L}\p{N}\s]/gu) || []).length;
         const garbageLine = line.length >= 6 && lineAlnum / line.length < 0.5;
-        if (garbageLine || UI_LINE.test(line) || AUDIO_LINE.test(line) ||
+        // Lineas-miga: sin ninguna palabra real ("EN", "pa", "02 co", "j 5",
+        // "LR A A A A") — son restos de OCR sobre textura/botones.
+        const crumbLine = ocrRealWords(line).length === 0;
+        // Header de caption "usuario Foto/Video · fecha" (con o sin @) y
+        // atribuciones tipo plantilla ("Me gustó mucho", fecha suelta 06-18).
+        const captionHeader = /\b(foto|video)\b/i.test(line) &&
+          (/\d{1,2}-\d{1,2}/.test(line) || /hace\s+\d/i.test(line) || /·/.test(line) || line.length < 45);
+        const templateLine = /^me gust[oó] mucho$/i.test(line) || /^\d{2}-\d{2}$/.test(line);
+        if (garbageLine || crumbLine || captionHeader || templateLine ||
+            UI_LINE.test(line) || AUDIO_LINE.test(line) ||
             COUNTER.test(line) || STATS.test(line) ||
             TIME.test(line) || DATE.test(line) || ONLY_TAGS.test(line) ||
             (USER_HEADER.test(line) && line.length < 45) ||
@@ -2722,7 +2773,11 @@
           const prevOpenQuote = ((prev.match(/"/g) || []).length % 2 === 1) && (prev.length + block.length) <= 200;
           const prevUnfinished = /[:,]$/.test(prev);
           const nextContinues = /^[a-záéíóúüñ]/.test(block) && !/[.!?…"]$/.test(prev);
-          if (prevUnfinished || prevOpenQuote || nextContinues) {
+          // Solo anexar bloques con contenido real (>= 2 palabras reales):
+          // una comilla perdida o una miga en minuscula no deben arrastrar
+          // restos de OCR dentro de la frase buena.
+          const blockHasContent = ocrRealWords(block).length >= 2;
+          if ((prevUnfinished || prevOpenQuote || nextContinues) && blockHasContent) {
             mergedBlocks[mergedBlocks.length - 1] = prev + " " + block;
             continue;
           }
@@ -2758,11 +2813,32 @@
         if (/desaparezca/i.test(text)) {
           text = text.replace(/\biparta\b/gi, "parta");
         }
+        // Colas que deja el threshold tras la comilla de cierre:
+        // «desaparezca"..» / «".» / «". .» -> «desaparezca"»
+        text = text.replace(/(")[\s.]+$/, "$1");
+        // Miga suelta pegada despues del cierre de la frase en la misma linea
+        // OCR («aflojando." EN» -> «aflojando."»): 1-2 tokens de <= 3 letras
+        // tras puntuacion final no son frase.
+        text = text.replace(/(["”.!?…])(\s+[^\s]{1,3}){1,2}$/, "$1");
         text = text.replace(/\s+/g, " ").trim();
 
         if (text.length < 3) continue;
         const letters = (text.match(/\p{L}/gu) || []).length;
         if (!letters) continue;
+
+        // Anti-sopa: proporcion de tokens validos (palabra real o stopword).
+        // La sopa de letras del OCR sobre textura queda por debajo y se
+        // descarta; lo intermedio queda dudoso, nunca marcado.
+        const tokens = text.split(/\s+/);
+        const realCount = ocrRealWords(text).length;
+        const validRatio = tokens.filter((w) => {
+          const wl = w.replace(/[^\p{L}]/gu, "");
+          return (wl.length >= 3 && /[aeiouáéíóúü]/i.test(wl)) || ocrIsStopword(w);
+        }).length / tokens.length;
+        if (!realCount || validRatio < 0.5) continue;
+        // Tokens-pegote ("Soy/buenolhastaldondelmelde;:") o kilometricos:
+        // tipicos de OCR pobre — se conservan pero siempre como dudosos.
+        const gluedToken = tokens.some((w) => /[\/|]/.test(w) || w.replace(/[^\p{L}]/gu, "").length >= 16);
 
         const key = text.toLowerCase().replace(/\s+/g, " ");
         if (seen.has(key)) continue;
@@ -2784,7 +2860,10 @@
           text.length > 220 ||                 // mashup largo de varias piezas
           STRONG_UI_MIXED.test(text) ||        // mezcla frase + tokens de UI
           LIVE_TOKEN.test(text) ||
-          /^\(.*\)$/.test(text);               // aparte entre parentesis: revisar a mano
+          /^\(.*\)$/.test(text) ||             // aparte entre parentesis: revisar a mano
+          validRatio < 0.75 ||                 // demasiada miga entre las palabras
+          realCount < 2 ||
+          gluedToken;
         out.push({ text, dubious });
       }
 
