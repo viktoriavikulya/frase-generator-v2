@@ -166,6 +166,8 @@ Solo las frases con `decision_editorial = aprobada` entran al armado de carrusel
 
 **Agregar Frases** tambien acepta pantallazos: se pueden subir, arrastrar o pegar (Ctrl+V) hasta 5 imagenes PNG/JPG/WebP de maximo 10 MB, y un OCR local (tesseract.js vendoreado en `vendor/tesseract/`, versiones pineadas en su `VERSIONS.txt`) las convierte en frases candidatas editables. Todo corre en el navegador: las imagenes no se envian a ninguna API externa, no se guardan y no hay claves de OCR/IA. El OCR se carga solo al usar ese bloque. Las candidatas dudosas aparecen desmarcadas; "Agregar seleccionadas al texto" solo llena el textarea, y guardar sigue siendo el boton normal de **Guardar frases** (mismo `POST /api/raw-phrases`, mismas frases `pendientes` en Curar Frases). Si el OCR falla o el navegador es viejo (el core WASM SIMD requiere Chrome 91+/Firefox 89+/Safari 16.4+), el pegado manual de texto sigue funcionando igual. La calidad del OCR varia con fondos ruidosos, tipografias decorativas o texto pequeno — por eso siempre hay revision manual antes de agregar. No reemplazar `vendor/tesseract/` por un CDN sin decision explicita.
 
+Para pantallazos verticales tipo TikTok/Reels/Shorts hay un checkbox "Priorizar zona central" (activado por defecto): el OCR corre primero sobre un recorte central que excluye tabs superiores, botones laterales y navegacion/caption inferior, y solo cae a la imagen completa si el recorte no da candidatas utiles. La limpieza filtra ruido de interfaz social (Para ti, Comunidad, Siguiendo, LIVE, Inicio, Amigos, Mensajes, Perfil), atribuciones de audio/cancion ("Contiene:", "sonido original"), hashtags, contadores y lineas de botones, y prioriza frases con patrones claros ("decia:", comillas, puntuacion de cierre). Las candidatas dudosas siguen apareciendo desmarcadas y editables; el OCR sigue siendo 100% local, sin API externa y sin auto-guardado.
+
 Render sigue sirviendo las APIs de curaduria (`/api/phrases`, `/api/raw-phrases`, `/api/plan-carruseles`, `/api/taxonomy`) y redirige rutas legacy hacia `panel.html#curate` cuando aplica. Render no sirve el panel principal; el panel principal esta en GitHub Pages.
 
 ## Scripts
@@ -233,6 +235,7 @@ El workflow usa Playwright Chromium con cache. Ya no instala `chromium-browser` 
 - `v-panel-operations-hardening-stable`: manejo unificado de errores de GitHub API en Operaciones (mensajes claros para 401/403/404 e historial parcial si un workflow falla).
 - `v-render-engine-draw-guard-stable`: motor de render sin el `ReferenceError: draw is not defined` preexistente (guards en los onload de assets de `js/config.js`).
 - `v-panel-raw-ocr-stable`: OCR local de pantallazos en Agregar Frases (tesseract.js vendoreado, candidatas con revision manual, sin auto-guardado).
+- `v-panel-raw-ocr-social-cleanup-stable`: parche de OCR para capturas sociales verticales ruidosas (prioridad de zona central + filtrado de UI de TikTok/Reels/Shorts).
 
 ## Que No Hacer
 

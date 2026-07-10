@@ -35,12 +35,16 @@ complementaria, más operativa.
   versiones pineadas en `VERSIONS.txt`, carga lazy). Las imágenes no salen del navegador ni se
   guardan; las frases candidatas se revisan/editan y el guardado sigue siendo el flujo normal de
   `POST /api/raw-phrases` (sin auto-guardado). No reemplazar el vendor por CDN sin decisión
-  explícita.
+  explícita. Para capturas verticales tipo TikTok/Reels/Shorts, el checkbox "Priorizar zona
+  central" (activado por defecto) hace OCR primero sobre un recorte central y cae a imagen
+  completa solo si no salen candidatas útiles; la limpieza filtra UI social (Para ti, Siguiendo,
+  LIVE, navegación), audio/canción, hashtags y contadores, y prioriza frases con "decía:",
+  comillas o puntuación clara.
 - Tags estables: `v-panel-unico-stable`, `v-panel-operations-stable`,
   `v-panel-repository-dispatch-stable`, `v-panel-repository-dispatch-docs`,
   `v-panel-operations-metrics-stable`, `v-panel-operations-history-stable`,
   `v-panel-operations-hardening-stable`, `v-render-engine-draw-guard-stable`,
-  `v-panel-raw-ocr-stable`.
+  `v-panel-raw-ocr-stable`, `v-panel-raw-ocr-social-cleanup-stable`.
 
 ## Lectura recomendada (en este orden)
 

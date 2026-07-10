@@ -6,7 +6,7 @@ Mapa rapido de que archivo o ruta es activa, historica o solo backend.
 
 | Archivo | Rol | Se puede mover? |
 | --- | --- | --- |
-| `panel.html` | Unica pagina HTML versionada. Panel de trabajo diario en GitHub Pages: Publicar Ahora, Curar Frases, Agregar Frases (incluye OCR local de pantallazos con tesseract.js vendoreado en `vendor/tesseract/`, carga lazy, sin APIs externas ni auto-guardado), Armar Carruseles, Preview y Operaciones. Con `?renderEngine=1` tambien es el motor de render usado por Playwright y por el iframe de preview del propio panel. Entrada oficial: `https://imgifra.github.io/frase-generator-v2/panel.html`. | No. Es el entrypoint de GitHub Pages, el motor de render y un archivo requerido por `scripts/dev/doctor.js`. |
+| `panel.html` | Unica pagina HTML versionada. Panel de trabajo diario en GitHub Pages: Publicar Ahora, Curar Frases, Agregar Frases (incluye OCR local de pantallazos con tesseract.js vendoreado en `vendor/tesseract/`, carga lazy, sin APIs externas ni auto-guardado; en capturas verticales tipo TikTok prioriza la zona central y filtra ruido de UI social), Armar Carruseles, Preview y Operaciones. Con `?renderEngine=1` tambien es el motor de render usado por Playwright y por el iframe de preview del propio panel. Entrada oficial: `https://imgifra.github.io/frase-generator-v2/panel.html`. | No. Es el entrypoint de GitHub Pages, el motor de render y un archivo requerido por `scripts/dev/doctor.js`. |
 
 ## HTML Eliminados Historicos
 
