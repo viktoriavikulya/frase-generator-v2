@@ -784,6 +784,60 @@
     .result-box.err { color: var(--status-err); }
     .result-box.warn { color: var(--status-warn); }
 
+    /* ===== OCR de pantallazos (Agregar Frases) ===== */
+    .ocr-drop {
+      border: 1px dashed var(--border);
+      padding: 18px;
+      text-align: center;
+      color: var(--muted);
+      cursor: pointer;
+      margin-top: 8px;
+    }
+
+    .ocr-drop.dragover {
+      border-color: var(--accent);
+      color: var(--title);
+    }
+
+    .ocr-thumbs {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 10px;
+    }
+
+    .ocr-thumb {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      max-width: 120px;
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .ocr-thumb img {
+      width: 120px;
+      height: 90px;
+      object-fit: cover;
+      border: 1px solid var(--border);
+    }
+
+    .ocr-candidate {
+      display: flex;
+      gap: 10px;
+      align-items: flex-start;
+      padding: 10px 0;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .ocr-candidate input[type="checkbox"] {
+      margin-top: 10px;
+    }
+
+    .ocr-candidate textarea {
+      flex: 1;
+    }
+
     @media (max-width: 720px) {
       .top-row {
         align-items: flex-start;
@@ -952,6 +1006,25 @@
               <p class="field-hint">Pega ideas o frases sueltas. Quedan guardadas como <strong>pendientes</strong> en el mismo archivo que usa "Curar Frases" — no se aprueban ni se publican solas.</p>
             </div>
           </div>
+
+          <p class="eyebrow">Desde pantallazos (OCR local)</p>
+          <p class="field-hint">Sube, arrastra o pega (Ctrl+V) capturas de frases. El OCR corre <strong>en tu navegador</strong>: las imágenes no se suben a ningún servidor ni se guardan. Máximo 5 imágenes de hasta 10 MB (PNG/JPG/WebP). Las frases detectadas se revisan y editan antes de agregarse al texto — nada se guarda solo.</p>
+          <div class="field field-wide">
+            <input type="file" id="ocr-file-input" accept="image/png,image/jpeg,image/webp" multiple style="display:none;">
+            <div class="ocr-drop" id="ocr-drop-zone" role="button" tabindex="0">Haz clic para elegir imágenes, arrástralas aquí, o pégalas con Ctrl+V</div>
+            <div class="ocr-thumbs" id="ocr-previews"></div>
+          </div>
+          <div class="btns">
+            <button class="btn-main" type="button" id="ocr-run-btn">Extraer frases de las imágenes</button>
+            <button class="btn-ghost" type="button" id="ocr-clear-btn">Quitar imágenes</button>
+          </div>
+          <p class="status" id="ocr-status"></p>
+          <div id="ocr-candidates"></div>
+          <div class="btns">
+            <button class="btn-ghost" type="button" id="ocr-add-btn" style="display:none;">Agregar seleccionadas al texto</button>
+          </div>
+
+          <hr class="divider">
 
           <div class="field field-wide">
             <label class="field-label" for="raw-phrases-input">Frases crudas</label>
@@ -2372,6 +2445,408 @@
         rawPhrasesSaving = false;
       }
     }
+
+    /* ========= OCR DE PANTALLAZOS (Agregar Frases) =========
+       Alimentador del textarea #raw-phrases-input: todo el guardado sigue
+       pasando por saveRawPhrases() -> POST /api/raw-phrases, sin flujo
+       paralelo. El OCR (tesseract.js vendoreado en vendor/tesseract, sin CDN)
+       corre 100% en el navegador y se carga lazy: nada se descarga hasta que
+       el usuario usa este bloque. Las imagenes nunca salen del navegador. */
+
+    const OCR_MAX_FILES = 5;
+    const OCR_MAX_BYTES = 10 * 1024 * 1024;
+    const OCR_MAX_SIDE = 2000;
+    const OCR_TYPES = ["image/png", "image/jpeg", "image/webp"];
+
+    const ocrState = {
+      files: [],        // { file, url }
+      candidates: [],   // { text, dubious, checked }
+      running: false
+    };
+
+    let ocrLibPromise = null;
+    let ocrWorkerPromise = null;
+
+    function setOcrStatus(message, cls = "") {
+      const el = document.getElementById("ocr-status");
+      el.textContent = message || "";
+      el.className = `status ${cls}`;
+    }
+
+    function ocrVendorUrl(file) {
+      return new URL(`vendor/tesseract/${file}`, window.location.href).href;
+    }
+
+    function loadOcrLib() {
+      if (window.Tesseract) return Promise.resolve();
+      if (!ocrLibPromise) {
+        ocrLibPromise = new Promise((resolve, reject) => {
+          const script = document.createElement("script");
+          script.src = ocrVendorUrl("tesseract.min.js");
+          script.onload = resolve;
+          script.onerror = () => {
+            ocrLibPromise = null;
+            reject(new Error("No se pudo cargar el OCR local (vendor/tesseract). El pegado manual de texto sigue funcionando."));
+          };
+          document.body.appendChild(script);
+        });
+      }
+      return ocrLibPromise;
+    }
+
+    async function getOcrWorker() {
+      if (typeof window.Worker !== "function" || typeof WebAssembly !== "object") {
+        throw new Error("Este navegador no soporta las APIs necesarias para el OCR local (Worker/WebAssembly).");
+      }
+      await loadOcrLib();
+      if (!ocrWorkerPromise) {
+        ocrWorkerPromise = Tesseract.createWorker("spa", 1, {
+          workerPath: ocrVendorUrl("worker.min.js"),
+          corePath: ocrVendorUrl("tesseract-core-simd-lstm.wasm.js"),
+          langPath: ocrVendorUrl("").replace(/\/$/, ""),
+          workerBlobURL: false,
+          logger: (m) => {
+            if (m && m.status === "recognizing text" && ocrState.running) {
+              const pct = Math.round((m.progress || 0) * 100);
+              setOcrStatus(`${ocrState.progressLabel || "Reconociendo"}... ${pct}%`);
+            }
+          }
+        }).catch((err) => {
+          ocrWorkerPromise = null;
+          throw new Error(`No se pudo iniciar el OCR local: ${err.message || err}`);
+        });
+      }
+      return ocrWorkerPromise;
+    }
+
+    // Downscale a max OCR_MAX_SIDE px por lado: menos memoria y mejor tiempo
+    // de reconocimiento con capturas de pantalla grandes.
+    async function ocrPrepareImage(file) {
+      if (typeof createImageBitmap !== "function") {
+        throw new Error("Este navegador no soporta createImageBitmap, necesario para procesar la imagen.");
+      }
+      const bitmap = await createImageBitmap(file);
+      const scale = Math.min(1, OCR_MAX_SIDE / Math.max(bitmap.width, bitmap.height));
+      // Siempre via canvas: tesseract.js acepta HTMLCanvasElement pero no ImageBitmap.
+      const canvas = document.createElement("canvas");
+      canvas.width = Math.max(1, Math.round(bitmap.width * scale));
+      canvas.height = Math.max(1, Math.round(bitmap.height * scale));
+      canvas.getContext("2d").drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+      bitmap.close();
+      return canvas;
+    }
+
+    /* Limpieza de ruido de OCR: funcion pura, sin estado. Recibe el texto
+       crudo de una imagen y devuelve [{ text, dubious }]. Filosofia: descartar
+       solo lo que es claramente UI/metadata de redes; lo dudoso se conserva
+       pero desmarcado, y el usuario siempre edita antes de agregar. */
+    function extractCandidatePhrases(rawText) {
+      // Una linea compuesta SOLO por palabras de UI de redes (una o varias,
+      // p.ej. "Responder Retweet Compartir") se descarta completa.
+      const UI_WORDS = "me gusta|like[sd]?|responder|reply|compartir|share|retweet|repost|republicar|seguir|follow|following|siguiendo|ver traducci[oó]n|translate post|translated from|enviar mensaje|suscribirse|subscribe|comentar|comment|guardar|save|m[aá]s|more|mostrar m[aá]s|show more|leer m[aá]s|read more|copiar enlace|copy link|denunciar|report";
+      const UI_LINE = new RegExp("^(?:(?:" + UI_WORDS + ")[\\s\\u00b7|,;:]*)+$", "i");
+      // Encabezado usuario/tiempo: linea corta sin puntuacion de frase que
+      // termina en un token de tiempo ("... · 2h"). Cubre tambien los casos en
+      // que el OCR deforma la @ (p.ej. "@usuario" leido como "(Ousuario").
+      const HEADER_TIME = /\d{1,2}\s*(s|seg|min|h|d|sem|w)\.?$/i;
+      const COUNTER = /^\d+([.,]\d+)?\s*(k|m|mill?(ones)?|mil)?$/i;
+      const STATS = /^[\d.,]+\s*(k|m|mil)?\s*(me gusta|likes?|comentarios?|comments?|visualizaciones|vistas|views?|reproducciones|retweets?|reposts?|guardados|compartidos|shares?|seguidores|followers)\b/i;
+      const TIME = /^(\d{1,2}:\d{2}(\s*[ap]\.?\s*m\.?)?|\d+\s*(s|seg|min|h|d|sem|w)\.?|hace\s+\d+\s+\S+)$/i;
+      const DATE = /^\d{1,2}\s+(de\s+)?(ene|feb|mar|abr|may|jun|jul|ago|sep|oct|nov|dic|jan|apr|aug|dec)[a-z]*\.?\s*(de\s+)?\d{0,4}$/i;
+      const ONLY_TAGS = /^[@#][\w.]+([\s·,]+[@#][\w.]+)*$/;
+      const USER_HEADER = /^\S{1,30}\s+@[\w.]+([\s·].*)?$/;
+
+      const normalized = String(rawText || "")
+        .replace(/[​-‍﻿­]/g, "")
+        .replace(/[’‘‛´`]/g, "'")
+        .replace(/[“”„‟«»]/g, '"')
+        .replace(/\r/g, "");
+
+      // 1) Filtrado linea a linea
+      const lines = [];
+      for (const rawLine of normalized.split("\n")) {
+        let line = rawLine
+          .replace(/(https?:\/\/\S+|www\.\S+)/gi, " ")
+          .replace(/\s+/g, " ")
+          .trim();
+
+        if (!line) { lines.push(""); continue; }
+        if (UI_LINE.test(line) || COUNTER.test(line) || STATS.test(line) ||
+            TIME.test(line) || DATE.test(line) || ONLY_TAGS.test(line) ||
+            (USER_HEADER.test(line) && line.length < 45) ||
+            (HEADER_TIME.test(line) && line.length < 50 && !/[.!?…]/.test(line))) {
+          // metadata de red social: actua ademas como separador de frases
+          lines.push("");
+          continue;
+        }
+        lines.push(line);
+      }
+
+      // 2) Agrupar en candidatas: separan las lineas en blanco y los bullets;
+      //    las lineas envueltas de una misma frase se unen con espacio.
+      const blocks = [];
+      let current = [];
+      const flush = () => {
+        if (current.length) { blocks.push(current.join(" ")); current = []; }
+      };
+      for (let line of lines) {
+        if (!line) { flush(); continue; }
+        const bullet = /^[•▪◦*–—-]\s+/.test(line);
+        if (bullet) { flush(); line = line.replace(/^[•▪◦*–—-]\s+/, ""); }
+        current.push(line);
+      }
+      flush();
+
+      // 3) Pulir cada candidata y clasificar
+      const out = [];
+      const seen = new Set();
+      for (let text of blocks) {
+        text = text
+          .replace(/(\s[@#][\w.]+)+\s*$/g, "")  // colas de hashtags/@menciones
+          .replace(/\s+([,.;:!?…])/g, "$1")
+          .replace(/\s+/g, " ")
+          .trim();
+
+        if (text.length < 3) continue;
+        const letters = (text.match(/\p{L}/gu) || []).length;
+        if (!letters) continue;
+
+        const key = text.toLowerCase().replace(/\s+/g, " ");
+        if (seen.has(key)) continue;
+        seen.add(key);
+
+        const words = text.split(/\s+/).length;
+        const dubious = text.length < 15 || words < 3 || letters / text.length < 0.4;
+        out.push({ text, dubious });
+      }
+      return out;
+    }
+
+    function renderOcrPreviews() {
+      const wrap = document.getElementById("ocr-previews");
+      wrap.innerHTML = "";
+      ocrState.files.forEach((item) => {
+        const box = document.createElement("div");
+        box.className = "ocr-thumb";
+        const img = document.createElement("img");
+        img.src = item.url;
+        img.alt = item.file.name;
+        const label = document.createElement("span");
+        label.textContent = `${item.file.name} (${(item.file.size / 1024 / 1024).toFixed(1)} MB)`;
+        box.appendChild(img);
+        box.appendChild(label);
+        wrap.appendChild(box);
+      });
+    }
+
+    function clearOcrImages() {
+      ocrState.files.forEach((item) => URL.revokeObjectURL(item.url));
+      ocrState.files = [];
+      renderOcrPreviews();
+    }
+
+    function clearOcrCandidates() {
+      ocrState.candidates = [];
+      renderOcrCandidates();
+    }
+
+    function addOcrFiles(fileList) {
+      const rejected = [];
+      for (const file of fileList) {
+        if (!OCR_TYPES.includes(file.type)) {
+          rejected.push(`${file.name || "imagen"}: formato no soportado (usa PNG, JPG o WebP)`);
+          continue;
+        }
+        if (file.size > OCR_MAX_BYTES) {
+          rejected.push(`${file.name}: supera los 10 MB`);
+          continue;
+        }
+        if (ocrState.files.length >= OCR_MAX_FILES) {
+          rejected.push(`${file.name}: máximo ${OCR_MAX_FILES} imágenes por lote`);
+          continue;
+        }
+        ocrState.files.push({ file, url: URL.createObjectURL(file) });
+      }
+      renderOcrPreviews();
+      if (rejected.length) {
+        setOcrStatus(rejected.join(" · "), "error");
+      } else if (ocrState.files.length) {
+        setOcrStatus(`${ocrState.files.length} imagen(es) lista(s). Pulsa "Extraer frases".`, "ok");
+      }
+    }
+
+    function renderOcrCandidates() {
+      const wrap = document.getElementById("ocr-candidates");
+      const addBtn = document.getElementById("ocr-add-btn");
+      wrap.innerHTML = "";
+      addBtn.style.display = ocrState.candidates.length ? "" : "none";
+
+      ocrState.candidates.forEach((candidate, index) => {
+        const row = document.createElement("div");
+        row.className = "ocr-candidate";
+
+        const checkbox = document.createElement("input");
+        checkbox.type = "checkbox";
+        checkbox.checked = candidate.checked;
+        checkbox.addEventListener("change", () => { candidate.checked = checkbox.checked; });
+
+        const textarea = document.createElement("textarea");
+        textarea.className = "field-input";
+        textarea.rows = 2;
+        textarea.value = candidate.text;
+        textarea.addEventListener("input", () => { candidate.text = textarea.value; });
+
+        row.appendChild(checkbox);
+        row.appendChild(textarea);
+
+        if (candidate.dubious) {
+          const chip = document.createElement("span");
+          chip.className = "chip";
+          chip.textContent = "dudosa";
+          row.appendChild(chip);
+        }
+
+        wrap.appendChild(row);
+      });
+    }
+
+    async function runOcr() {
+      if (ocrState.running) return;
+      if (!ocrState.files.length) {
+        setOcrStatus("Selecciona o pega al menos una imagen.", "error");
+        return;
+      }
+
+      const runBtn = document.getElementById("ocr-run-btn");
+      ocrState.running = true;
+      runBtn.disabled = true;
+      clearOcrCandidates();
+
+      const failures = [];
+      let noText = 0;
+
+      try {
+        setOcrStatus("Cargando OCR local (solo la primera vez)...");
+        const worker = await getOcrWorker();
+
+        // Secuencial a proposito: procesar en paralelo dispara el uso de
+        // memoria con capturas grandes y no mejora el tiempo total del worker.
+        for (let i = 0; i < ocrState.files.length; i++) {
+          const item = ocrState.files[i];
+          ocrState.progressLabel = `Imagen ${i + 1}/${ocrState.files.length} (${item.file.name})`;
+          setOcrStatus(`${ocrState.progressLabel}...`);
+          try {
+            const image = await ocrPrepareImage(item.file);
+            const result = await worker.recognize(image);
+            const candidates = extractCandidatePhrases(result && result.data ? result.data.text : "");
+            if (!candidates.length) {
+              noText += 1;
+            } else {
+              for (const candidate of candidates) {
+                ocrState.candidates.push({ ...candidate, checked: !candidate.dubious });
+              }
+            }
+          } catch (err) {
+            failures.push(`${item.file.name}: ${err.message || err}`);
+          }
+        }
+      } catch (err) {
+        setOcrStatus(err.message || String(err), "error");
+        ocrState.running = false;
+        runBtn.disabled = false;
+        return;
+      }
+
+      ocrState.running = false;
+      runBtn.disabled = false;
+      renderOcrCandidates();
+
+      const parts = [];
+      if (ocrState.candidates.length) {
+        const dubious = ocrState.candidates.filter((c) => c.dubious).length;
+        parts.push(`${ocrState.candidates.length} frase(s) candidata(s)${dubious ? ` (${dubious} dudosa(s), desmarcada(s))` : ""}. Revisa, edita y pulsa "Agregar seleccionadas al texto".`);
+      }
+      if (noText) parts.push(`${noText} imagen(es) sin texto util detectado.`);
+      if (failures.length) parts.push(`Fallo el OCR en: ${failures.join(" · ")}.`);
+      if (!parts.length) parts.push("No se detectó texto en las imágenes.");
+
+      const allNoise = !ocrState.candidates.length && (noText || failures.length);
+      setOcrStatus(parts.join(" "), allNoise ? "error" : (failures.length || noText ? "" : "ok"));
+    }
+
+    function addSelectedCandidates() {
+      const selected = ocrState.candidates
+        .filter((c) => c.checked)
+        .map((c) => clean(c.text).replace(/\s+/g, " "))
+        .filter((text) => text.length >= 3);
+
+      if (!selected.length) {
+        setOcrStatus("Marca al menos una candidata (o edita las dudosas y márcalas).", "error");
+        return;
+      }
+
+      const textarea = document.getElementById("raw-phrases-input");
+      const existing = textarea.value.replace(/\s+$/, "");
+      textarea.value = (existing ? existing + "\n" : "") + selected.join("\n");
+
+      clearOcrCandidates();
+      clearOcrImages();
+      setOcrStatus(`${selected.length} frase(s) agregada(s) al texto. Revísalas abajo y pulsa "Guardar frases".`, "ok");
+      textarea.focus();
+    }
+
+    function initOcrIntake() {
+      const dropZone = document.getElementById("ocr-drop-zone");
+      const fileInput = document.getElementById("ocr-file-input");
+
+      dropZone.addEventListener("click", () => fileInput.click());
+      dropZone.addEventListener("keydown", (event) => {
+        if (event.key === "Enter" || event.key === " ") { event.preventDefault(); fileInput.click(); }
+      });
+
+      fileInput.addEventListener("change", () => {
+        if (fileInput.files && fileInput.files.length) addOcrFiles(Array.from(fileInput.files));
+        fileInput.value = "";
+      });
+
+      dropZone.addEventListener("dragover", (event) => {
+        event.preventDefault();
+        dropZone.classList.add("dragover");
+      });
+      dropZone.addEventListener("dragleave", () => dropZone.classList.remove("dragover"));
+      dropZone.addEventListener("drop", (event) => {
+        event.preventDefault();
+        dropZone.classList.remove("dragover");
+        if (event.dataTransfer && event.dataTransfer.files.length) {
+          addOcrFiles(Array.from(event.dataTransfer.files));
+        }
+      });
+
+      // Pegar imagen con Ctrl+V: solo cuando el tab activo es Agregar Frases,
+      // para no interferir con el resto del panel.
+      document.addEventListener("paste", (event) => {
+        if (!rawView.classList.contains("active")) return;
+        const items = Array.from((event.clipboardData && event.clipboardData.items) || []);
+        const images = items
+          .filter((item) => item.kind === "file" && OCR_TYPES.includes(item.type))
+          .map((item) => item.getAsFile())
+          .filter(Boolean);
+        if (images.length) {
+          event.preventDefault();
+          addOcrFiles(images);
+        }
+      });
+
+      document.getElementById("ocr-run-btn").addEventListener("click", runOcr);
+      document.getElementById("ocr-add-btn").addEventListener("click", addSelectedCandidates);
+      document.getElementById("ocr-clear-btn").addEventListener("click", () => {
+        clearOcrImages();
+        clearOcrCandidates();
+        setOcrStatus("");
+      });
+    }
+
+    initOcrIntake();
 
     function initArchiveColors() {
       const grid = document.getElementById("plan-color-grid");

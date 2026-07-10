@@ -1,0 +1,17 @@
+Assets vendoreados para el OCR local de panel.html#raw (Agregar Frases).
+Sin CDN: todo se sirve same-origin desde GitHub Pages / npm run panel.
+
+tesseract.min.js                    tesseract.js 5.1.1 (npm, dist/tesseract.min.js)
+worker.min.js                       tesseract.js 5.1.1 (npm, dist/worker.min.js)
+tesseract-core-simd-lstm.wasm.js    tesseract.js-core 5.1.1 (npm) — single-file, requiere WASM SIMD
+                                    (Chrome 91+, Firefox 89+, Safari 16.4+)
+spa.traineddata.gz                  tesseract-ocr/tessdata_fast (main) spa.traineddata, gzip -9
+
+Fuentes:
+  https://registry.npmjs.org/tesseract.js/-/tesseract.js-5.1.1.tgz
+  https://registry.npmjs.org/tesseract.js-core/-/tesseract.js-core-5.1.1.tgz
+  https://raw.githubusercontent.com/tesseract-ocr/tessdata_fast/main/spa.traineddata
+
+Para actualizar: repetir las descargas con la version nueva, reemplazar los 4
+archivos y actualizar este txt. panel.html referencia estos paths de forma
+relativa y con carga lazy (solo al usar el bloque de pantallazos).
