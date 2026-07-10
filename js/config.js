@@ -12,14 +12,17 @@ const watermarkImage = new Image();
 watermarkImage.src = "assets/marca2.png?v=1";
 watermarkImage.onload = () => {
   assetsReady.watermark = true;
-  draw();
+  // Guard: config.js corre antes que app.js (que define draw). Si la imagen
+  // carga en ese hueco, se omite el repaint temprano — app.js dibuja igual
+  // al ejecutarse y tras fonts.ready, con assetsReady ya seteado.
+  if (typeof draw === "function") draw();
 };
 
 const retroLogoImage = new Image();
 retroLogoImage.src = "assets/marca3.png?v=1";
 retroLogoImage.onload = () => {
   assetsReady.retroLogo = true;
-  draw();
+  if (typeof draw === "function") draw();
 };
 
 const input       = document.getElementById("textInput");
