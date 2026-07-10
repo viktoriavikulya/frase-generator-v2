@@ -4,7 +4,7 @@ Sistema automatizado de publicacion para Instagram, Facebook y Threads. El panel
 
 https://imgifra.github.io/frase-generator-v2/panel.html
 
-`panel.html` es el unico HTML versionado. Tambien contiene el motor de render cuando se abre como `panel.html?renderEngine=1`; Playwright usa esa URL para generar los PNG de produccion.
+`panel.html` es el unico HTML versionado. Tambien contiene el motor de render cuando se abre como `panel.html?renderEngine=1`; Playwright usa esa URL para generar los PNG de produccion. Los `onload` de watermark/logo en `js/config.js` tienen un guard antes de llamar `draw()` (que define `js/app.js` mas tarde en la cadena de carga), asi que la consola ya no muestra el viejo `ReferenceError: draw is not defined`; el render final no cambia.
 
 ## Como Funciona
 
@@ -229,6 +229,7 @@ El workflow usa Playwright Chromium con cache. Ya no instala `chromium-browser` 
 - `v-panel-operations-metrics-stable`: metricas operadas desde Operaciones y `metrics.yml` sin `workflow_dispatch`.
 - `v-panel-operations-history-stable`: estado con Historial de ejecuciones en Operaciones.
 - `v-panel-operations-hardening-stable`: manejo unificado de errores de GitHub API en Operaciones (mensajes claros para 401/403/404 e historial parcial si un workflow falla).
+- `v-render-engine-draw-guard-stable`: motor de render sin el `ReferenceError: draw is not defined` preexistente (guards en los onload de assets de `js/config.js`).
 
 ## Que No Hacer
 

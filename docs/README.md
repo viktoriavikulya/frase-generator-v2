@@ -27,10 +27,13 @@ complementaria, más operativa.
   historial): mensajes claros para 401/403/404, con 403 distinguiendo rate limit de falta de
   permisos cuando es posible. Si falla la consulta de un solo workflow, el historial muestra los
   runs del otro más una advertencia indicando cuál no se pudo consultar.
+- El motor de render (`panel.html?renderEngine=1`) ya no emite el `ReferenceError: draw is not
+  defined` preexistente: los `onload` de watermark/logo en `js/config.js` tienen un guard antes
+  de llamar `draw()`. El render final no cambia.
 - Tags estables: `v-panel-unico-stable`, `v-panel-operations-stable`,
   `v-panel-repository-dispatch-stable`, `v-panel-repository-dispatch-docs`,
   `v-panel-operations-metrics-stable`, `v-panel-operations-history-stable`,
-  `v-panel-operations-hardening-stable`.
+  `v-panel-operations-hardening-stable`, `v-render-engine-draw-guard-stable`.
 
 ## Lectura recomendada (en este orden)
 

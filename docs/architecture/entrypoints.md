@@ -10,7 +10,7 @@ Mapa rapido de que archivo o ruta es activa, historica o solo backend.
 
 ## HTML Eliminados Historicos
 
-- `index.html`: eliminado en la Fase C7B. Era el motor visual/render original. El motor vive ahora en `panel.html?renderEngine=1`. La raiz pelada de GitHub Pages puede dar 404; la URL oficial es `/panel.html`.
+- `index.html`: eliminado en la Fase C7B. Era el motor visual/render original. El motor vive ahora en `panel.html?renderEngine=1`. La raiz pelada de GitHub Pages puede dar 404; la URL oficial es `/panel.html`. Los scripts del motor se inyectan dinamicamente en orden garantizado pero sin bloquear el parser; por eso los `onload` de watermark/logo en `js/config.js` tienen un guard antes de llamar `draw()` (definida despues por `js/app.js`) — sin ese guard aparecia un `ReferenceError: draw is not defined` inofensivo en consola.
 - `publicar.html`: eliminado en la Fase C6. La publicacion vive en `panel.html` -> `Publicar Ahora`.
 - `tools/archivo-x-curator.html`: eliminado en la Fase C5. Era la UI legacy de curaduria. La ruta `/archivo-x-curator.html` se conserva como redirect del backend de Render hacia `panel.html#curate` cuando aplica, pero el archivo fisico ya no existe.
 

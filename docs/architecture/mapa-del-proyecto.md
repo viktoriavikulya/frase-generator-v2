@@ -39,7 +39,10 @@ flowchart TD
 ## Fuente de verdad visual
 
 El render real de produccion sale de `panel.html?renderEngine=1` + `js/` (`index.html` fue
-eliminado en la Fase C7B).
+eliminado en la Fase C7B). Los `onload` de watermark/logo en `js/config.js` llaman `draw()` con
+un guard (`typeof draw === "function"`), porque `draw` la define `js/app.js` mas tarde en la
+cadena de carga — sin el guard aparecia un `ReferenceError` inofensivo en consola. No quitar
+ese guard; el render final no depende de ese repaint temprano.
 
 ```txt
 panel.html?renderEngine=1
