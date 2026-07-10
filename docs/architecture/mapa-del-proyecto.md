@@ -230,6 +230,12 @@ panel.html
   -> Google Sheet archivo_x / Hoja 2
 ```
 
+El tab Agregar Frases incluye ademas un OCR local de pantallazos (tesseract.js vendoreado en
+`vendor/tesseract/`, versiones pineadas en `VERSIONS.txt`, carga lazy). Las imagenes se procesan
+solo en el navegador (no van a ninguna API ni se guardan) y el resultado son frases candidatas
+que el usuario revisa y agrega al textarea; el guardado sigue siendo el mismo
+`POST /api/raw-phrases`. No cambiar ese vendor por un CDN sin decision explicita.
+
 ### Estado y locks
 
 El Sheet guarda:

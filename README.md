@@ -164,6 +164,8 @@ El flujo editorial es 100% manual:
 
 Solo las frases con `decision_editorial = aprobada` entran al armado de carruseles.
 
+**Agregar Frases** tambien acepta pantallazos: se pueden subir, arrastrar o pegar (Ctrl+V) hasta 5 imagenes PNG/JPG/WebP de maximo 10 MB, y un OCR local (tesseract.js vendoreado en `vendor/tesseract/`, versiones pineadas en su `VERSIONS.txt`) las convierte en frases candidatas editables. Todo corre en el navegador: las imagenes no se envian a ninguna API externa, no se guardan y no hay claves de OCR/IA. El OCR se carga solo al usar ese bloque. Las candidatas dudosas aparecen desmarcadas; "Agregar seleccionadas al texto" solo llena el textarea, y guardar sigue siendo el boton normal de **Guardar frases** (mismo `POST /api/raw-phrases`, mismas frases `pendientes` en Curar Frases). Si el OCR falla o el navegador es viejo (el core WASM SIMD requiere Chrome 91+/Firefox 89+/Safari 16.4+), el pegado manual de texto sigue funcionando igual. La calidad del OCR varia con fondos ruidosos, tipografias decorativas o texto pequeno — por eso siempre hay revision manual antes de agregar. No reemplazar `vendor/tesseract/` por un CDN sin decision explicita.
+
 Render sigue sirviendo las APIs de curaduria (`/api/phrases`, `/api/raw-phrases`, `/api/plan-carruseles`, `/api/taxonomy`) y redirige rutas legacy hacia `panel.html#curate` cuando aplica. Render no sirve el panel principal; el panel principal esta en GitHub Pages.
 
 ## Scripts
@@ -230,6 +232,7 @@ El workflow usa Playwright Chromium con cache. Ya no instala `chromium-browser` 
 - `v-panel-operations-history-stable`: estado con Historial de ejecuciones en Operaciones.
 - `v-panel-operations-hardening-stable`: manejo unificado de errores de GitHub API en Operaciones (mensajes claros para 401/403/404 e historial parcial si un workflow falla).
 - `v-render-engine-draw-guard-stable`: motor de render sin el `ReferenceError: draw is not defined` preexistente (guards en los onload de assets de `js/config.js`).
+- `v-panel-raw-ocr-stable`: OCR local de pantallazos en Agregar Frases (tesseract.js vendoreado, candidatas con revision manual, sin auto-guardado).
 
 ## Que No Hacer
 
