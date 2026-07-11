@@ -1013,10 +1013,6 @@
             <input type="file" id="ocr-file-input" accept="image/png,image/jpeg,image/webp" multiple style="display:none;">
             <div class="ocr-drop" id="ocr-drop-zone" role="button" tabindex="0">Haz clic para elegir imágenes, arrástralas aquí, o pégalas con Ctrl+V</div>
             <div class="ocr-thumbs" id="ocr-previews"></div>
-            <label class="field-hint" style="display:flex;gap:8px;align-items:center;margin-top:8px;cursor:pointer;">
-              <input type="checkbox" id="ocr-center-priority" checked>
-              Priorizar zona central en pantallazos verticales (TikTok/Reels/Shorts: ignora tabs, botones laterales y navegación)
-            </label>
           </div>
           <div class="btns">
             <button class="btn-main" type="button" id="ocr-run-btn">Extraer frases de las imágenes</button>
@@ -2540,68 +2536,6 @@
       return canvas;
     }
 
-    /* Variante de zona central para pantallazos sociales verticales
-       (TikTok/Reels/Shorts): recorta tabs superiores, botones laterales y
-       navegacion/caption inferior, con upscale controlado si queda chico.
-       A proposito SIN preprocesamiento de contraste/gris/inversion: se probo
-       (stretch de percentiles + inversion en fondo oscuro) y el resultado fue
-       PEOR que dejar que Tesseract binarice el color original — no reintroducir
-       ese preproceso sin volver a medir contra un caso real. */
-    function cropCenterForSocial(canvas) {
-      const sx = 0;
-      const sw = Math.max(1, Math.round(canvas.width * 0.88));
-      const sy = Math.round(canvas.height * 0.20);
-      const sh = Math.max(1, Math.round(canvas.height * 0.58)); // 20% a 78%
-
-      // Upscale controlado si el recorte queda chico: a Tesseract le va mejor
-      // con texto grande.
-      const scale = sw < 1000 ? Math.min(2, 1400 / sw) : 1;
-      const out = document.createElement("canvas");
-      out.width = Math.max(1, Math.round(sw * scale));
-      out.height = Math.max(1, Math.round(sh * scale));
-      const ctx = out.getContext("2d");
-      ctx.imageSmoothingEnabled = true;
-      ctx.imageSmoothingQuality = "high";
-      ctx.drawImage(canvas, sx, sy, sw, sh, 0, 0, out.width, out.height);
-      return out;
-    }
-
-    /* En vertical (alto/ancho >= 1.3) con "priorizar zona central" activo,
-       intenta primero el OCR del recorte central; si no produce ninguna
-       candidata buena, cae al OCR de la imagen completa. En horizontal o con
-       el checkbox apagado, va directo a imagen completa. */
-    async function recognizeImageSmart(worker, file) {
-      const full = await ocrPrepareImage(file);
-      const preferCenter = document.getElementById("ocr-center-priority").checked;
-      const isVertical = full.height / full.width >= 1.3;
-
-      if (preferCenter && isVertical) {
-        try {
-          const center = cropCenterForSocial(full);
-          const centerResult = await worker.recognize(center);
-          const centerCandidates = extractCandidatePhrases(centerResult && centerResult.data ? centerResult.data.text : "");
-          if (centerCandidates.some((c) => !c.dubious)) {
-            return centerCandidates;
-          }
-          // El recorte no dio nada bueno: probar la imagen completa y quedarse
-          // con el mejor de los dos resultados.
-          const fullResult = await worker.recognize(full);
-          const fullCandidates = extractCandidatePhrases(fullResult && fullResult.data ? fullResult.data.text : "");
-          const good = (list) => list.filter((c) => !c.dubious).length;
-          if (good(fullCandidates) > good(centerCandidates) || (!centerCandidates.length && fullCandidates.length)) {
-            return fullCandidates;
-          }
-          return centerCandidates.length ? centerCandidates : fullCandidates;
-        } catch (err) {
-          // Si el recorte/preproceso falla por cualquier motivo, la imagen
-          // completa sigue siendo el camino de siempre.
-        }
-      }
-
-      const result = await worker.recognize(full);
-      return extractCandidatePhrases(result && result.data ? result.data.text : "");
-    }
-
     /* Limpieza de ruido de OCR: funcion pura, sin estado. Recibe el texto
        crudo de una imagen y devuelve [{ text, dubious }]. Filosofia: descartar
        solo lo que es claramente UI/metadata de redes; lo dudoso se conserva
@@ -2609,15 +2543,8 @@
     function extractCandidatePhrases(rawText) {
       // Una linea compuesta SOLO por palabras de UI de redes (una o varias,
       // p.ej. "Responder Retweet Compartir") se descarta completa.
-      const UI_WORDS = "me gusta|like[sd]?|responder|reply|compartir|share|retweet|repost|republicar|seguir|follow|following|siguiendo|ver traducci[oó]n|translate post|translated from|enviar mensaje|suscribirse|subscribe|comentar|comment|guardar|save|m[aá]s|more|mostrar m[aá]s|show more|leer m[aá]s|read more|copiar enlace|copy link|denunciar|report|para ti|for you|comunidad|live|en vivo|inicio|amigos|mensajes|perfil|buscar|tienda|crear|efectos|favoritos|explorar|siguiente|dueto|remix";
-      const UI_LINE = new RegExp("^(?:(?:" + UI_WORDS + ")[\\s\\u00b7|,;:+]*)+$", "i");
-      // Metadata de audio/cancion y atribuciones de TikTok/Reels
-      const AUDIO_LINE = /(sonido original|audio original|original sound|contiene:|m[uú]sica:|audio de|sonido de)/i;
-      // Para detectar candidatas que mezclan UI con frase real: solo tokens
-      // inequivocamente de interfaz (palabras comunes como "más", "amigos" o
-      // "me gusta" NO van aqui — aparecen en frases legitimas).
-      const STRONG_UI_MIXED = /(retweet|repost|suscribirse|subscribe|ver traducci[oó]n|translate post|copiar enlace|copy link|sonido original|audio original|original sound|hace un momento)/i;
-      const LIVE_TOKEN = /(^|\s)LIVE(\s|$)/;
+      const UI_WORDS = "me gusta|like[sd]?|responder|reply|compartir|share|retweet|repost|republicar|seguir|follow|following|siguiendo|ver traducci[oó]n|translate post|translated from|enviar mensaje|suscribirse|subscribe|comentar|comment|guardar|save|m[aá]s|more|mostrar m[aá]s|show more|leer m[aá]s|read more|copiar enlace|copy link|denunciar|report";
+      const UI_LINE = new RegExp("^(?:(?:" + UI_WORDS + ")[\\s\\u00b7|,;:]*)+$", "i");
       // Encabezado usuario/tiempo: linea corta sin puntuacion de frase que
       // termina en un token de tiempo ("... · 2h"). Cubre tambien los casos en
       // que el OCR deforma la @ (p.ej. "@usuario" leido como "(Ousuario").
@@ -2644,11 +2571,7 @@
           .trim();
 
         if (!line) { lines.push(""); continue; }
-        // Lineas mayormente simbolicas (OCR de botones/iconos sobre video)
-        const lineAlnum = (line.match(/[\p{L}\p{N}\s]/gu) || []).length;
-        const garbageLine = line.length >= 6 && lineAlnum / line.length < 0.5;
-        if (garbageLine || UI_LINE.test(line) || AUDIO_LINE.test(line) ||
-            COUNTER.test(line) || STATS.test(line) ||
+        if (UI_LINE.test(line) || COUNTER.test(line) || STATS.test(line) ||
             TIME.test(line) || DATE.test(line) || ONLY_TAGS.test(line) ||
             (USER_HEADER.test(line) && line.length < 45) ||
             (HEADER_TIME.test(line) && line.length < 50 && !/[.!?…]/.test(line))) {
@@ -2670,38 +2593,14 @@
         if (!line) { flush(); continue; }
         const bullet = /^[•▪◦*–—-]\s+/.test(line);
         if (bullet) { flush(); line = line.replace(/^[•▪◦*–—-]\s+/, ""); }
-        // Un parentesis de apertura arranca aparte: los subtitulos/apartes
-        // tipo "( uno pensando... )" no deben pegarse a la frase principal.
-        if (/^\(/.test(line)) flush();
         current.push(line);
       }
       flush();
 
-      // 2.5) Re-unir bloques que el OCR separo a mitad de frase: un bloque
-      // que termina en ":" o "," (p.ej. 'Mi abuelo siempre decia:'), que deja
-      // una comilla abierta, o cuyo siguiente bloque arranca en minuscula
-      // (continuacion evidente). La fusion por comilla abierta se limita en
-      // longitud: si el OCR perdio la comilla de cierre, no queremos arrastrar
-      // medio pantallazo dentro de la "cita".
-      const mergedBlocks = [];
-      for (const block of blocks) {
-        const prev = mergedBlocks[mergedBlocks.length - 1];
-        if (prev) {
-          const prevOpenQuote = ((prev.match(/"/g) || []).length % 2 === 1) && (prev.length + block.length) <= 200;
-          const prevUnfinished = /[:,]$/.test(prev);
-          const nextContinues = /^[a-záéíóúüñ]/.test(block) && !/[.!?…"]$/.test(prev);
-          if (prevUnfinished || prevOpenQuote || nextContinues) {
-            mergedBlocks[mergedBlocks.length - 1] = prev + " " + block;
-            continue;
-          }
-        }
-        mergedBlocks.push(block);
-      }
-
       // 3) Pulir cada candidata y clasificar
       const out = [];
       const seen = new Set();
-      for (let text of mergedBlocks) {
+      for (let text of blocks) {
         text = text
           .replace(/(\s[@#][\w.]+)+\s*$/g, "")  // colas de hashtags/@menciones
           .replace(/\s+([,.;:!?…])/g, "$1")
@@ -2716,37 +2615,10 @@
         if (seen.has(key)) continue;
         seen.add(key);
 
-        // Anti-basura: proporcion de caracteres fuera del set habitual de una
-        // frase (letras, numeros, puntuacion comun). El OCR de fondos ruidosos
-        // produce simbolos sueltos; mucha rareza -> descartar, algo -> dudosa.
-        const commonChars = (text.match(/[\p{L}\p{N}\s.,;:!?¡¿"'()…\-–—«»%$€@#&+*/=]/gu) || []).length;
-        const weirdRatio = 1 - commonChars / text.length;
-        if (weirdRatio > 0.25) continue;
-
         const words = text.split(/\s+/).length;
-        const dubious =
-          text.length < 15 ||
-          words < 3 ||
-          letters / text.length < 0.4 ||
-          weirdRatio > 0.08 ||
-          text.length > 220 ||                 // mashup largo de varias piezas
-          STRONG_UI_MIXED.test(text) ||        // mezcla frase + tokens de UI
-          LIVE_TOKEN.test(text) ||
-          /^\(.*\)$/.test(text);               // aparte entre parentesis: revisar a mano
+        const dubious = text.length < 15 || words < 3 || letters / text.length < 0.4;
         out.push({ text, dubious });
       }
-
-      // 4) Priorizar la frase "de verdad": citas entre comillas, patrones
-      // tipo 'decia:' o cierre con puntuacion clara van primero en la lista.
-      const score = (c) => {
-        let s = 0;
-        if (/dec[ií]a:?/i.test(c.text)) s += 2;
-        if (/"[^"]{10,}"/.test(c.text)) s += 2;
-        if (/[.!?…"]$/.test(c.text)) s += 1;
-        if (!c.dubious) s += 1;
-        return s;
-      };
-      out.sort((a, b) => score(b) - score(a));
       return out;
     }
 
@@ -2864,7 +2736,9 @@
           ocrState.progressLabel = `Imagen ${i + 1}/${ocrState.files.length} (${item.file.name})`;
           setOcrStatus(`${ocrState.progressLabel}...`);
           try {
-            const candidates = await recognizeImageSmart(worker, item.file);
+            const image = await ocrPrepareImage(item.file);
+            const result = await worker.recognize(image);
+            const candidates = extractCandidatePhrases(result && result.data ? result.data.text : "");
             if (!candidates.length) {
               noText += 1;
             } else {
