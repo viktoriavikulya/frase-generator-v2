@@ -114,8 +114,7 @@ correctness check and should be run after touching the pipeline, docs, or palett
   `v-render-engine-draw-guard-stable` (render engine without the preexisting
   `draw is not defined` console noise: guarded early asset repaints in `js/config.js`),
   `v-panel-raw-ocr-stable` (local screenshot OCR intake in Agregar Frases, tesseract.js
-  vendored, no auto-save), `v-panel-raw-ocr-social-cleanup-stable` (OCR patch for noisy
-  vertical social screenshots: central-crop priority + social UI noise filtering).
+  vendored, no auto-save).
 
 ## Repo layout
 
@@ -330,17 +329,6 @@ is saved automatically. Saving still goes through the normal "Guardar frases" bu
 (the SIMD WASM core needs a modern browser: Chrome 91+, Firefox 89+, Safari 16.4+). OCR quality
 varies with noisy backgrounds, decorative fonts or tiny text — that's why candidates are always
 reviewed manually.
-
-For vertical social screenshots (TikTok/Reels/Shorts) there is a "Priorizar zona central"
-checkbox, **on by default**: OCR runs first on a central crop (excludes top tabs, right-side
-buttons and bottom caption/nav) and only falls back to the full image if the crop yields no
-useful candidates. The noise cleanup also filters social UI (Para ti, Comunidad, Siguiendo,
-LIVE, Inicio, Amigos, Mensajes, Perfil), audio/song attributions ("Contiene:", "sonido
-original"), hashtags, counters and mostly-symbolic garbage lines, and candidates with clear
-phrase patterns ("decía:", quoted text, closing punctuation) are ranked first. Dubious
-candidates still appear unchecked and editable. Note: the central crop deliberately has NO
-grayscale/contrast/inversion preprocessing — it was tested and made recognition worse than
-letting Tesseract binarize the original color (see comment on `cropCenterForSocial`).
 
 ### `decision_editorial` values
 

@@ -235,11 +235,6 @@ El tab Agregar Frases incluye ademas un OCR local de pantallazos (tesseract.js v
 solo en el navegador (no van a ninguna API ni se guardan) y el resultado son frases candidatas
 que el usuario revisa y agrega al textarea; el guardado sigue siendo el mismo
 `POST /api/raw-phrases`. No cambiar ese vendor por un CDN sin decision explicita.
-En pantallazos verticales (TikTok/Reels/Shorts) el checkbox "Priorizar zona central" (default
-on) recorta tabs/botones/navegacion antes del OCR y cae a imagen completa solo si el recorte no
-da candidatas utiles; la limpieza filtra UI social, audio/cancion, hashtags y contadores, y
-prioriza frases con "decia:", comillas o puntuacion clara. La calidad sigue dependiendo de la
-imagen: siempre revisar las candidatas antes de guardar.
 
 ### Estado y locks
 
