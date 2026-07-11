@@ -30,17 +30,10 @@ complementaria, más operativa.
 - El motor de render (`panel.html?renderEngine=1`) ya no emite el `ReferenceError: draw is not
   defined` preexistente: los `onload` de watermark/logo en `js/config.js` tienen un guard antes
   de llamar `draw()`. El render final no cambia.
-- `panel.html#raw` ("Agregar Frases") acepta pantallazos (subir/arrastrar/pegar, máx. 5 imágenes
-  PNG/JPG/WebP de 10 MB) con OCR 100% local (tesseract.js vendoreado en `vendor/tesseract/`,
-  versiones pineadas en `VERSIONS.txt`, carga lazy). Las imágenes no salen del navegador ni se
-  guardan; las frases candidatas se revisan/editan y el guardado sigue siendo el flujo normal de
-  `POST /api/raw-phrases` (sin auto-guardado). No reemplazar el vendor por CDN sin decisión
-  explícita.
 - Tags estables: `v-panel-unico-stable`, `v-panel-operations-stable`,
   `v-panel-repository-dispatch-stable`, `v-panel-repository-dispatch-docs`,
   `v-panel-operations-metrics-stable`, `v-panel-operations-history-stable`,
-  `v-panel-operations-hardening-stable`, `v-render-engine-draw-guard-stable`,
-  `v-panel-raw-ocr-stable`.
+  `v-panel-operations-hardening-stable`, `v-render-engine-draw-guard-stable`.
 
 ## Lectura recomendada (en este orden)
 

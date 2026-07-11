@@ -68,9 +68,7 @@ npm run curate:archivo-x
 ```
 
 El flujo editorial activo vive en el panel:
-- Agregar Frases (pegar texto, o subir/arrastrar/pegar pantallazos con OCR local — máx. 5
-  imágenes PNG/JPG/WebP de 10 MB; las candidatas se revisan y se guardan con el botón normal,
-  nada se guarda solo)
+- Agregar Frases
 - Curar Frases
 - Armar Carruseles
 

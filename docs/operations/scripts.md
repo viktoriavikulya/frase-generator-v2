@@ -66,9 +66,7 @@ npm run panel
 ```
 
 Desde ahí: publicar frases nuevas, curar Archivo X (incluye "Agregar Frases" y "No sé"), y armar
-carruseles. Este es el flujo que reemplaza casi todo lo demás en el día a día. "Agregar Frases"
-acepta también pantallazos con OCR local (tesseract.js vendoreado en `vendor/tesseract/`, sin
-CDN ni claves; las imágenes no salen del navegador y nada se guarda sin pulsar «Guardar frases»).
+carruseles. Este es el flujo que reemplaza casi todo lo demás en el día a día.
 
 ## Comandos de curaduría
 

@@ -112,9 +112,7 @@ correctness check and should be run after touching the pipeline, docs, or palett
   the run history block), `v-panel-operations-hardening-stable` (unified GitHub API error
   handling in Operaciones: clear 401/403/404 messages and partial run history),
   `v-render-engine-draw-guard-stable` (render engine without the preexisting
-  `draw is not defined` console noise: guarded early asset repaints in `js/config.js`),
-  `v-panel-raw-ocr-stable` (local screenshot OCR intake in Agregar Frases, tesseract.js
-  vendored, no auto-save).
+  `draw is not defined` console noise: guarded early asset repaints in `js/config.js`).
 
 ## Repo layout
 
@@ -178,9 +176,6 @@ tools/archivo-x-curator.html   REMOVED in Phase C5 — was the legacy curaduría
                                 kept as a compatibility redirect (302) to panel.html#curate in
                                 archive-curator-server.js; the physical file no longer exists.
 data/tweets-guardados-x.txt    input for import:saved-tweets
-vendor/tesseract/              pinned tesseract.js assets for the local screenshot OCR in
-                               panel.html#raw (versions in VERSIONS.txt; served same-origin,
-                               lazy-loaded — never swap for a CDN without an explicit decision)
 .github/workflows/publish.yml  main pipeline (schedule 10am/6pm Bogota + repository_dispatch)
 .github/workflows/metrics.yml  Sunday metrics job (schedule + repository_dispatch update-metrics;
                                days window via client_payload.days, default 30)
@@ -315,20 +310,6 @@ module's exported `normalizeForDedup()` against both the existing sheet rows and
 pasted batch; phrases under 3 characters or blank lines are skipped. Response reports
 `{ inserted, duplicates, skippedEmpty, skippedShort }`; nothing is auto-approved or added to any
 carousel plan — new rows only show up under the curator's "Pendientes" filter.
-
-The same tab also has a **local screenshot OCR block** ("Desde pantallazos"): the user can
-upload, drag or paste (Ctrl+V) up to 5 PNG/JPG/WebP images of 10 MB max each; tesseract.js
-(vendored with pinned versions in `vendor/tesseract/`, see its `VERSIONS.txt` — do NOT replace
-with a CDN without an explicit decision) runs **entirely in the browser**, lazy-loaded only when
-the block is used. Images never leave the browser, are never stored, and no OCR/AI keys exist.
-Detected text is noise-cleaned into editable candidate phrases (dubious ones appear unchecked);
-"Agregar seleccionadas al texto" only appends them to the `#raw-phrases-input` textarea — nothing
-is saved automatically. Saving still goes through the normal "Guardar frases" button →
-`saveRawPhrases()` → `POST /api/raw-phrases`, so OCR-sourced phrases enter Curar Frases as
-`pendiente` like any pasted phrase, and the manual paste flow keeps working if OCR fails
-(the SIMD WASM core needs a modern browser: Chrome 91+, Firefox 89+, Safari 16.4+). OCR quality
-varies with noisy backgrounds, decorative fonts or tiny text — that's why candidates are always
-reviewed manually.
 
 ### `decision_editorial` values
 
