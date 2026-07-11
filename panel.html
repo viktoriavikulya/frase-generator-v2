@@ -2512,7 +2512,7 @@
           logger: (m) => {
             if (m && m.status === "recognizing text" && ocrState.running) {
               const pct = Math.round((m.progress || 0) * 100);
-              setOcrStatus(`${ocrState.progressLabel || "Reconociendo"}${ocrState.variantLabel || ""}... ${pct}%`);
+              setOcrStatus(`${ocrState.progressLabel || "Reconociendo"}... ${pct}%`);
             }
           }
         }).catch((err) => {
@@ -2540,17 +2540,22 @@
       return canvas;
     }
 
-    /* Recorta una region (fracciones del canvas), con escala y preproceso
-       opcional "thresh": binariza dejando el texto claro (>= umbral) como
-       negro sobre blanco — es EL truco para overlays blancos con borde negro
-       sobre video ruidoso (medido contra una captura real de TikTok: umbral
-       220 dio la frase casi perfecta; 200 fue peor; gris/stretch/inversion
-       fueron peores que el color crudo — no reintroducirlos sin medir). */
-    function makeRegionCanvas(canvas, region, scale, mode, threshold) {
-      const sx = Math.round(canvas.width * region.x0);
-      const sw = Math.max(1, Math.round(canvas.width * (region.x1 - region.x0)));
-      const sy = Math.round(canvas.height * region.y0);
-      const sh = Math.max(1, Math.round(canvas.height * (region.y1 - region.y0)));
+    /* Variante de zona central para pantallazos sociales verticales
+       (TikTok/Reels/Shorts): recorta tabs superiores, botones laterales y
+       navegacion/caption inferior, con upscale controlado si queda chico.
+       A proposito SIN preprocesamiento de contraste/gris/inversion: se probo
+       (stretch de percentiles + inversion en fondo oscuro) y el resultado fue
+       PEOR que dejar que Tesseract binarice el color original — no reintroducir
+       ese preproceso sin volver a medir contra un caso real. */
+    function cropCenterForSocial(canvas) {
+      const sx = 0;
+      const sw = Math.max(1, Math.round(canvas.width * 0.88));
+      const sy = Math.round(canvas.height * 0.20);
+      const sh = Math.max(1, Math.round(canvas.height * 0.58)); // 20% a 78%
+
+      // Upscale controlado si el recorte queda chico: a Tesseract le va mejor
+      // con texto grande.
+      const scale = sw < 1000 ? Math.min(2, 1400 / sw) : 1;
       const out = document.createElement("canvas");
       out.width = Math.max(1, Math.round(sw * scale));
       out.height = Math.max(1, Math.round(sh * scale));
@@ -2558,44 +2563,13 @@
       ctx.imageSmoothingEnabled = true;
       ctx.imageSmoothingQuality = "high";
       ctx.drawImage(canvas, sx, sy, sw, sh, 0, 0, out.width, out.height);
-      if (mode === "thresh") {
-        const imageData = ctx.getImageData(0, 0, out.width, out.height);
-        const d = imageData.data;
-        for (let i = 0; i < d.length; i += 4) {
-          const y = d[i] * 0.299 + d[i + 1] * 0.587 + d[i + 2] * 0.114;
-          const v = y >= threshold ? 0 : 255;
-          d[i] = d[i + 1] = d[i + 2] = v;
-        }
-        ctx.putImageData(imageData, 0, 0);
-      }
       return out;
     }
 
-    /* Score de limpieza de una extraccion: favorece palabras legibles en
-       español (stopwords), patrones de frase ("decia:", citas, cierre con
-       puntuacion) y penaliza candidatas dudosas. Sirve para elegir la mejor
-       region/variante, no solo "hay candidatas". */
-    const OCR_STOPWORDS = new Set(["el","la","los","las","un","una","de","del","que","como","y","o","mi","tu","su","se","me","te","le","lo","en","con","por","para","no","si","es","al","mas","más","pero","toda","todo","vida","ser","hay","ya","muy"]);
-    function scoreExtraction(candidates) {
-      let total = 0;
-      for (const c of candidates) {
-        const words = c.text.split(/\s+/);
-        const cleanWords = words.filter((w) => /^[\p{L}¡¿"'(),.:;!?…«»\-]+$/u.test(w)).length;
-        const stops = words.filter((w) => OCR_STOPWORDS.has(w.toLowerCase().replace(/[^a-záéíóúüñ]/g, ""))).length;
-        let s = cleanWords + stops * 2;
-        if (/dec[ií]a:?/i.test(c.text)) s += 6;
-        if (/"[^"]{10,}"/.test(c.text)) s += 6;
-        if (/[.!?…"]$/.test(c.text)) s += 2;
-        if (c.dubious) s *= 0.4;
-        total += s;
-      }
-      return total;
-    }
-
     /* En vertical (alto/ancho >= 1.3) con "priorizar zona central" activo,
-       prueba varias regiones/variantes y se queda con la extraccion de mejor
-       score; solo cae a imagen completa si ninguna variante rinde. En
-       horizontal o con el checkbox apagado, va directo a imagen completa. */
+       intenta primero el OCR del recorte central; si no produce ninguna
+       candidata buena, cae al OCR de la imagen completa. En horizontal o con
+       el checkbox apagado, va directo a imagen completa. */
     async function recognizeImageSmart(worker, file) {
       const full = await ocrPrepareImage(file);
       const preferCenter = document.getElementById("ocr-center-priority").checked;
@@ -2603,28 +2577,22 @@
 
       if (preferCenter && isVertical) {
         try {
-          const BAND = { x0: 0.02, x1: 0.88, y0: 0.34, y1: 0.62 };  // franja tipica del texto principal
-          const CENTER = { x0: 0, x1: 0.88, y0: 0.20, y1: 0.78 };   // recorte amplio historico
-          const variants = [
-            makeRegionCanvas(full, BAND, 2, "thresh", 220),  // overlay blanco sobre video
-            makeRegionCanvas(full, BAND, full.width < 1000 ? 2 : 1, "raw"),
-            makeRegionCanvas(full, CENTER, 1, "raw")
-          ];
-
-          let best = { score: 0, candidates: [] };
-          for (let v = 0; v < variants.length; v++) {
-            ocrState.variantLabel = ` — variante ${v + 1}/${variants.length}`;
-            const result = await worker.recognize(variants[v]);
-            const candidates = extractCandidatePhrases(result && result.data ? result.data.text : "");
-            const score = scoreExtraction(candidates);
-            if (score > best.score) best = { score, candidates };
-            // Score alto: la frase ya salio legible, no gastar mas pasadas.
-            if (best.score >= 30) break;
+          const center = cropCenterForSocial(full);
+          const centerResult = await worker.recognize(center);
+          const centerCandidates = extractCandidatePhrases(centerResult && centerResult.data ? centerResult.data.text : "");
+          if (centerCandidates.some((c) => !c.dubious)) {
+            return centerCandidates;
           }
-          ocrState.variantLabel = "";
-          if (best.candidates.length) return best.candidates;
+          // El recorte no dio nada bueno: probar la imagen completa y quedarse
+          // con el mejor de los dos resultados.
+          const fullResult = await worker.recognize(full);
+          const fullCandidates = extractCandidatePhrases(fullResult && fullResult.data ? fullResult.data.text : "");
+          const good = (list) => list.filter((c) => !c.dubious).length;
+          if (good(fullCandidates) > good(centerCandidates) || (!centerCandidates.length && fullCandidates.length)) {
+            return fullCandidates;
+          }
+          return centerCandidates.length ? centerCandidates : fullCandidates;
         } catch (err) {
-          ocrState.variantLabel = "";
           // Si el recorte/preproceso falla por cualquier motivo, la imagen
           // completa sigue siendo el camino de siempre.
         }
@@ -2739,26 +2707,6 @@
           .replace(/\s+([,.;:!?…])/g, "$1")
           .replace(/\s+/g, " ")
           .trim();
-
-        // Normalizacion conservadora de errores tipicos de OCR. Solo patrones
-        // imposibles en español (":" o "'" dentro de una palabra) o fixes
-        // puntuales gateados por contexto — NO es un corrector general y no
-        // inventa texto fuera de lo detectado.
-        text = text
-          .replace(/([a-záéíóúüñ]):([a-záéíóúüñ])/g, "$1 $2")   // "Sea:como" -> "Sea como"
-          .replace(/([a-záéíóúüñ])'([a-záéíóúüñ])/g, "$1 $2")   // "como'el" -> "como el"
-          .replace(/\bMi[vt]abuelo\b/gi, "Mi abuelo")
-          .replace(/\.\s+\./g, ".");                             // '". ."' del threshold
-        if (/sea\s+como\s+el/i.test(text)) {
-          text = text.replace(/\b[il]ayor?\b/gi, "rayo");
-        }
-        if (/rayo/i.test(text)) {
-          text = text.replace(/\bcalga\b/gi, "caiga");
-        }
-        if (/desaparezca/i.test(text)) {
-          text = text.replace(/\biparta\b/gi, "parta");
-        }
-        text = text.replace(/\s+/g, " ").trim();
 
         if (text.length < 3) continue;
         const letters = (text.match(/\p{L}/gu) || []).length;
