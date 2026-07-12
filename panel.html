@@ -2397,11 +2397,21 @@
     const AI_EXTRACT_PROMPT = [
       "Extrae frases útiles de estas imágenes para guardarlas.",
       "",
-      "Conserva el contexto que dé sentido a la frase y las comillas reales.",
+      "Devuelve solo las frases finales, una entrada por imagen.",
+      "No agregues títulos, introducciones, comentarios ni explicaciones.",
+      "",
+      "",
+      "Conserva el contexto que dé sentido a la frase.",
+      "Conserva comillas solo si aparecen en la imagen o hacen parte real de la frase.",
+      "No envuelvas todas las frases entre comillas por formato.",
+      "",
       "Ignora interfaz de redes: botones, métricas, usuarios, fechas, hashtags, música y navegación.",
-      "Devuelve una entrada por imagen, lista para guardar.",
-      "Sin numeración, viñetas ni explicaciones.",
-      "Si no hay una frase clara, omítela."
+      "Si un caption o subtítulo complementa el sentido de la frase, inclúyelo en la misma entrada.",
+      "Si no hay una frase clara, omite esa imagen.",
+      "",
+      "Sin numeración.",
+      "Sin viñetas.",
+      "Sin markdown."
     ].join("\n");
 
     function setAiPasteStatus(message, cls = "") {
