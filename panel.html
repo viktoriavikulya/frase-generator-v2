@@ -969,6 +969,25 @@
           </div>
 
           <div id="raw-phrases-result"></div>
+
+          <hr class="divider">
+
+          <p class="eyebrow">Extraer frases con ChatGPT/Claude</p>
+          <p class="field-hint">Usa ChatGPT o Claude para extraer frases de imágenes. Luego pega aquí la respuesta y el panel la limpia antes de agregarla.</p>
+          <div class="btns">
+            <button class="btn-ghost" type="button" id="ai-copy-prompt">Copiar prompt</button>
+            <button class="btn-ghost" type="button" id="ai-open-chatgpt">Abrir ChatGPT</button>
+            <button class="btn-ghost" type="button" id="ai-open-claude">Abrir Claude</button>
+          </div>
+          <div class="field field-wide">
+            <label class="field-label" for="ai-paste-input">Pegar respuesta de IA</label>
+            <textarea class="field-input archive-final-input" id="ai-paste-input" rows="6" placeholder="Pega aqui la respuesta completa de ChatGPT/Claude..."></textarea>
+          </div>
+          <div class="archive-actions">
+            <div class="action-group"></div>
+            <p class="status" id="ai-paste-status"></p>
+            <button class="btn-main" type="button" id="ai-paste-clean">Limpiar y agregar al texto</button>
+          </div>
         </div>
       </section>
 
@@ -2373,6 +2392,109 @@
       }
     }
 
+    // --- Flujo asistido ChatGPT/Claude (no guarda nada: solo apendea al textarea de frases crudas) ---
+
+    const AI_EXTRACT_PROMPT = [
+      "Extrae únicamente las frases útiles de estas imágenes.",
+      "Ignora interfaz de TikTok/Reels/Shorts, usuarios, hashtags, likes, fechas, canciones, captions, botones y navegación.",
+      "Devuelve solo una frase por línea.",
+      "Sin numeración.",
+      "Sin viñetas.",
+      "Sin explicaciones.",
+      "Sin comillas externas innecesarias.",
+      "No inventes texto ilegible.",
+      "Si una imagen no tiene frase clara, omítela."
+    ].join("\n");
+
+    function setAiPasteStatus(message, cls = "") {
+      const el = document.getElementById("ai-paste-status");
+      el.textContent = message || "";
+      el.className = `status ${cls}`;
+    }
+
+    async function copyAiPrompt() {
+      try {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          await navigator.clipboard.writeText(AI_EXTRACT_PROMPT);
+        } else {
+          // Fallback para contextos sin Clipboard API (p.ej. http local sin secure context)
+          const helper = document.createElement("textarea");
+          helper.value = AI_EXTRACT_PROMPT;
+          helper.setAttribute("readonly", "");
+          helper.style.position = "fixed";
+          helper.style.opacity = "0";
+          document.body.appendChild(helper);
+          helper.select();
+          document.execCommand("copy");
+          document.body.removeChild(helper);
+        }
+        setAiPasteStatus("Prompt copiado. Pégalo en ChatGPT/Claude junto con las imágenes.", "ok");
+      } catch (err) {
+        setAiPasteStatus(`No se pudo copiar: ${err.message || err}`, "error");
+      }
+    }
+
+    // Limpia la respuesta pegada de ChatGPT/Claude: quita numeración, bullets, encabezados
+    // conversacionales, Markdown, comillas externas y duplicados. Conserva signos internos,
+    // tildes y comillas que forman parte de la frase.
+    function cleanAiResponse(text) {
+      const rejectRe = new RegExp(
+        "^(aqu[ií]\\s|claro[,.:!]?\\s|por supuesto|perfecto[,.:!]?\\s|estas son|esas son|" +
+        "frases (extra[ií]das|[uú]tiles|encontradas)|resultado[s]?:?$|espero que|" +
+        "si necesitas|cualquier otra|avísame|dime si|" +
+        "no (pude|puedo|hay|se pudo|logro|encontr[eé])|la imagen no|ninguna (imagen|frase)|" +
+        "imagen \\d+|lo siento|perd[oó]n)", "i");
+      const seen = new Set();
+      const phrases = [];
+      for (const raw of String(text || "").replace(/\r/g, "").split("\n")) {
+        let line = raw.trim();
+        if (!line || /^```/.test(line)) continue;
+        line = line.replace(/^#{1,6}\s+/, "");
+        line = line.replace(/^>\s+/, "");
+        line = line.replace(/^(?:[-*•·]|\d{1,3}[.)])\s+/, "");
+        const bold = line.match(/^\*\*(.+)\*\*$/);
+        if (bold) line = bold[1];
+        const quoted = line.match(/^["“”'«](.+)["“”'»]$/);
+        if (quoted) line = quoted[1];
+        line = line.replace(/\s{2,}/g, " ").trim();
+        if (line.length < 3) continue;
+        if (rejectRe.test(line)) continue;
+        const key = line.toLowerCase().replace(/\s+/g, " ");
+        if (seen.has(key)) continue;
+        seen.add(key);
+        phrases.push(line);
+      }
+      return phrases;
+    }
+
+    function limpiarYAgregarRespuestaIa() {
+      const paste = document.getElementById("ai-paste-input");
+      const target = document.getElementById("raw-phrases-input");
+      const phrases = cleanAiResponse(paste.value);
+
+      if (!phrases.length) {
+        setAiPasteStatus("No se encontraron frases utilizables en la respuesta pegada.", "error");
+        return;
+      }
+
+      const existing = new Set(
+        target.value.split("\n")
+          .map((l) => clean(l).toLowerCase().replace(/\s+/g, " "))
+          .filter(Boolean)
+      );
+      const nuevas = phrases.filter((p) => !existing.has(p.toLowerCase().replace(/\s+/g, " ")));
+
+      if (!nuevas.length) {
+        setAiPasteStatus("Todas las frases ya estaban en el texto de arriba.", "error");
+        return;
+      }
+
+      const base = clean(target.value) ? target.value.replace(/\s+$/, "") + "\n" : "";
+      target.value = base + nuevas.join("\n");
+      paste.value = "";
+      setAiPasteStatus(`${nuevas.length} frase(s) agregadas al texto. Revísalas y usa "Guardar frases".`, "ok");
+    }
+
     function initArchiveColors() {
       const grid = document.getElementById("plan-color-grid");
       grid.innerHTML = "";
@@ -2555,6 +2677,10 @@
     document.getElementById("archive-search").addEventListener("input", applyArchiveFilters);
     document.getElementById("archive-reload").addEventListener("click", () => loadArchive().catch(showArchiveError));
     document.getElementById("raw-phrases-save").addEventListener("click", saveRawPhrases);
+    document.getElementById("ai-copy-prompt").addEventListener("click", copyAiPrompt);
+    document.getElementById("ai-open-chatgpt").addEventListener("click", () => window.open("https://chatgpt.com/", "_blank", "noopener"));
+    document.getElementById("ai-open-claude").addEventListener("click", () => window.open("https://claude.ai/", "_blank", "noopener"));
+    document.getElementById("ai-paste-clean").addEventListener("click", limpiarYAgregarRespuestaIa);
     document.getElementById("plan-caption").addEventListener("input", updatePlanCounter);
     document.getElementById("plan-reload").addEventListener("click", () => loadPlanCarruseles().catch((err) => {
       document.getElementById("plan-list").innerHTML = `<div class="archive-empty">${escapeHtml(err.message || String(err))}</div>`;
