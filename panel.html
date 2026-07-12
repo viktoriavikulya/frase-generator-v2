@@ -974,13 +974,6 @@
 
           <p class="eyebrow">Extraer frases con ChatGPT/Claude</p>
           <p class="field-hint">Usa ChatGPT o Claude para extraer frases de imágenes. Luego pega aquí la respuesta y el panel la limpia antes de agregarla.</p>
-          <div class="field">
-            <label class="field-label" for="ai-extract-mode">Modo de extracción</label>
-            <select class="field-input" id="ai-extract-mode">
-              <option value="context" selected>Frase con contexto</option>
-              <option value="clean">Frase limpia</option>
-            </select>
-          </div>
           <div class="btns">
             <button class="btn-ghost" type="button" id="ai-copy-prompt">Copiar prompt</button>
             <button class="btn-ghost" type="button" id="ai-open-chatgpt">Abrir ChatGPT</button>
@@ -2401,35 +2394,15 @@
 
     // --- Flujo asistido ChatGPT/Claude (no guarda nada: solo apendea al textarea de frases crudas) ---
 
-    const AI_EXTRACT_PROMPTS = {
-      context: [
-        "Extrae el texto útil de estas imágenes para guardarlo como frases.",
-        "No extraigas solo la frase central si hay contexto que le da sentido.",
-        "Conserva encabezados como “Como decía el abuelo”, “Mi abuelo siempre decía”, “En mi lugar”, etc.",
-        "Conserva comillas si aparecen en la imagen y hacen parte de la frase.",
-        "Incluye subtítulos o captions solo si complementan la frase o explican el sentido.",
-        "Ignora únicamente interfaz de red social: botones, likes, usuarios, fechas, hashtags, música, navegación y contadores.",
-        "Devuelve una entrada por imagen.",
-        "Cada entrada debe quedar lista para guardarse como frase.",
-        "Sin numeración.",
-        "Sin viñetas.",
-        "Sin explicaciones."
-      ].join("\n"),
-      clean: [
-        "Extrae únicamente las frases principales útiles de estas imágenes.",
-        "Ignora interfaz de red social, usuarios, hashtags, likes, fechas, canciones, captions, botones y navegación.",
-        "Devuelve solo una frase por línea.",
-        "Sin numeración.",
-        "Sin viñetas.",
-        "Sin explicaciones.",
-        "Conserva comillas solo si hacen parte de la frase."
-      ].join("\n")
-    };
-
-    function getAiExtractPrompt() {
-      const mode = document.getElementById("ai-extract-mode").value;
-      return AI_EXTRACT_PROMPTS[mode] || AI_EXTRACT_PROMPTS.context;
-    }
+    const AI_EXTRACT_PROMPT = [
+      "Extrae frases útiles de estas imágenes para guardarlas.",
+      "",
+      "Conserva el contexto que dé sentido a la frase y las comillas reales.",
+      "Ignora interfaz de redes: botones, métricas, usuarios, fechas, hashtags, música y navegación.",
+      "Devuelve una entrada por imagen, lista para guardar.",
+      "Sin numeración, viñetas ni explicaciones.",
+      "Si no hay una frase clara, omítela."
+    ].join("\n");
 
     function setAiPasteStatus(message, cls = "") {
       const el = document.getElementById("ai-paste-status");
@@ -2438,14 +2411,13 @@
     }
 
     async function copyAiPrompt() {
-      const prompt = getAiExtractPrompt();
       try {
         if (navigator.clipboard && navigator.clipboard.writeText) {
-          await navigator.clipboard.writeText(prompt);
+          await navigator.clipboard.writeText(AI_EXTRACT_PROMPT);
         } else {
           // Fallback para contextos sin Clipboard API (p.ej. http local sin secure context)
           const helper = document.createElement("textarea");
-          helper.value = prompt;
+          helper.value = AI_EXTRACT_PROMPT;
           helper.setAttribute("readonly", "");
           helper.style.position = "fixed";
           helper.style.opacity = "0";
